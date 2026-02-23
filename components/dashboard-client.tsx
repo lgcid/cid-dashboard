@@ -18,7 +18,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { BRAND, C3_DEPARTMENT_LABELS, C3_DEPARTMENTS, NO_DATA_LABEL } from "@/lib/config";
+import { BRAND, C3_DEPARTMENT_LABELS, C3_DEPARTMENTS, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
 import type { DashboardResponse, IncidentRow, WeeklyMetricRow } from "@/types/dashboard";
 
 type Props = {
@@ -1081,7 +1081,7 @@ function SnapshotPanel({
         </div>
 
         <div className="border border-black p-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em]">Top Streets</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em]">Top {HOTSPOT_LIMIT} Streets</p>
           <ol className="mt-2 space-y-1 text-[11px]">
             {hotspots.length ? (
               hotspots.map((spot, index) => (
@@ -1694,12 +1694,12 @@ export default function DashboardClient({ initialData }: Props) {
 
           <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
             <div className="rounded-xl border border-black p-3">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em]">Hotspot Intelligence (Cumulative)</h3>
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em]">Hotspot Intelligence (Top {HOTSPOT_LIMIT})</h3>
               <ol className="mt-3 space-y-2">
                 {initialData.hotspots.length ? (
                   initialData.hotspots.map((spot, index) => (
                     <li key={spot.street} className="flex items-center justify-between rounded-lg border border-black bg-white px-3 py-2">
-                      <span className="text-sm font-semibold capitalize">{index + 1}. {spot.street}</span>
+                      <span className="text-sm font-semibold">{index + 1}. {spot.street}</span>
                       <span className="inline-flex min-w-9 items-center justify-center rounded-full border border-black bg-brand-safety px-2 py-0.5 text-xs font-bold">
                         {spot.incident_count}
                       </span>
