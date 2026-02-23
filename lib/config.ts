@@ -2,8 +2,9 @@ export const BRAND = {
   colors: {
     black: "#000000",
     white: "#FFFFFF",
-    safetyCleaning: "#FFF300",
-    social: "#FF3087",
+    safety: "#FFF103",
+    cleaning: "#C5FF31",
+    social: "#FE3088",
     parks: "#44D62C"
   },
   fonts: {

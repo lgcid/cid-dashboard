@@ -37,9 +37,10 @@
 :root {
   --lg-black: #000000;
   --lg-white: #ffffff;
-  --lg-safety: #fff300;
-  --lg-social: #ff3087;
-  --lg-parks: #44d62c;
+  --lg-safety: #fff103;
+  --lg-cleaning: #c5ff31;
+  --lg-social: #fe3088;
+  --lg-parks: #44D62C;
   --font-heading: "Montserrat", "Helvetica Neue", sans-serif;
   --font-body: "Roboto Condensed", "Arial Narrow", sans-serif;
 }
@@ -101,19 +102,19 @@ h6 {
 }
 
 .rail-safety {
-  --rail-color: #fff300;
+  --rail-color: var(--lg-safety);
 }
 
 .rail-cleaning {
-  --rail-color: #c5ff2f;
+  --rail-color: var(--lg-cleaning);
 }
 
 .rail-social {
-  --rail-color: #ff3087;
+  --rail-color: var(--lg-social);
 }
 
 .rail-parks {
-  --rail-color: #44d62c;
+  --rail-color: var(--lg-parks);
 }
 
 .rail-urban {

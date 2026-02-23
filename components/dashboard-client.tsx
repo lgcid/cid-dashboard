@@ -75,19 +75,19 @@ type TrendChartPoint = {
 };
 
 const THEME_COLOR: Record<MetricTheme, string> = {
-  safety: "#FFF300",
-  cleaning: "#C5FF2F",
-  social: "#FF3087",
-  parks: "#44D62C",
+  safety: BRAND.colors.safety,
+  cleaning: BRAND.colors.cleaning,
+  social: BRAND.colors.social,
+  parks: BRAND.colors.parks,
   neutral: BRAND.colors.black
 };
 const C3_RESOLVED_GREY = "#9CA3AF";
-const CRIME_TREND_COLOR = "#FFF301";
-const CLEANING_TREND_COLOR = "#C5FF2F";
-const URBAN_TREND_COLOR = "#FFF301";
+const CRIME_TREND_COLOR = BRAND.colors.safety;
+const CLEANING_TREND_COLOR = BRAND.colors.cleaning;
+const URBAN_TREND_COLOR = BRAND.colors.safety;
 const CONTACTS_TREND_COLOR = BRAND.colors.black;
-const SUMMARY_PUBLIC_SAFETY_COLOR = "#FFF301";
-const SUMMARY_CLEANING_COLOR = "#C6FF2F";
+const SUMMARY_PUBLIC_SAFETY_COLOR = BRAND.colors.safety;
+const SUMMARY_CLEANING_COLOR = BRAND.colors.cleaning;
 
 const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
   { id: "summary", label: "Summary" },
@@ -528,7 +528,7 @@ function SectionHeading({
         <span
           className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-black"
           style={{
-            backgroundColor: iconBackground ?? (accent ? (accentColor ?? BRAND.colors.safetyCleaning) : BRAND.colors.white),
+            backgroundColor: iconBackground ?? (accent ? (accentColor ?? BRAND.colors.safety) : BRAND.colors.white),
             color: iconColor ?? BRAND.colors.black
           }}
         >
@@ -1343,7 +1343,7 @@ export default function DashboardClient({ initialData }: Props) {
       id: "public-safety",
       title: "Public Safety",
       theme: "safety",
-      iconPath: "/icons/pillar-safety.webp",
+      iconPath: "/icons/pillar-safety.svg",
       summary: "Security patrols and emergency response services to ensure community safety.",
       metrics: [
         { label: "Criminal Incidents", key: "criminal_incidents" },
@@ -1356,7 +1356,7 @@ export default function DashboardClient({ initialData }: Props) {
       id: "cleaning",
       title: "Cleaning & Maintenance",
       theme: "cleaning",
-      iconPath: "/icons/pillar-cleaning.webp",
+      iconPath: "/icons/pillar-cleaning.svg",
       summary: "Public cleaning and infrastructure maintenance to keep our district pristine.",
       metrics: [
         { label: "Bags Filled and Collected", key: "cleaning_bags_collected", unitPlural: "bags", unitSingular: "bag" },
@@ -1369,7 +1369,7 @@ export default function DashboardClient({ initialData }: Props) {
       id: "social-services",
       title: "Social Services",
       theme: "social",
-      iconPath: "/icons/pillar-social.webp",
+      iconPath: "/icons/pillar-social.svg",
       summary: "Community support programs and social development initiatives",
       metrics: [
         { label: "Incidents", key: "social_incidents" },
@@ -1383,7 +1383,7 @@ export default function DashboardClient({ initialData }: Props) {
       id: "parks-recreation",
       title: "Parks and Recreation",
       theme: "parks",
-      iconPath: "/icons/pillar-parks.webp",
+      iconPath: "/icons/pillar-parks.svg",
       summary: "Maintaining and improving green spaces, recreational facilities, and community areas",
       metrics: [
         { label: "Jutland Park", key: "parks_jutland_park_bags", unitPlural: "bags", unitSingular: "bag" },

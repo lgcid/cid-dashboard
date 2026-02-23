@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { BRAND } from "./lib/config";
 
 const config: Config = {
   content: [
@@ -10,11 +11,12 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          black: "#000000",
-          white: "#FFFFFF",
-          safety: "#FFF300",
-          social: "#FF3087",
-          parks: "#44D62C"
+          black: BRAND.colors.black,
+          white: BRAND.colors.white,
+          safety: BRAND.colors.safety,
+          cleaning: BRAND.colors.cleaning,
+          social: BRAND.colors.social,
+          parks: BRAND.colors.parks
         }
       },
       boxShadow: {
