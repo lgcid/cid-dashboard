@@ -93,7 +93,7 @@ const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
   { id: "summary", label: "Summary" },
   { id: "main", label: "Current Week" },
   { id: "trends", label: "Trends" },
-  { id: "c3", label: "C3 Efficiency Tracker" }
+  { id: "c3", label: "C3 Tracker" }
 ];
 const TREND_GRANULARITY_OPTIONS: Array<{ id: TrendGranularity; label: string }> = [
   { id: "week", label: "Week" },
@@ -1937,7 +1937,7 @@ export default function DashboardClient({ initialData }: Props) {
             <ExportImageHeader />
             <section id="c3" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
             <SectionHeading
-              title="C3 Efficiency Tracker"
+              title="C3 Tracker"
               description="Cumulative City service requests logged vs resolved by category across all reported weeks."
               icon="c3"
             />
