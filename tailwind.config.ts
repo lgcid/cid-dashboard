@@ -1,5 +1,5 @@
 import type { Config } from "tailwindcss";
-import { BRAND } from "./lib/config";
+import { BRAND } from "./lib/config.ts";
 
 const config: Config = {
   content: [

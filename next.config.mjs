@@ -3,10 +3,8 @@ const nextConfig = {
   images: {
     remotePatterns: []
   },
-  experimental: {
-    outputFileTracingIncludes: {
-      "/*": ["./data/exports/**/*.csv"]
-    }
+  outputFileTracingIncludes: {
+    "/*": ["./data/exports/**/*.csv"]
   }
 };
 

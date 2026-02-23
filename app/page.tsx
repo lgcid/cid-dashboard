@@ -2,15 +2,16 @@ import DashboardClient from "@/components/dashboard-client";
 import { getDashboardData } from "@/lib/dashboard-service";
 
 type PageProps = {
-  searchParams?: {
+  searchParams: Promise<{
     weekStart?: string;
     windowWeeks?: string;
-  };
+  }>;
 };
 
 export default async function HomePage({ searchParams }: PageProps) {
-  const weekStart = searchParams?.weekStart;
-  const windowWeeks = searchParams?.windowWeeks ? Number(searchParams.windowWeeks) : undefined;
+  const params = await searchParams;
+  const weekStart = params?.weekStart;
+  const windowWeeks = params?.windowWeeks ? Number(params.windowWeeks) : undefined;
   const initialData = await getDashboardData({
     weekStart,
     windowWeeks: Number.isFinite(windowWeeks) ? windowWeeks : undefined
