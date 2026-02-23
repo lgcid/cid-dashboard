@@ -29,6 +29,7 @@ type MetricTheme = "safety" | "cleaning" | "social" | "parks" | "neutral";
 type SectionIconKind = "summary" | "currentWeek" | "incidents" | "trends" | "c3";
 type ComparisonTone = "increase" | "decrease" | "flat" | "none";
 type DashboardTab = "main" | "summary" | "trends" | "c3";
+type TrendGranularity = "week" | "month" | "year";
 type SummaryInfographicGroupId = "safety_response" | "cleaning_urban" | "communications";
 type SummaryInfographicIconKind =
   | "urban"
@@ -59,6 +60,20 @@ type SummaryInfographicMetricDefinition = {
   derived?: "contacts_total" | "cleaning_total_bags" | "fines_issued";
 };
 
+type TrendChartPoint = {
+  period_start: string;
+  period_end: string;
+  period_label: string;
+  urban_total: number | null;
+  criminal_incidents: number | null;
+  cleaning_bags_collected: number | null;
+  contacts_total: number | null;
+  urban_ma4: number | null;
+  criminal_ma4: number | null;
+  cleaning_ma4: number | null;
+  contacts_total_ma4: number | null;
+};
+
 const THEME_COLOR: Record<MetricTheme, string> = {
   safety: "#FFF300",
   cleaning: "#C5FF2F",
@@ -79,6 +94,11 @@ const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
   { id: "main", label: "Current Week" },
   { id: "trends", label: "Trends" },
   { id: "c3", label: "C3 Efficiency Tracker" }
+];
+const TREND_GRANULARITY_OPTIONS: Array<{ id: TrendGranularity; label: string }> = [
+  { id: "week", label: "Week" },
+  { id: "month", label: "Month" },
+  { id: "year", label: "Year" }
 ];
 
 const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
@@ -173,6 +193,171 @@ function formatTimestamp(iso: string): string {
 
 function formatWeekRange(weekStart: string, weekEnd: string): string {
   return `${formatWeekDate(weekStart)} to ${formatWeekDate(weekEnd)}`;
+}
+
+function formatIsoWithPattern(iso: string, pattern: string): string {
+  try {
+    return format(parseISO(iso), pattern);
+  } catch {
+    return iso;
+  }
+}
+
+function toMetricNumber(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function sumMetric(values: number[]): number | null {
+  if (!values.length) {
+    return null;
+  }
+  return values.reduce((sum, value) => sum + value, 0);
+}
+
+function movingAverage(values: Array<number | null>, index: number, windowSize = 4): number | null {
+  const start = Math.max(0, index - windowSize + 1);
+  const window = values.slice(start, index + 1).filter((value): value is number => value !== null);
+  if (!window.length) {
+    return null;
+  }
+  const total = window.reduce((sum, value) => sum + value, 0);
+  return Number((total / window.length).toFixed(2));
+}
+
+function trendContactsTotal(row: WeeklyMetricRow): number | null {
+  const calls = toMetricNumber(row.calls_received);
+  const whatsapps = toMetricNumber(row.whatsapps_received);
+  if (calls === null && whatsapps === null) {
+    return null;
+  }
+  return (calls ?? 0) + (whatsapps ?? 0);
+}
+
+function trendDateBounds(rows: WeeklyMetricRow[], fallbackDate: string): { from: string; to: string } {
+  const sorted = [...rows].sort((a, b) => a.week_start.localeCompare(b.week_start));
+  const reported = sorted.filter((row) => row.record_status === "REPORTED");
+  const sourceRows = reported.length ? reported : sorted;
+  const from = sourceRows[0]?.week_start ?? fallbackDate;
+  const to = sourceRows[sourceRows.length - 1]?.week_start ?? fallbackDate;
+
+  return { from, to };
+}
+
+function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity): TrendChartPoint[] {
+  const sorted = [...rows]
+    .filter((row) => row.record_status === "REPORTED")
+    .sort((a, b) => a.week_start.localeCompare(b.week_start));
+
+  if (!sorted.length) {
+    return [];
+  }
+
+  const aggregated: Array<{
+    period_start: string;
+    period_end: string;
+    period_label: string;
+    urban_total: number | null;
+    criminal_incidents: number | null;
+    cleaning_bags_collected: number | null;
+    contacts_total: number | null;
+  }> = [];
+
+  if (granularity === "week") {
+    for (const row of sorted) {
+      aggregated.push({
+        period_start: row.week_start,
+        period_end: row.week_end,
+        period_label: formatIsoWithPattern(row.week_start, "dd MMM"),
+        urban_total: toMetricNumber(row.urban_total),
+        criminal_incidents: toMetricNumber(row.criminal_incidents),
+        cleaning_bags_collected: toMetricNumber(row.cleaning_bags_collected),
+        contacts_total: trendContactsTotal(row)
+      });
+    }
+  } else {
+    const grouped = new Map<
+      string,
+      {
+        period_start: string;
+        period_end: string;
+        period_label: string;
+        urban: number[];
+        criminal: number[];
+        cleaning: number[];
+        contacts: number[];
+      }
+    >();
+
+    for (const row of sorted) {
+      const keyPattern = granularity === "month" ? "yyyy-MM" : "yyyy";
+      const periodKey = formatIsoWithPattern(row.week_start, keyPattern);
+      const periodLabel = granularity === "month"
+        ? formatIsoWithPattern(row.week_start, "MMM yyyy")
+        : formatIsoWithPattern(row.week_start, "yyyy");
+
+      const existing = grouped.get(periodKey);
+      if (!existing) {
+        grouped.set(periodKey, {
+          period_start: row.week_start,
+          period_end: row.week_end,
+          period_label: periodLabel,
+          urban: [],
+          criminal: [],
+          cleaning: [],
+          contacts: []
+        });
+      }
+
+      const bucket = grouped.get(periodKey);
+      if (!bucket) {
+        continue;
+      }
+
+      bucket.period_end = row.week_end;
+      const urban = toMetricNumber(row.urban_total);
+      const criminal = toMetricNumber(row.criminal_incidents);
+      const cleaning = toMetricNumber(row.cleaning_bags_collected);
+      const contacts = trendContactsTotal(row);
+
+      if (urban !== null) {
+        bucket.urban.push(urban);
+      }
+      if (criminal !== null) {
+        bucket.criminal.push(criminal);
+      }
+      if (cleaning !== null) {
+        bucket.cleaning.push(cleaning);
+      }
+      if (contacts !== null) {
+        bucket.contacts.push(contacts);
+      }
+    }
+
+    for (const bucket of grouped.values()) {
+      aggregated.push({
+        period_start: bucket.period_start,
+        period_end: bucket.period_end,
+        period_label: bucket.period_label,
+        urban_total: sumMetric(bucket.urban),
+        criminal_incidents: sumMetric(bucket.criminal),
+        cleaning_bags_collected: sumMetric(bucket.cleaning),
+        contacts_total: sumMetric(bucket.contacts)
+      });
+    }
+  }
+
+  const urbanValues = aggregated.map((point) => point.urban_total);
+  const crimeValues = aggregated.map((point) => point.criminal_incidents);
+  const cleaningValues = aggregated.map((point) => point.cleaning_bags_collected);
+  const contactsValues = aggregated.map((point) => point.contacts_total);
+
+  return aggregated.map((point, index) => ({
+    ...point,
+    urban_ma4: movingAverage(urbanValues, index, 4),
+    criminal_ma4: movingAverage(crimeValues, index, 4),
+    cleaning_ma4: movingAverage(cleaningValues, index, 4),
+    contacts_total_ma4: movingAverage(contactsValues, index, 4)
+  }));
 }
 
 function getPreviousReportedWeek(weekly: WeeklyMetricRow[], weekStart: string): WeeklyMetricRow | null {
@@ -935,8 +1120,14 @@ function ExportImageFooter() {
 }
 
 export default function DashboardClient({ initialData }: Props) {
+  const weekly = initialData.weekly;
+  const defaultTrendBounds = trendDateBounds(weekly, initialData.meta.selected_week_start);
+
   const [selectedWeekStart, setSelectedWeekStart] = useState(initialData.meta.selected_week_start);
   const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
+  const [trendFromDate, setTrendFromDate] = useState(defaultTrendBounds.from);
+  const [trendToDate, setTrendToDate] = useState(defaultTrendBounds.to);
+  const [trendGranularity, setTrendGranularity] = useState<TrendGranularity>("week");
   const captureRef = useRef<HTMLDivElement>(null);
   const mainPrintableRef = useRef<HTMLDivElement>(null);
   const summaryPrintableRef = useRef<HTMLDivElement>(null);
@@ -944,7 +1135,6 @@ export default function DashboardClient({ initialData }: Props) {
   const c3PrintableRef = useRef<HTMLDivElement>(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
-  const weekly = initialData.weekly;
   const weeklyByStart = useMemo(
     () => new Map(weekly.map((row) => [row.week_start, row])),
     [weekly]
@@ -1011,6 +1201,30 @@ export default function DashboardClient({ initialData }: Props) {
   const reportedWeeks = useMemo(
     () => weekly.filter((row) => row.record_status === "REPORTED"),
     [weekly]
+  );
+  const trendDateBoundsConfig = useMemo(
+    () => trendDateBounds(weekly, initialData.meta.selected_week_start),
+    [weekly, initialData.meta.selected_week_start]
+  );
+  const trendFrom = trendFromDate <= trendToDate ? trendFromDate : trendToDate;
+  const trendTo = trendFromDate <= trendToDate ? trendToDate : trendFromDate;
+  const trendRangeLabel = `${formatWeekDate(trendFrom)} to ${formatWeekDate(trendTo)}`;
+  const trendAverageLabel = trendGranularity === "week"
+    ? "4-week average"
+    : trendGranularity === "month"
+      ? "4-month average"
+      : "4-year average";
+  const trendPeriodLabel = trendGranularity === "week"
+    ? "Weekly"
+    : trendGranularity === "month"
+      ? "Monthly"
+      : "Yearly";
+  const trendSeries = useMemo(
+    () => buildTrendSeries(
+      weekly.filter((row) => row.week_start >= trendFrom && row.week_start <= trendTo),
+      trendGranularity
+    ),
+    [weekly, trendFrom, trendTo, trendGranularity]
   );
   const c3OverallBreakdown = useMemo(
     () =>
@@ -1285,6 +1499,72 @@ export default function DashboardClient({ initialData }: Props) {
         </div>
         ) : null}
 
+        {activeTab === "trends" ? (
+        <div className="mb-4 grid gap-3 md:grid-cols-[minmax(0,220px)_minmax(0,220px)_auto] md:items-end">
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">From</label>
+            <input
+              type="date"
+              value={trendFromDate}
+              min={trendDateBoundsConfig.from}
+              max={trendToDate}
+              onChange={(event) => {
+                const nextFrom = event.target.value;
+                if (!nextFrom) {
+                  return;
+                }
+                const boundedFrom = nextFrom < trendDateBoundsConfig.from ? trendDateBoundsConfig.from : nextFrom;
+                setTrendFromDate(boundedFrom);
+                if (boundedFrom > trendToDate) {
+                  setTrendToDate(boundedFrom);
+                }
+              }}
+              className="mt-1 w-full border-2 border-black bg-white px-3 py-2 text-sm text-black"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">To</label>
+            <input
+              type="date"
+              value={trendToDate}
+              min={trendFromDate}
+              max={trendDateBoundsConfig.to}
+              onChange={(event) => {
+                const nextTo = event.target.value;
+                if (!nextTo) {
+                  return;
+                }
+                const boundedTo = nextTo > trendDateBoundsConfig.to ? trendDateBoundsConfig.to : nextTo;
+                setTrendToDate(boundedTo);
+                if (boundedTo < trendFromDate) {
+                  setTrendFromDate(boundedTo);
+                }
+              }}
+              className="mt-1 w-full border-2 border-black bg-white px-3 py-2 text-sm text-black"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">View by</label>
+            <div className="mt-1 inline-flex overflow-hidden rounded-md border border-black">
+              {TREND_GRANULARITY_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setTrendGranularity(option.id)}
+                  className={clsx(
+                    "border-r border-black px-3 py-2 text-xs font-semibold uppercase tracking-[0.09em] last:border-r-0",
+                    trendGranularity === option.id ? "bg-black text-white" : "bg-white text-black hover:bg-black/5"
+                  )}
+                  aria-pressed={trendGranularity === option.id}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        ) : null}
+
         {activeTab === "main" ? (
         <div ref={mainPrintableRef} className="space-y-6">
           <ExportImageHeader />
@@ -1487,103 +1767,137 @@ export default function DashboardClient({ initialData }: Props) {
             <section id="trends" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
             <SectionHeading
               title="Trends"
-              description="Weekly results compared with a 4-week moving average to show underlying direction over time."
+              description={`${trendPeriodLabel} results from ${trendRangeLabel}, compared with a ${trendAverageLabel} to show underlying direction over time.`}
               icon="trends"
             />
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="h-[300px] rounded-xl border border-black p-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Crime Trend</p>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={initialData.trends} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                  <XAxis dataKey="week_label" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
-                  <Line type="monotone" dataKey="criminal_incidents" stroke={CRIME_TREND_COLOR} strokeWidth={2} dot={false} name="Weekly incidents" />
-                  <Line
-                    type="monotone"
-                    dataKey="criminal_ma4"
-                    stroke={BRAND.colors.black}
-                    strokeWidth={2}
-                    strokeDasharray="6 4"
-                    dot={false}
-                    name="4-week average"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {trendSeries.length ? (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="h-[300px] rounded-xl border border-black p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Crime Trend</p>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
+                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="criminal_incidents"
+                        stroke={CRIME_TREND_COLOR}
+                        strokeWidth={2}
+                        dot={false}
+                        name={`${trendPeriodLabel} incidents`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="criminal_ma4"
+                        stroke={BRAND.colors.black}
+                        strokeWidth={2}
+                        strokeDasharray="6 4"
+                        dot={false}
+                        name={trendAverageLabel}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
 
-            <div className="h-[300px] rounded-xl border border-black p-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Cleaning Trend</p>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={initialData.trends} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                  <XAxis dataKey="week_label" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
-                  <Line type="monotone" dataKey="cleaning_bags_collected" stroke={CLEANING_TREND_COLOR} strokeWidth={2} dot={false} name="Weekly bags" />
-                  <Line
-                    type="monotone"
-                    dataKey="cleaning_ma4"
-                    stroke={BRAND.colors.black}
-                    strokeWidth={2}
-                    strokeDasharray="6 4"
-                    dot={false}
-                    name="4-week average"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+                <div className="h-[300px] rounded-xl border border-black p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Cleaning Trend</p>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
+                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="cleaning_bags_collected"
+                        stroke={CLEANING_TREND_COLOR}
+                        strokeWidth={2}
+                        dot={false}
+                        name={`${trendPeriodLabel} bags`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="cleaning_ma4"
+                        stroke={BRAND.colors.black}
+                        strokeWidth={2}
+                        strokeDasharray="6 4"
+                        dot={false}
+                        name={trendAverageLabel}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
 
-            <div className="h-[300px] rounded-xl border border-black p-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Urban Management Incidents Trend</p>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={initialData.trends} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                  <XAxis dataKey="week_label" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
-                  <Line type="monotone" dataKey="urban_total" stroke={URBAN_TREND_COLOR} strokeWidth={2} dot={false} name="Weekly incidents" />
-                  <Line
-                    type="monotone"
-                    dataKey="urban_ma4"
-                    stroke={BRAND.colors.black}
-                    strokeWidth={2}
-                    strokeDasharray="6 4"
-                    dot={false}
-                    name="4-week average"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+                <div className="h-[300px] rounded-xl border border-black p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Urban Management Incidents Trend</p>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
+                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="urban_total"
+                        stroke={URBAN_TREND_COLOR}
+                        strokeWidth={2}
+                        dot={false}
+                        name={`${trendPeriodLabel} incidents`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="urban_ma4"
+                        stroke={BRAND.colors.black}
+                        strokeWidth={2}
+                        strokeDasharray="6 4"
+                        dot={false}
+                        name={trendAverageLabel}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
 
-            <div className="h-[300px] rounded-xl border border-black p-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Calls + WhatsApp Trend</p>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={initialData.trends} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                  <XAxis dataKey="week_label" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
-                  <Line type="monotone" dataKey="contacts_total" stroke={CONTACTS_TREND_COLOR} strokeWidth={2} dot={false} name="Weekly calls + WhatsApp" />
-                  <Line
-                    type="monotone"
-                    dataKey="contacts_total_ma4"
-                    stroke={BRAND.colors.black}
-                    strokeWidth={2}
-                    strokeDasharray="6 4"
-                    dot={false}
-                    name="4-week average"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            </div>
+                <div className="h-[300px] rounded-xl border border-black p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Calls + WhatsApp Trend</p>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
+                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="contacts_total"
+                        stroke={CONTACTS_TREND_COLOR}
+                        strokeWidth={2}
+                        dot={false}
+                        name={`${trendPeriodLabel} calls + WhatsApp`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="contacts_total_ma4"
+                        stroke={BRAND.colors.black}
+                        strokeWidth={2}
+                        strokeDasharray="6 4"
+                        dot={false}
+                        name={trendAverageLabel}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-black p-5 text-center font-semibold">
+                {NO_DATA_LABEL}
+              </div>
+            )}
             </section>
             <ExportImageFooter />
           </div>
