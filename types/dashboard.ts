@@ -96,6 +96,7 @@ export interface DashboardMeta {
   generated_at: string;
   reporting_window_start: string;
   reporting_window_end: string;
+  data_updated_at: string;
   selected_week_start: string;
   available_weeks: string[];
   data_source: "google_sheets" | "local_csv";

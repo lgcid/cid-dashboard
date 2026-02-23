@@ -1,6 +1,3 @@
-export const REPORTING_WINDOW_START = "2025-08-01";
-export const REPORTING_WINDOW_END = "2026-02-22";
-
 export const BRAND = {
   colors: {
     black: "#000000",

@@ -183,11 +183,14 @@ function formatWeekDate(iso: string): string {
   }
 }
 
-function formatTimestamp(iso: string): string {
+const ISO_DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function formatDataUpdate(value: string): string {
+  const pattern = ISO_DATE_ONLY_PATTERN.test(value) ? "dd MMM yyyy" : "dd MMM yyyy, HH:mm";
   try {
-    return format(parseISO(iso), "dd MMM yyyy, HH:mm");
+    return format(parseISO(value), pattern);
   } catch {
-    return iso;
+    return value;
   }
 }
 
@@ -1456,7 +1459,7 @@ export default function DashboardClient({ initialData }: Props) {
             </p>
 
             <p className="mt-5 text-sm font-semibold uppercase tracking-[0.08em]">
-              Last Update <strong>{formatTimestamp(initialData.meta.generated_at)}</strong>
+              Last Update <strong>{formatDataUpdate(initialData.meta.data_updated_at)}</strong>
             </p>
           </div>
         </div>
