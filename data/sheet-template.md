@@ -44,19 +44,15 @@ This dashboard expects **two tabs** in one Google Sheet.
 
 1. `week_start` (`YYYY-MM-DD`)
 2. `incident_date` (`YYYY-MM-DD` or empty)
-3. `place_raw` (text)
-4. `place_normalized` (text)
-5. `summary` (text)
-6. `category` (text)
+3. `place` (text)
+4. `summary` (text)
+5. `category` (text)
 
 ## CSV Import Workflow
 
-1. Run parser:
-   - `npm run parse:incident`
-   - offline fallback: `node scripts/parse-incident-report.mjs`
-2. Import `/Users/dagmar/Code/personal/cid-dashboard/data/exports/weekly_metrics.csv` into tab `weekly_metrics`.
-3. Import `/Users/dagmar/Code/personal/cid-dashboard/data/exports/incidents.csv` into tab `incidents`.
-4. Keep header row names unchanged.
+1. Import `/Users/dagmar/Code/personal/cid-dashboard/data/exports/weekly_metrics.csv` into tab `weekly_metrics`.
+2. Import `/Users/dagmar/Code/personal/cid-dashboard/data/exports/incidents.csv` into tab `incidents`.
+3. Keep header row names unchanged.
 
 ## Security Notes
 

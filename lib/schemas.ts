@@ -68,8 +68,7 @@ export const weeklyMetricSchema = z.object({
 export const incidentSchema = z.object({
   week_start: z.string(),
   incident_date: z.string().nullable(),
-  place_raw: z.string(),
-  place_normalized: z.string(),
+  place: z.string(),
   summary: z.string(),
   category: z.string()
 });

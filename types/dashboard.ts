@@ -56,8 +56,7 @@ export interface WeeklyMetricRow {
 export interface IncidentRow {
   week_start: string;
   incident_date: string | null;
-  place_raw: string;
-  place_normalized: string;
+  place: string;
   summary: string;
   category: string;
 }

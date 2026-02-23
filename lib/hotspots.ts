@@ -59,7 +59,7 @@ export function rankHotspots(incidents: IncidentRow[], limit = HOTSPOT_LIMIT): H
   const counts = new Map<string, number>();
 
   for (const incident of incidents) {
-    const tokens = extractStreetTokens(incident.place_raw);
+    const tokens = extractStreetTokens(incident.place);
     const deduped = new Set(tokens);
     for (const token of deduped) {
       counts.set(token, (counts.get(token) ?? 0) + 1);

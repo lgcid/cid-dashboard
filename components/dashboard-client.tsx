@@ -1083,7 +1083,7 @@ function SnapshotPanel({
             {incidents.length ? (
               incidents.map((incident, index) => (
                 <div key={`${incident.week_start}-${index}`} className="border border-black/40 p-2">
-                  <p className="font-semibold">{incident.incident_date ?? "No date"} - {incident.place_raw}</p>
+                  <p className="font-semibold">{incident.incident_date ?? "No date"} - {incident.place}</p>
                   <p className="mt-1">{incident.summary}</p>
                 </div>
               ))
@@ -1701,7 +1701,7 @@ export default function DashboardClient({ initialData }: Props) {
                       <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em]">
                         <span>{incident.incident_date ?? "No date"}</span>
                         <span>-</span>
-                        <span className="normal-case tracking-normal">{incident.place_raw}</span>
+                        <span className="normal-case tracking-normal">{incident.place}</span>
                       </div>
                       <p className="mt-2 text-sm leading-relaxed">{incident.summary}</p>
                     </article>

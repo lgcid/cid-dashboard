@@ -7,8 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "parse:incident": "cp scripts/parse-incident-report.ts scripts/parse-incident-report.mjs && node scripts/parse-incident-report.mjs"
+    "lint": "next lint"
   },
   "dependencies": {
     "clsx": "^2.1.1",
