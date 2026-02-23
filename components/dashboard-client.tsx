@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type RefObject } from "react";
+import { useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
 import Image from "next/image";
 import clsx from "clsx";
 import html2canvas from "html2canvas";
@@ -28,7 +28,36 @@ type Props = {
 type MetricTheme = "safety" | "cleaning" | "social" | "parks" | "neutral";
 type SectionIconKind = "summary" | "currentWeek" | "incidents" | "trends" | "c3";
 type ComparisonTone = "increase" | "decrease" | "flat" | "none";
-type DashboardTab = "main" | "trends" | "c3";
+type DashboardTab = "main" | "summary" | "trends" | "c3";
+type SummaryInfographicGroupId = "safety_response" | "cleaning_urban" | "communications";
+type SummaryInfographicIconKind =
+  | "urban"
+  | "crime"
+  | "arrests"
+  | "proactive"
+  | "cleaning"
+  | "drain"
+  | "shelter"
+  | "bags"
+  | "logged"
+  | "calls";
+
+type SummaryInfographicGroup = {
+  id: SummaryInfographicGroupId;
+  title: string;
+  description: string;
+  accent: string;
+  headingAccent?: string;
+};
+
+type SummaryInfographicMetricDefinition = {
+  id: string;
+  label: string;
+  icon: SummaryInfographicIconKind;
+  groupId: SummaryInfographicGroupId;
+  key?: keyof WeeklyMetricRow;
+  derived?: "contacts_total" | "cleaning_total_bags" | "fines_issued";
+};
 
 const THEME_COLOR: Record<MetricTheme, string> = {
   safety: "#FFF300",
@@ -38,13 +67,65 @@ const THEME_COLOR: Record<MetricTheme, string> = {
   neutral: BRAND.colors.black
 };
 const C3_RESOLVED_GREY = "#9CA3AF";
-const URBAN_TREND_COLOR = "#C59A00";
-const CONTACTS_TREND_COLOR = "#C92A7A";
+const CRIME_TREND_COLOR = "#FFF301";
+const CLEANING_TREND_COLOR = "#C5FF2F";
+const URBAN_TREND_COLOR = "#FFF301";
+const CONTACTS_TREND_COLOR = BRAND.colors.black;
+const SUMMARY_PUBLIC_SAFETY_COLOR = "#FFF301";
+const SUMMARY_CLEANING_COLOR = "#C6FF2F";
 
 const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
+  { id: "summary", label: "Summary" },
   { id: "main", label: "Current Week" },
   { id: "trends", label: "Trends" },
   { id: "c3", label: "C3 Efficiency Tracker" }
+];
+
+const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
+  {
+    id: "safety_response",
+    title: "Public Safety",
+    description: "Public safety and urban managenment outcomes",
+    accent: SUMMARY_PUBLIC_SAFETY_COLOR
+  },
+  {
+    id: "cleaning_urban",
+    title: "Cleaning & Maintenance",
+    description: "Cleaning and maintenance outputs",
+    accent: SUMMARY_CLEANING_COLOR
+  },
+  {
+    id: "communications",
+    title: "Communications",
+    description: "Resident reporting and service request activity",
+    accent: BRAND.colors.black,
+    headingAccent: BRAND.colors.white
+  }
+];
+
+const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
+  { id: "urban_total", label: "Urban management incidents", icon: "urban", groupId: "safety_response", key: "urban_total" },
+  { id: "fines_issued", label: "Fines issued", icon: "logged", groupId: "safety_response", derived: "fines_issued" },
+  { id: "criminal_incidents", label: "Criminal incidents", icon: "crime", groupId: "safety_response", key: "criminal_incidents" },
+  { id: "arrests_made", label: "Arrests", icon: "arrests", groupId: "safety_response", key: "arrests_made" },
+  { id: "proactive_actions", label: "Proactive interventions", icon: "proactive", groupId: "safety_response", key: "proactive_actions" },
+  {
+    id: "cleaning_total_bags",
+    label: "Cleaning bags collected",
+    icon: "bags",
+    groupId: "cleaning_urban",
+    derived: "cleaning_total_bags"
+  },
+  { id: "cleaning_servitudes_cleaned", label: "Servitudes cleaned", icon: "shelter", groupId: "cleaning_urban", key: "cleaning_servitudes_cleaned" },
+  {
+    id: "cleaning_stormwater_drains_cleaned",
+    label: "Stormwater drains cleaned",
+    icon: "drain",
+    groupId: "cleaning_urban",
+    key: "cleaning_stormwater_drains_cleaned"
+  },
+  { id: "c3_logged_total", label: "C3 logged requests", icon: "logged", groupId: "communications", key: "c3_logged_total" },
+  { id: "contacts_total", label: "Calls + WhatsApp received", icon: "calls", groupId: "communications", derived: "contacts_total" }
 ];
 
 function themeRailClass(theme: MetricTheme): string {
@@ -64,16 +145,7 @@ function themeRailClass(theme: MetricTheme): string {
 }
 
 function deltaPillClass(tone: ComparisonTone): string {
-  if (tone === "increase") {
-    return "border-[#b7dfc5] bg-[#edf9f1] text-[#0b7f2a]";
-  }
-  if (tone === "decrease") {
-    return "border-[#efc4c4] bg-[#fff1f1] text-[#b30000]";
-  }
-  if (tone === "flat") {
-    return "border-[#d7d7d7] bg-[#f5f5f5] text-black";
-  }
-  return "border-[#e3e3e3] bg-[#f8f8f8] text-black/60";
+  return summaryDeltaPillClass(tone);
 }
 
 function valueText(value: number | null | undefined): string {
@@ -231,19 +303,28 @@ function SectionHeading({
   title,
   description,
   icon,
-  accent = false
+  accent = false,
+  iconColor,
+  accentColor,
+  iconBackground
 }: {
   title: string;
   description?: string;
   icon: SectionIconKind;
   accent?: boolean;
+  iconColor?: string;
+  accentColor?: string;
+  iconBackground?: string;
 }) {
   return (
     <div className="mb-4">
       <div className="flex min-h-10 items-center gap-3">
         <span
           className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-black"
-          style={{ backgroundColor: accent ? BRAND.colors.safetyCleaning : BRAND.colors.white }}
+          style={{
+            backgroundColor: iconBackground ?? (accent ? (accentColor ?? BRAND.colors.safetyCleaning) : BRAND.colors.white),
+            color: iconColor ?? BRAND.colors.black
+          }}
         >
           <SectionIcon kind={icon} className="h-5 w-5" />
         </span>
@@ -352,6 +433,195 @@ function deltaSigned(current: number | null | undefined, previous: number | null
   }
 
   return { tone: "decrease", text: diff.toLocaleString() };
+}
+
+function summaryDeltaPillClass(tone: ComparisonTone): string {
+  if (tone === "increase" || tone === "decrease" || tone === "flat") {
+    return "border-black bg-black text-white";
+  }
+  return "border-black bg-white text-black/70";
+}
+
+function callsAndWhatsappsTotal(row: WeeklyMetricRow | null): number | null {
+  if (!row) {
+    return null;
+  }
+  const calls = row.calls_received;
+  const whatsapps = row.whatsapps_received;
+  if ((calls === null || calls === undefined) && (whatsapps === null || whatsapps === undefined)) {
+    return null;
+  }
+  return (calls ?? 0) + (whatsapps ?? 0);
+}
+
+function summaryMetricValue(
+  metric: SummaryInfographicMetricDefinition,
+  row: WeeklyMetricRow | null,
+  contactsTotal: number | null
+): number | null | undefined {
+  if (metric.derived === "contacts_total") {
+    return contactsTotal;
+  }
+  if (metric.derived === "cleaning_total_bags") {
+    if (!row) {
+      return null;
+    }
+    const cleaning = row.cleaning_bags_collected;
+    const stormwater = row.cleaning_stormwater_bags_filled;
+    if ((cleaning === null || cleaning === undefined) && (stormwater === null || stormwater === undefined)) {
+      return null;
+    }
+    return (cleaning ?? 0) + (stormwater ?? 0);
+  }
+  if (metric.derived === "fines_issued") {
+    if (!row) {
+      return null;
+    }
+    const section56 = row.section56_notices;
+    const section341 = row.section341_notices;
+    if ((section56 === null || section56 === undefined) && (section341 === null || section341 === undefined)) {
+      return null;
+    }
+    return (section56 ?? 0) + (section341 ?? 0);
+  }
+
+  if (!row || !metric.key) {
+    return null;
+  }
+
+  return row[metric.key] as number | null | undefined;
+}
+
+function SummaryInfographicIcon({ kind, className }: { kind: SummaryInfographicIconKind; className?: string }) {
+  if (kind === "urban") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
+        <path d="M4 20h16M7 20V9l5-3 5 3v11M9 12h2M13 12h2M9 16h2M13 16h2" />
+      </svg>
+    );
+  }
+
+  if (kind === "crime") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
+        <path d="M12 3 19 6v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3Z" />
+        <path d="M12 8v4M12 15h.01" />
+      </svg>
+    );
+  }
+
+  if (kind === "arrests") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
+        <circle cx="7.5" cy="12" r="3.4" />
+        <circle cx="16.5" cy="12" r="3.4" />
+        <path d="M10.8 12h2.4" />
+      </svg>
+    );
+  }
+
+  if (kind === "proactive") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
+        <path d="M8 18h8" />
+        <path d="M9 18v-6a3 3 0 0 1 6 0v6" />
+        <path d="M12 4v2M6 8l1.4 1.4M18 8l-1.4 1.4M4 13h2M18 13h2" />
+      </svg>
+    );
+  }
+
+  if (kind === "cleaning") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
+        <path d="M7 19h10M9 19v-6M15 19v-6M8 13h8l-1.2-7h-5.6L8 13Z" />
+      </svg>
+    );
+  }
+
+  if (kind === "drain") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
+        <circle cx="12" cy="12" r="8" />
+        <path d="M8 9h8M7 12h10M8 15h8" />
+        <path d="M10 7.6v8.8M12 7.2v9.6M14 7.6v8.8" />
+      </svg>
+    );
+  }
+
+  if (kind === "shelter") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
+        <path d="M4 12 12 5l8 7" />
+        <path d="M6 11.5V20h12v-8.5" />
+        <path d="M10 20v-4h4v4" />
+      </svg>
+    );
+  }
+
+  if (kind === "bags") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
+        <path d="M11 3.8h2l.7 1.7h-3.4l.7-1.7Z" />
+        <path d="M9 6.4h6a2 2 0 0 1 2 2v1l1.2 8c.2 1.4-.8 2.6-2.3 2.6H8.1c-1.5 0-2.5-1.2-2.3-2.6l1.2-8v-1a2 2 0 0 1 2-2Z" />
+        <path d="M8.6 9.8c1.3.8 2.3 1.2 3.4 1.2 1.1 0 2.1-.4 3.4-1.2" />
+        <path d="M9.4 13.4h5.2M9.2 16.1h5.6" />
+      </svg>
+    );
+  }
+
+  if (kind === "logged") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
+        <rect x="5" y="4" width="14" height="16" rx="2" />
+        <path d="M9 9h6M9 13h6M9 17h4" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
+      <path d="M7.8 4h2.6l1.2 3.2-1.9 1.3a12.5 12.5 0 0 0 5.8 5.8l1.3-1.9L20 13.6v2.6a1.8 1.8 0 0 1-2 1.8A14.6 14.6 0 0 1 6 6a1.8 1.8 0 0 1 1.8-2Z" />
+    </svg>
+  );
+}
+
+function SummaryInfographicRow({
+  label,
+  current,
+  previous,
+  accent,
+  icon,
+  index
+}: {
+  label: string;
+  current: number | null | undefined;
+  previous: number | null | undefined;
+  accent: string;
+  icon: SummaryInfographicIconKind;
+  index: number;
+}) {
+  const delta = deltaSigned(current, previous);
+  const hasValue = current !== null && current !== undefined && !Number.isNaN(current);
+  const style = {
+    ["--summary-accent" as string]: accent,
+    ["--summary-icon-color" as string]: accent === BRAND.colors.black ? BRAND.colors.white : BRAND.colors.black,
+    ["--summary-index" as string]: String(index)
+  } as CSSProperties;
+
+  return (
+    <article className="summary-ribbon" style={style}>
+      <div className="summary-ribbon__icon-box">
+        <SummaryInfographicIcon kind={icon} className="summary-ribbon__icon-glyph" />
+      </div>
+      <div className="summary-ribbon__body">
+        <p className="summary-ribbon__label">{label}</p>
+        <span className={clsx("summary-ribbon__delta", summaryDeltaPillClass(delta.tone))}>{delta.text}</span>
+      </div>
+      <div className="summary-ribbon__value-box">
+        <p className={clsx("summary-ribbon__value", !hasValue && "summary-ribbon__value--no-data")}>{valueText(current)}</p>
+      </div>
+    </article>
+  );
 }
 
 function SummaryMetricCard({
@@ -637,11 +907,41 @@ function SnapshotPanel({
   );
 }
 
+function ExportImageHeader() {
+  return (
+    <header className="export-image-header" aria-hidden>
+      <div className="export-image-header__cell export-image-header__cell--logo">
+        <img
+          src={BRAND.logoPath}
+          alt="Lower Gardens CID"
+          width={280}
+          height={52}
+          className="export-image-header__logo"
+        />
+      </div>
+      <p className="export-image-header__cell export-image-header__tagline">Your Eyes, Our Impact: See it, Share it.</p>
+    </header>
+  );
+}
+
+function ExportImageFooter() {
+  return (
+    <footer className="export-image-footer" aria-hidden>
+      <p className="export-image-footer__cell">LGCID Phone (24hr): 087 330 2177</p>
+      <p className="export-image-footer__cell">WhatsApp: 069 007 8644 (message only)</p>
+      <p className="export-image-footer__cell">lowergardenscid.co.za</p>
+    </footer>
+  );
+}
+
 export default function DashboardClient({ initialData }: Props) {
   const [selectedWeekStart, setSelectedWeekStart] = useState(initialData.meta.selected_week_start);
-  const [activeTab, setActiveTab] = useState<DashboardTab>("main");
+  const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
   const captureRef = useRef<HTMLDivElement>(null);
-  const printableRef = useRef<HTMLDivElement>(null);
+  const mainPrintableRef = useRef<HTMLDivElement>(null);
+  const summaryPrintableRef = useRef<HTMLDivElement>(null);
+  const trendsPrintableRef = useRef<HTMLDivElement>(null);
+  const c3PrintableRef = useRef<HTMLDivElement>(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
   const weekly = initialData.weekly;
@@ -673,6 +973,26 @@ export default function DashboardClient({ initialData }: Props) {
   const previousWeek = useMemo(
     () => getPreviousReportedWeek(weekly, selectedWeekStart),
     [weekly, selectedWeekStart]
+  );
+  const currentContactsTotal = useMemo(
+    () => callsAndWhatsappsTotal(currentWeek),
+    [currentWeek]
+  );
+  const previousContactsTotal = useMemo(
+    () => callsAndWhatsappsTotal(previousWeek),
+    [previousWeek]
+  );
+  const summaryInfographicGroups = useMemo(
+    () =>
+      SUMMARY_INFOGRAPHIC_GROUPS.map((group) => ({
+        ...group,
+        metrics: SUMMARY_INFOGRAPHIC_METRICS.filter((metric) => metric.groupId === group.id).map((metric) => ({
+          ...metric,
+          current: summaryMetricValue(metric, currentWeek, currentContactsTotal),
+          previous: summaryMetricValue(metric, previousWeek, previousContactsTotal)
+        }))
+      })),
+    [currentWeek, currentContactsTotal, previousWeek, previousContactsTotal]
   );
 
   const currentIncidents = useMemo(
@@ -836,25 +1156,31 @@ export default function DashboardClient({ initialData }: Props) {
   const cleaningPillar = pillarSections[1];
   const socialPillar = pillarSections[2];
   const parksPillar = pillarSections[3];
-  const summaryMetrics: Array<{ label: string; key: keyof WeeklyMetricRow }> = [
-    { label: "Urban Management Incidents", key: "urban_total" },
-    { label: "Criminal Incidents", key: "criminal_incidents" },
-    { label: "Arrests", key: "arrests_made" },
-    { label: "Proactive interventions", key: "proactive_actions" },
-    { label: "Cleaning bags", key: "cleaning_bags_collected" },
-    { label: "C3 logged requests", key: "c3_logged_total" },
-    { label: "Calls received", key: "calls_received" },
-    { label: "Whatsapp received", key: "whatsapps_received" }
-  ];
-
   async function handlePrintScreenshot() {
-    if (!printableRef.current || typeof window === "undefined") {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const exportRefByTab: Record<DashboardTab, RefObject<HTMLDivElement>> = {
+      main: mainPrintableRef,
+      summary: summaryPrintableRef,
+      trends: trendsPrintableRef,
+      c3: c3PrintableRef
+    };
+    const exportNode = exportRefByTab[activeTab].current;
+    if (!exportNode) {
       return;
     }
 
     setIsPrinting(true);
     try {
-      const canvas = await html2canvas(printableRef.current, {
+      exportNode.classList.add("dashboard-export-mode");
+      exportNode.classList.add("summary-export-mode");
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+
+      const canvas = await html2canvas(exportNode, {
         backgroundColor: "#FFFFFF",
         scale: 2,
         useCORS: true
@@ -862,12 +1188,15 @@ export default function DashboardClient({ initialData }: Props) {
       const weekToken = currentWeek
         ? `${currentWeek.week_start}_to_${currentWeek.week_end}`
         : selectedWeekStart;
-      const downloadName = `lgcid-summary-current-week-incidents-${weekToken}.png`;
+      const tabToken = activeTab === "main" ? "current-week" : activeTab;
+      const downloadName = `lgcid-${tabToken}-${weekToken}.png`;
       const link = document.createElement("a");
       link.href = canvas.toDataURL("image/png");
       link.download = downloadName;
       link.click();
     } finally {
+      exportNode.classList.remove("dashboard-export-mode");
+      exportNode.classList.remove("summary-export-mode");
       setIsPrinting(false);
     }
   }
@@ -897,7 +1226,7 @@ export default function DashboardClient({ initialData }: Props) {
             <button
               type="button"
               onClick={handlePrintScreenshot}
-              disabled={isPrinting || activeTab !== "main"}
+              disabled={isPrinting}
               className="absolute right-0 top-0 inline-flex items-center rounded-md border border-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPrinting ? "Preparing..." : "Print"}
@@ -939,8 +1268,7 @@ export default function DashboardClient({ initialData }: Props) {
       </section>
 
       <div className="mx-auto w-full max-w-6xl px-4 py-6 md:py-8">
-        {activeTab === "main" ? (
-        <>
+        {activeTab === "main" || activeTab === "summary" ? (
         <div className="mb-4 max-w-[420px]">
           <label className="block text-[11px] font-semibold uppercase tracking-[0.14em]">Reporting week</label>
           <select
@@ -955,30 +1283,11 @@ export default function DashboardClient({ initialData }: Props) {
             ))}
           </select>
         </div>
+        ) : null}
 
-        <div ref={printableRef} className="space-y-6">
-          <section id="summary" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
-          <SectionHeading
-            title="Summary"
-            description="High-level operational snapshot for the selected week, including week-on-week movement."
-            icon="summary"
-          />
-          {currentWeek?.record_status === "NO_DATA_REPORTED" ? (
-            <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {summaryMetrics.map((metric) => (
-                <SummaryMetricCard
-                  key={metric.key}
-                  label={metric.label}
-                  current={currentWeek?.[metric.key] as number | null | undefined}
-                  previous={previousWeek?.[metric.key] as number | null | undefined}
-                />
-              ))}
-            </div>
-          )}
-          </section>
-
+        {activeTab === "main" ? (
+        <div ref={mainPrintableRef} className="space-y-6">
+          <ExportImageHeader />
           <section id="current-week" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
           <SectionHeading
             title="Current Week"
@@ -1117,17 +1426,70 @@ export default function DashboardClient({ initialData }: Props) {
             </div>
           </div>
           </section>
+          <ExportImageFooter />
         </div>
-        </>
+        ) : null}
+
+        {activeTab === "summary" ? (
+          <div ref={summaryPrintableRef}>
+            <ExportImageHeader />
+            <section id="summary-infographic" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
+              <SectionHeading
+                title="Summary"
+                description={`Activity report showing the key Lower Gardens CID metrics for ${selectedWeekRange}.`}
+                icon="summary"
+                iconColor={BRAND.colors.black}
+                iconBackground="transparent"
+              />
+
+              {currentWeek?.record_status === "NO_DATA_REPORTED" ? (
+                <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
+              ) : (
+                <div className="summary-infographic-grid">
+                  {summaryInfographicGroups.map((group, groupIndex) => {
+                    const groupStyle = {
+                      ["--summary-group-accent" as string]: group.headingAccent ?? group.accent
+                    } as CSSProperties;
+
+                    return (
+                      <article key={group.id} className="summary-group-card">
+                        <div className="summary-group-card__header" style={groupStyle}>
+                          <h3 className="summary-group-card__title">{group.title}</h3>
+                          <p className="summary-group-card__description">{group.description}</p>
+                        </div>
+
+                        <div className="summary-ribbon-list">
+                          {group.metrics.map((metric, metricIndex) => (
+                            <SummaryInfographicRow
+                              key={metric.id}
+                              label={metric.label}
+                              current={metric.current}
+                              previous={metric.previous}
+                              accent={group.accent}
+                              icon={metric.icon}
+                              index={groupIndex * 4 + metricIndex}
+                            />
+                          ))}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+            <ExportImageFooter />
+          </div>
         ) : null}
 
         {activeTab === "trends" ? (
-          <section id="trends" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
-          <SectionHeading
-            title="Trends"
-            description="Weekly results compared with a 4-week moving average (MA(4)) to show underlying direction over time."
-            icon="trends"
-          />
+          <div ref={trendsPrintableRef}>
+            <ExportImageHeader />
+            <section id="trends" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
+            <SectionHeading
+              title="Trends"
+              description="Weekly results compared with a 4-week moving average to show underlying direction over time."
+              icon="trends"
+            />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="h-[300px] rounded-xl border border-black p-3">
@@ -1139,7 +1501,7 @@ export default function DashboardClient({ initialData }: Props) {
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip />
                   <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
-                  <Line type="monotone" dataKey="criminal_incidents" stroke={BRAND.colors.safetyCleaning} strokeWidth={2} dot={false} name="Weekly incidents" />
+                  <Line type="monotone" dataKey="criminal_incidents" stroke={CRIME_TREND_COLOR} strokeWidth={2} dot={false} name="Weekly incidents" />
                   <Line
                     type="monotone"
                     dataKey="criminal_ma4"
@@ -1147,7 +1509,7 @@ export default function DashboardClient({ initialData }: Props) {
                     strokeWidth={2}
                     strokeDasharray="6 4"
                     dot={false}
-                    name="MA(4) incidents"
+                    name="4-week average"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1162,7 +1524,7 @@ export default function DashboardClient({ initialData }: Props) {
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip />
                   <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
-                  <Line type="monotone" dataKey="cleaning_bags_collected" stroke={BRAND.colors.parks} strokeWidth={2} dot={false} name="Weekly bags" />
+                  <Line type="monotone" dataKey="cleaning_bags_collected" stroke={CLEANING_TREND_COLOR} strokeWidth={2} dot={false} name="Weekly bags" />
                   <Line
                     type="monotone"
                     dataKey="cleaning_ma4"
@@ -1170,7 +1532,7 @@ export default function DashboardClient({ initialData }: Props) {
                     strokeWidth={2}
                     strokeDasharray="6 4"
                     dot={false}
-                    name="MA(4) bags"
+                    name="4-week average"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1193,7 +1555,7 @@ export default function DashboardClient({ initialData }: Props) {
                     strokeWidth={2}
                     strokeDasharray="6 4"
                     dot={false}
-                    name="MA(4) incidents"
+                    name="4-week average"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1216,22 +1578,26 @@ export default function DashboardClient({ initialData }: Props) {
                     strokeWidth={2}
                     strokeDasharray="6 4"
                     dot={false}
-                    name="MA(4) calls + WhatsApp"
+                    name="4-week average"
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
+            </div>
+            </section>
+            <ExportImageFooter />
           </div>
-          </section>
         ) : null}
 
         {activeTab === "c3" ? (
-          <section id="c3" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
-          <SectionHeading
-            title="C3 Efficiency Tracker"
-            description="Cumulative City service requests logged vs resolved by category across all reported weeks."
-            icon="c3"
-          />
+          <div ref={c3PrintableRef}>
+            <ExportImageHeader />
+            <section id="c3" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
+            <SectionHeading
+              title="C3 Efficiency Tracker"
+              description="Cumulative City service requests logged vs resolved by category across all reported weeks."
+              icon="c3"
+            />
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <SummaryMetricCard label="Total Logged" current={c3OverallTotals.logged} previous={null} />
@@ -1299,8 +1665,10 @@ export default function DashboardClient({ initialData }: Props) {
                 ))}
               </ol>
             </div>
+            </div>
+            </section>
+            <ExportImageFooter />
           </div>
-          </section>
         ) : null}
 
         <SnapshotPanel
