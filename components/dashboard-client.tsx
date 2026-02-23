@@ -814,13 +814,15 @@ function SummaryMetricCard({
   current,
   previous,
   valueSuffix,
-  railClass
+  railClass,
+  showDelta = true
 }: {
   label: string;
   current: number | null | undefined;
   previous: number | null | undefined;
   valueSuffix?: string;
   railClass?: string;
+  showDelta?: boolean;
 }) {
   const delta = deltaSigned(current, previous);
   const hasNumericValue = current !== null && current !== undefined && !Number.isNaN(current);
@@ -829,18 +831,20 @@ function SummaryMetricCard({
   return (
     <article className={clsx("rounded-xl border border-black bg-white p-4", railClass && "rail-card", railClass)}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.09em]">{label}</p>
-      <div className="mt-3 flex items-end justify-between gap-3">
+      <div className={clsx("mt-3", showDelta && "flex items-end justify-between gap-3")}>
         <p className="text-3xl font-extrabold">{currentText}</p>
-        <span
-          className={clsx(
-            "inline-grid h-7 min-w-[2.5rem] place-items-center rounded-full border px-2.5 text-xs font-semibold tabular-nums",
-            deltaPillClass(delta.tone)
-          )}
-        >
-          <span className="block leading-none" style={{ fontFamily: "Arial, Helvetica, sans-serif", transform: "translateY(-0.5px)" }}>
-            {delta.text}
+        {showDelta ? (
+          <span
+            className={clsx(
+              "inline-grid h-7 min-w-[2.5rem] place-items-center rounded-full border px-2.5 text-xs font-semibold tabular-nums",
+              deltaPillClass(delta.tone)
+            )}
+          >
+            <span className="block leading-none" style={{ fontFamily: "Arial, Helvetica, sans-serif", transform: "translateY(-0.5px)" }}>
+              {delta.text}
+            </span>
           </span>
-        </span>
+        ) : null}
       </div>
     </article>
   );
@@ -1914,14 +1918,15 @@ export default function DashboardClient({ initialData }: Props) {
             />
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <SummaryMetricCard label="Total Logged" current={c3OverallTotals.logged} previous={null} />
-            <SummaryMetricCard label="Total Resolved" current={c3OverallTotals.resolved} previous={null} />
-            <SummaryMetricCard label="Open Backlog" current={c3OverallTotals.backlog} previous={null} />
+            <SummaryMetricCard label="Total Logged" current={c3OverallTotals.logged} previous={null} showDelta={false} />
+            <SummaryMetricCard label="Total Resolved" current={c3OverallTotals.resolved} previous={null} showDelta={false} />
+            <SummaryMetricCard label="Open Backlog" current={c3OverallTotals.backlog} previous={null} showDelta={false} />
             <SummaryMetricCard
               label="Resolution Rate"
               current={c3OverallResolutionRatio === null ? null : Math.round(c3OverallResolutionRatio * 100)}
               previous={null}
               valueSuffix="%"
+              showDelta={false}
             />
           </div>
 
