@@ -175,6 +175,24 @@ function valueText(value: number | null | undefined): string {
   return value.toLocaleString();
 }
 
+function IncidentCategoryTag({ category, compact = false }: { category: string; compact?: boolean }) {
+  const label = category.trim();
+  if (!label) {
+    return null;
+  }
+
+  return (
+    <span
+      className={clsx(
+        "inline-flex max-w-full items-center rounded-full border border-black bg-brand-safety px-2 py-0.5 font-semibold normal-case tracking-normal text-black",
+        compact ? "text-[9px]" : "text-[10px]"
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
 function formatWeekDate(iso: string): string {
   try {
     return format(parseISO(iso), "dd MMM yyyy");
@@ -1081,14 +1099,17 @@ function SnapshotPanel({
           <p className="text-[10px] font-bold uppercase tracking-[0.12em]">Incident Log ({incidents.length})</p>
           <div className="mt-2 space-y-2 text-[10px]">
             {incidents.length ? (
-              incidents.map((incident, index) => (
-                <div key={`${incident.week_start}-${index}`} className="border border-black/40 p-2">
-                  <p className="font-semibold">{incident.incident_date ?? "No date"} - {incident.place}</p>
-                  <p className="mt-1">{incident.summary}</p>
-                </div>
-              ))
-            ) : (
-              <p>{NO_DATA_LABEL}</p>
+                incidents.map((incident, index) => (
+                  <div key={`${incident.week_start}-${index}`} className="border border-black/40 p-2">
+                    <p className="font-semibold">{incident.incident_date ?? "No date"} - {incident.place}</p>
+                    <div className="mt-1">
+                      <IncidentCategoryTag category={incident.category} compact />
+                    </div>
+                    <p className="mt-1">{incident.summary}</p>
+                  </div>
+                ))
+              ) : (
+                <p>{NO_DATA_LABEL}</p>
             )}
           </div>
         </div>
@@ -1702,6 +1723,7 @@ export default function DashboardClient({ initialData }: Props) {
                         <span>{incident.incident_date ?? "No date"}</span>
                         <span>-</span>
                         <span className="normal-case tracking-normal">{incident.place}</span>
+                        <IncidentCategoryTag category={incident.category} />
                       </div>
                       <p className="mt-2 text-sm leading-relaxed">{incident.summary}</p>
                     </article>

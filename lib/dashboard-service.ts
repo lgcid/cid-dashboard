@@ -1,4 +1,3 @@
-import { HOTSPOT_DEFAULT_WEEKS } from "@/lib/config";
 import { weekEndFromStart } from "@/lib/date-utils";
 import { buildTrendSeries, deriveC3Breakdown, deriveC3Totals, deriveHotspots, pickCurrentWeek, sortWeekly } from "@/lib/derive";
 import { loadData } from "@/lib/data-source";
@@ -81,7 +80,7 @@ export async function getDashboardData(query: DashboardQuery = {}): Promise<Dash
 
   const currentWeek = pickCurrentWeek(weeklyWindowed, query);
   const selectedWeekStart = currentWeek?.week_start ?? weeklyWindowed.at(-1)?.week_start ?? reportingWindow.start;
-  const windowWeeks = Number.isFinite(query.windowWeeks) ? Number(query.windowWeeks) : HOTSPOT_DEFAULT_WEEKS;
+  const windowWeeks = Number.isFinite(query.windowWeeks) ? Number(query.windowWeeks) : undefined;
 
   return {
     meta: {

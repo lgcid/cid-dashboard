@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { C3_DEPARTMENTS, C3_DEPARTMENT_LABELS, HOTSPOT_DEFAULT_WEEKS } from "@/lib/config";
+import { C3_DEPARTMENTS, C3_DEPARTMENT_LABELS } from "@/lib/config";
 import { safeDate } from "@/lib/date-utils";
 import { rankHotspots } from "@/lib/hotspots";
 import type {
@@ -126,9 +126,14 @@ function getLatestWeekStarts(rows: WeeklyMetricRow[], limit: number): Set<string
 export function deriveHotspots(
   incidents: IncidentRow[],
   weeklyRows: WeeklyMetricRow[],
-  windowWeeks = HOTSPOT_DEFAULT_WEEKS
+  windowWeeks?: number
 ): HotspotRow[] {
-  const allowedWeekStarts = getLatestWeekStarts(weeklyRows, windowWeeks);
-  const filtered = incidents.filter((incident) => allowedWeekStarts.has(incident.week_start));
-  return rankHotspots(filtered);
+  const validWindowWeeks = typeof windowWeeks === "number" && Number.isFinite(windowWeeks) ? Math.floor(windowWeeks) : 0;
+  if (validWindowWeeks > 0) {
+    const allowedWeekStarts = getLatestWeekStarts(weeklyRows, validWindowWeeks);
+    const filtered = incidents.filter((incident) => allowedWeekStarts.has(incident.week_start));
+    return rankHotspots(filtered);
+  }
+
+  return rankHotspots(incidents);
 }

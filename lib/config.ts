@@ -36,7 +36,6 @@ export const C3_DEPARTMENT_LABELS: Record<(typeof C3_DEPARTMENTS)[number], strin
   traffic: "Traffic"
 };
 
-export const HOTSPOT_DEFAULT_WEEKS = 4;
 export const HOTSPOT_LIMIT = 8;
 
 export const NO_DATA_LABEL = "No Data Reported";

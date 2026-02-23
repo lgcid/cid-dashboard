@@ -72,6 +72,8 @@ GOOGLE_SHEET_ID=...
 
 ### `GET /api/dashboard?weekStart=YYYY-MM-DD&windowWeeks=number`
 
+`windowWeeks` is optional. When omitted, hotspot intelligence is cumulative across all loaded incident data.
+
 Returns:
 - normalized weekly rows
 - selected/current week
