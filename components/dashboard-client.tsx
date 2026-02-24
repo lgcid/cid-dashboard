@@ -30,7 +30,7 @@ type SectionIconKind = "summary" | "currentWeek" | "incidents" | "trends" | "c3"
 type ComparisonTone = "increase" | "decrease" | "flat" | "none";
 type DashboardTab = "main" | "summary" | "trends" | "c3";
 type TrendGranularity = "week" | "month" | "year";
-type SummaryInfographicGroupId = "safety_response" | "cleaning_urban" | "communications";
+type SummaryInfographicGroupId = "safety_response" | "cleaning_urban" | "social_services" | "communications" | "parks";
 type SummaryInfographicIconKind =
   | "urban"
   | "crime"
@@ -57,7 +57,16 @@ type SummaryInfographicMetricDefinition = {
   icon: SummaryInfographicIconKind;
   groupId: SummaryInfographicGroupId;
   key?: keyof WeeklyMetricRow;
-  derived?: "contacts_total" | "cleaning_total_bags" | "fines_issued";
+  derived?: "contacts_total" | "cleaning_total_bags" | "fines_issued" | "social_touch_points" | "parks_total_bags";
+};
+
+type SummaryInfographicMetric = SummaryInfographicMetricDefinition & {
+  current: number | null | undefined;
+  previous: number | null | undefined;
+};
+
+type SummaryInfographicGroupWithMetrics = SummaryInfographicGroup & {
+  metrics: SummaryInfographicMetric[];
 };
 
 type TrendChartPoint = {
@@ -115,11 +124,23 @@ const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
     accent: SUMMARY_CLEANING_COLOR
   },
   {
+    id: "social_services",
+    title: "Social Services",
+    description: "Community support and outreach touch points",
+    accent: BRAND.colors.social
+  },
+  {
     id: "communications",
     title: "Communications",
     description: "Resident reporting and service request activity",
     accent: BRAND.colors.black,
     headingAccent: BRAND.colors.white
+  },
+  {
+    id: "parks",
+    title: "Parks",
+    description: "Bags collected across all tracked parks sites",
+    accent: BRAND.colors.parks
   }
 ];
 
@@ -144,8 +165,38 @@ const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
     groupId: "cleaning_urban",
     key: "cleaning_stormwater_drains_cleaned"
   },
+  {
+    id: "social_touch_points",
+    label: "Touch points",
+    icon: "calls",
+    groupId: "social_services",
+    derived: "social_touch_points"
+  },
   { id: "c3_logged_total", label: "C3 logged requests", icon: "logged", groupId: "communications", key: "c3_logged_total" },
-  { id: "contacts_total", label: "Calls + WhatsApp received", icon: "calls", groupId: "communications", derived: "contacts_total" }
+  { id: "contacts_total", label: "Calls + WhatsApp received", icon: "calls", groupId: "communications", derived: "contacts_total" },
+  {
+    id: "parks_total_bags",
+    label: "Bags",
+    icon: "bags",
+    groupId: "parks",
+    derived: "parks_total_bags"
+  }
+];
+
+const SOCIAL_TOUCH_POINT_KEYS: Array<keyof WeeklyMetricRow> = [
+  "social_incidents",
+  "social_client_follow_ups",
+  "social_successful_id_applications",
+  "social_shelter_referrals",
+  "social_work_readiness_bags"
+];
+
+const PARKS_BAG_KEYS: Array<keyof WeeklyMetricRow> = [
+  "parks_jutland_park_bags",
+  "parks_maynard_park_bags",
+  "parks_tuin_plein_bags",
+  "parks_gordon_street_verge_bags",
+  "parks_wembley_square_verge_bags"
 ];
 
 function themeRailClass(theme: MetricTheme): string {
@@ -660,6 +711,20 @@ function callsAndWhatsappsTotal(row: WeeklyMetricRow | null): number | null {
   return (calls ?? 0) + (whatsapps ?? 0);
 }
 
+function summaryMetricsTotal(row: WeeklyMetricRow | null, keys: Array<keyof WeeklyMetricRow>): number | null {
+  if (!row) {
+    return null;
+  }
+
+  const values = keys
+    .map((key) => toMetricNumber(row[key] as number | null | undefined))
+    .filter((value): value is number => value !== null);
+  if (!values.length) {
+    return null;
+  }
+  return values.reduce((sum, value) => sum + value, 0);
+}
+
 function summaryMetricValue(
   metric: SummaryInfographicMetricDefinition,
   row: WeeklyMetricRow | null,
@@ -689,6 +754,12 @@ function summaryMetricValue(
       return null;
     }
     return (section56 ?? 0) + (section341 ?? 0);
+  }
+  if (metric.derived === "social_touch_points") {
+    return summaryMetricsTotal(row, SOCIAL_TOUCH_POINT_KEYS);
+  }
+  if (metric.derived === "parks_total_bags") {
+    return summaryMetricsTotal(row, PARKS_BAG_KEYS);
   }
 
   if (!row || !metric.key) {
@@ -825,6 +896,41 @@ function SummaryInfographicRow({
       </div>
       <div className="summary-ribbon__value-box">
         <p className={clsx("summary-ribbon__value", !hasValue && "summary-ribbon__value--no-data")}>{valueText(current)}</p>
+      </div>
+    </article>
+  );
+}
+
+function SummaryGroupCard({
+  group,
+  groupIndex
+}: {
+  group: SummaryInfographicGroupWithMetrics;
+  groupIndex: number;
+}) {
+  const groupStyle = {
+    ["--summary-group-accent" as string]: group.headingAccent ?? group.accent
+  } as CSSProperties;
+
+  return (
+    <article className="summary-group-card">
+      <div className="summary-group-card__header" style={groupStyle}>
+        <h3 className="summary-group-card__title">{group.title}</h3>
+        <p className="summary-group-card__description">{group.description}</p>
+      </div>
+
+      <div className="summary-ribbon-list">
+        {group.metrics.map((metric, metricIndex) => (
+          <SummaryInfographicRow
+            key={metric.id}
+            label={metric.label}
+            current={metric.current}
+            previous={metric.previous}
+            accent={group.accent}
+            icon={metric.icon}
+            index={groupIndex * 10 + metricIndex}
+          />
+        ))}
       </div>
     </article>
   );
@@ -1200,7 +1306,7 @@ export default function DashboardClient({ initialData }: Props) {
     () => callsAndWhatsappsTotal(previousWeek),
     [previousWeek]
   );
-  const summaryInfographicGroups = useMemo(
+  const summaryInfographicGroups = useMemo<SummaryInfographicGroupWithMetrics[]>(
     () =>
       SUMMARY_INFOGRAPHIC_GROUPS.map((group) => ({
         ...group,
@@ -1212,6 +1318,13 @@ export default function DashboardClient({ initialData }: Props) {
       })),
     [currentWeek, currentContactsTotal, previousWeek, previousContactsTotal]
   );
+  const summaryGroupsById = useMemo(() => {
+    const groups: Partial<Record<SummaryInfographicGroupId, SummaryInfographicGroupWithMetrics>> = {};
+    for (const group of summaryInfographicGroups) {
+      groups[group.id] = group;
+    }
+    return groups;
+  }, [summaryInfographicGroups]);
 
   const currentIncidents = useMemo(
     () => incidentsForWeek(initialData.incidents, selectedWeekStart),
@@ -1755,34 +1868,17 @@ export default function DashboardClient({ initialData }: Props) {
                 <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
               ) : (
                 <div className="summary-infographic-grid">
-                  {summaryInfographicGroups.map((group, groupIndex) => {
-                    const groupStyle = {
-                      ["--summary-group-accent" as string]: group.headingAccent ?? group.accent
-                    } as CSSProperties;
-
-                    return (
-                      <article key={group.id} className="summary-group-card">
-                        <div className="summary-group-card__header" style={groupStyle}>
-                          <h3 className="summary-group-card__title">{group.title}</h3>
-                          <p className="summary-group-card__description">{group.description}</p>
-                        </div>
-
-                        <div className="summary-ribbon-list">
-                          {group.metrics.map((metric, metricIndex) => (
-                            <SummaryInfographicRow
-                              key={metric.id}
-                              label={metric.label}
-                              current={metric.current}
-                              previous={metric.previous}
-                              accent={group.accent}
-                              icon={metric.icon}
-                              index={groupIndex * 4 + metricIndex}
-                            />
-                          ))}
-                        </div>
-                      </article>
-                    );
-                  })}
+                  <div className="summary-infographic-column">
+                    {summaryGroupsById.safety_response ? <SummaryGroupCard group={summaryGroupsById.safety_response} groupIndex={0} /> : null}
+                  </div>
+                  <div className="summary-infographic-column">
+                    {summaryGroupsById.cleaning_urban ? <SummaryGroupCard group={summaryGroupsById.cleaning_urban} groupIndex={1} /> : null}
+                    {summaryGroupsById.social_services ? <SummaryGroupCard group={summaryGroupsById.social_services} groupIndex={2} /> : null}
+                  </div>
+                  <div className="summary-infographic-column">
+                    {summaryGroupsById.parks ? <SummaryGroupCard group={summaryGroupsById.parks} groupIndex={3} /> : null}
+                    {summaryGroupsById.communications ? <SummaryGroupCard group={summaryGroupsById.communications} groupIndex={4} /> : null}
+                  </div>
                 </div>
               )}
             </section>
