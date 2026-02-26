@@ -155,9 +155,19 @@ h6 {
 .dashboard-export-mode .export-image-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.9rem;
   padding: 0.45rem 1rem;
   margin-bottom: 1rem;
+}
+
+.dashboard-export-mode .export-image-header__cell {
+  min-width: 0;
+}
+
+.dashboard-export-mode .export-image-header__cell--logo {
+  flex: 0 1 280px;
 }
 
 .dashboard-export-mode .export-image-header__logo {
@@ -167,16 +177,22 @@ h6 {
 }
 
 .dashboard-export-mode .export-image-header__tagline {
-  font-size: 1.45rem;
+  margin: 0;
+  flex: 1 1 320px;
+  text-align: right;
+  font-size: clamp(1.02rem, 2vw, 1.45rem);
   font-weight: 800;
   line-height: 1.1;
+  text-wrap: balance;
 }
 
 .dashboard-export-mode .export-image-footer {
-  padding: 1rem;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.45rem 0.8rem;
+  padding: 1rem;
 }
 
 .dashboard-export-mode .export-image-footer__cell {
@@ -187,10 +203,48 @@ h6 {
   align-items: center;
   justify-content: center;
   text-align: center;
-  flex: 1 1 0;
-  font-size: 1.02rem;
+  flex: 1 1 220px;
+  font-size: clamp(0.88rem, 1.35vw, 1.02rem);
   line-height: 1.25;
   font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .dashboard-export-mode .export-image-header {
+    align-items: flex-start;
+    gap: 0.35rem;
+    padding: 0.4rem 0.5rem 0.45rem;
+  }
+
+  .dashboard-export-mode .export-image-header__cell--logo {
+    flex-basis: 100%;
+  }
+
+  .dashboard-export-mode .export-image-header__logo {
+    max-width: 210px;
+  }
+
+  .dashboard-export-mode .export-image-header__tagline {
+    flex-basis: 100%;
+    text-align: left;
+    font-size: 1.05rem;
+    line-height: 1.18;
+  }
+
+  .dashboard-export-mode .export-image-footer {
+    gap: 0.3rem;
+    padding: 0.8rem 0.5rem 0.85rem;
+  }
+
+  .dashboard-export-mode .export-image-footer__cell {
+    flex-basis: 100%;
+    min-height: 0;
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 1rem;
+    line-height: 1.18;
+    padding: 0;
+  }
 }
 
 .summary-group-card {
