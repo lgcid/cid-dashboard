@@ -83,13 +83,6 @@ type TrendChartPoint = {
   contacts_total_ma4: number | null;
 };
 
-const THEME_COLOR: Record<MetricTheme, string> = {
-  safety: BRAND.colors.safety,
-  cleaning: BRAND.colors.cleaning,
-  social: BRAND.colors.social,
-  parks: BRAND.colors.parks,
-  neutral: BRAND.colors.black
-};
 const C3_RESOLVED_GREY = "rgba(0, 0, 0, 0.35)";
 const CRIME_TREND_COLOR = BRAND.colors.safety;
 const CLEANING_TREND_COLOR = BRAND.colors.cleaning;
@@ -475,43 +468,6 @@ function incidentsForWeek(incidents: IncidentRow[], weekStart: string): Incident
   return incidents.filter((incident) => incident.week_start === weekStart);
 }
 
-function isSafetyWin(incident: IncidentRow): boolean {
-  return /arrest|apprehend|interven/i.test(incident.summary);
-}
-
-function ThemeIcon({ theme, className }: { theme: MetricTheme; className?: string }) {
-  if (theme === "safety") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
-        <path d="M12 3 19 6v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3Z" />
-      </svg>
-    );
-  }
-
-  if (theme === "social") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
-        <path d="M12 20s-7-4-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 6-7 10-7 10Z" />
-      </svg>
-    );
-  }
-
-  if (theme === "parks") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
-        <path d="M12 4 7 11h3l-3 4h3l-2 3h8l-2-3h3l-3-4h3l-5-7Z" />
-        <path d="M12 18v3" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
-      <path d="M6 19V9m6 10V5m6 14v-7" />
-    </svg>
-  );
-}
-
 function SectionIcon({ kind, className }: { kind: SectionIconKind; className?: string }) {
   if (kind === "summary") {
     return (
@@ -593,46 +549,6 @@ function SectionHeading({
   );
 }
 
-function StatCard({
-  title,
-  current,
-  previous,
-  theme
-}: {
-  title: string;
-  current: number | null | undefined;
-  previous: number | null | undefined;
-  theme: MetricTheme;
-}) {
-  const trend = comparisonMeta(current, previous);
-
-  return (
-    <article className="card-frame rounded-xl border-2 border-black p-4">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.13em]">{title}</p>
-        <span
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-black"
-          style={{ backgroundColor: THEME_COLOR[theme] }}
-        >
-          <ThemeIcon theme={theme} className="h-4 w-4" />
-        </span>
-      </div>
-
-      <p className="mt-3 text-3xl font-bold">{valueText(current)}</p>
-      <p
-        className={clsx(
-          "mt-3 text-[11px] font-semibold uppercase tracking-[0.06em]",
-          trend.tone === "increase" && "underline decoration-2 underline-offset-4",
-          trend.tone === "decrease" && "underline decoration-2 underline-offset-4",
-          trend.tone === "none" && "text-black/70"
-        )}
-      >
-        {trend.text}
-      </p>
-    </article>
-  );
-}
-
 function metricValueText(value: number | null | undefined, unitPlural?: string, unitSingular?: string): string {
   if (value === null || value === undefined || Number.isNaN(value)) {
     return NO_DATA_LABEL;
@@ -645,30 +561,6 @@ function metricValueText(value: number | null | undefined, unitPlural?: string, 
     return `${value.toLocaleString()} ${unitSingular}`;
   }
   return `${value.toLocaleString()} ${unitPlural}`;
-}
-
-function deltaWithValue(current: number | null | undefined, previous: number | null | undefined): {
-  tone: ComparisonTone;
-  text: string;
-} {
-  if (current === null || current === undefined || Number.isNaN(current)) {
-    return { tone: "none", text: NO_DATA_LABEL };
-  }
-
-  if (previous === null || previous === undefined || Number.isNaN(previous)) {
-    return { tone: "none", text: "No prior reported week" };
-  }
-
-  const diff = current - previous;
-  if (diff === 0) {
-    return { tone: "flat", text: "0 vs previous week" };
-  }
-
-  if (diff > 0) {
-    return { tone: "increase", text: `+${diff.toLocaleString()} vs previous week` };
-  }
-
-  return { tone: "decrease", text: `${diff.toLocaleString()} vs previous week` };
 }
 
 function deltaSigned(current: number | null | undefined, previous: number | null | undefined): {
@@ -1036,7 +928,14 @@ function PillarSection({
   return (
     <article className={clsx("rail-card rounded-2xl border border-black bg-white p-4", themeRailClass(theme))}>
       <div className="flex items-center gap-3 border-b border-black/20 pb-3">
-        <img src={iconPath} alt={title} width={48} height={48} className="h-12 w-12 shrink-0 rounded-full object-contain" />
+        <Image
+          src={iconPath}
+          alt={title}
+          width={48}
+          height={48}
+          className="h-12 w-12 shrink-0 rounded-full object-contain"
+          unoptimized
+        />
         <h3 className="text-2xl font-bold text-black">
           {title}
         </h3>
@@ -1227,12 +1126,13 @@ function ExportImageHeader() {
   return (
     <header className="export-image-header" aria-hidden>
       <div className="export-image-header__cell export-image-header__cell--logo">
-        <img
+        <Image
           src={BRAND.logoPath}
           alt="Lower Gardens CID"
           width={280}
           height={52}
           className="export-image-header__logo"
+          unoptimized
         />
       </div>
       <p className="export-image-header__cell export-image-header__tagline">Your Eyes, Our Impact: See it, Share it.</p>
@@ -1328,14 +1228,6 @@ export default function DashboardClient({ initialData }: Props) {
     [initialData.incidents, selectedWeekStart]
   );
 
-  const c3Ratio = useMemo(() => {
-    const logged = currentWeek?.c3_logged_total;
-    const resolved = currentWeek?.c3_resolved_total;
-    if (logged === null || logged === undefined || resolved === null || resolved === undefined) {
-      return null;
-    }
-    return logged === 0 ? 0 : resolved / logged;
-  }, [currentWeek]);
   const reportedWeeks = useMemo(
     () => weekly.filter((row) => row.record_status === "REPORTED"),
     [weekly]
