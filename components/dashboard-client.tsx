@@ -1545,7 +1545,7 @@ export default function DashboardClient({ initialData }: Props) {
         ) : null}
 
         {activeTab === "trends" ? (
-        <div className="mb-4 flex flex-wrap items-end gap-3">
+        <div className="mb-4 grid gap-3 sm:flex sm:flex-wrap sm:items-end">
           <div className="w-full min-w-0 sm:w-[220px]">
             <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">From</label>
             <input
@@ -1564,7 +1564,7 @@ export default function DashboardClient({ initialData }: Props) {
                   setTrendToDate(boundedFrom);
                 }
               }}
-              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-3 py-2 text-sm text-black"
+              className="trend-date-input mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-3 py-2 text-base text-black sm:text-sm"
             />
           </div>
           <div className="w-full min-w-0 sm:w-[220px]">
@@ -1585,10 +1585,10 @@ export default function DashboardClient({ initialData }: Props) {
                   setTrendFromDate(boundedTo);
                 }
               }}
-              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-3 py-2 text-sm text-black"
+              className="trend-date-input mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-3 py-2 text-base text-black sm:text-sm"
             />
           </div>
-          <div className="w-full sm:w-auto">
+          <div className="w-full min-w-0 sm:w-auto">
             <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">View by</label>
             <div className="mt-1 inline-flex w-full overflow-hidden rounded-md border border-black sm:w-auto">
               {TREND_GRANULARITY_OPTIONS.map((option) => (
