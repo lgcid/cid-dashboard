@@ -90,7 +90,7 @@ const THEME_COLOR: Record<MetricTheme, string> = {
   parks: BRAND.colors.parks,
   neutral: BRAND.colors.black
 };
-const C3_RESOLVED_GREY = "#9CA3AF";
+const C3_RESOLVED_GREY = "rgba(0, 0, 0, 0.35)";
 const CRIME_TREND_COLOR = BRAND.colors.safety;
 const CLEANING_TREND_COLOR = BRAND.colors.cleaning;
 const URBAN_TREND_COLOR = BRAND.colors.safety;
@@ -617,7 +617,7 @@ function StatCard({
         </span>
       </div>
 
-      <p className="mt-3 text-3xl font-extrabold">{valueText(current)}</p>
+      <p className="mt-3 text-3xl font-bold">{valueText(current)}</p>
       <p
         className={clsx(
           "mt-3 text-[11px] font-semibold uppercase tracking-[0.06em]",
@@ -959,7 +959,7 @@ function SummaryMetricCard({
     <article className={clsx("rounded-xl border border-black bg-white p-4", railClass && "rail-card", railClass)}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.09em]">{label}</p>
       <div className={clsx("mt-3", showDelta && "flex items-end justify-between gap-3")}>
-        <p className="text-3xl font-extrabold">{currentText}</p>
+        <p className="text-3xl font-bold">{currentText}</p>
         {showDelta ? (
           <span
             className={clsx(
@@ -967,9 +967,7 @@ function SummaryMetricCard({
               deltaPillClass(delta.tone)
             )}
           >
-            <span className="block leading-none" style={{ fontFamily: "Arial, Helvetica, sans-serif", transform: "translateY(-0.5px)" }}>
-              {delta.text}
-            </span>
+            <span className="block leading-none">{delta.text}</span>
           </span>
         ) : null}
       </div>
@@ -1005,9 +1003,7 @@ function PillarMetricRow({
             deltaPillClass(delta.tone)
           )}
         >
-          <span className="block leading-none" style={{ fontFamily: "Arial, Helvetica, sans-serif", transform: "translateY(-0.5px)" }}>
-            {delta.text}
-          </span>
+          <span className="block leading-none">{delta.text}</span>
         </span>
       </div>
     </li>
@@ -1040,7 +1036,7 @@ function PillarSection({
     <article className={clsx("rail-card rounded-2xl border border-black bg-white p-4", themeRailClass(theme))}>
       <div className="flex items-center gap-3 border-b border-black/20 pb-3">
         <img src={iconPath} alt={title} width={48} height={48} className="h-12 w-12 shrink-0 rounded-full object-contain" />
-        <h3 className="text-2xl font-bold" style={{ color: THEME_COLOR[theme] === BRAND.colors.black ? BRAND.colors.black : "#1e1e1e" }}>
+        <h3 className="text-2xl font-bold text-black">
           {title}
         </h3>
       </div>
@@ -1456,8 +1452,8 @@ export default function DashboardClient({ initialData }: Props) {
       id: "public-safety",
       title: "Public Safety",
       theme: "safety",
-      iconPath: "/icons/pillar-safety.svg",
-      summary: "Security patrols and emergency response services to ensure community safety.",
+      iconPath: "/icons/pillar-safety.webp",
+      summary: "Security patrols and emergency response to ensure community safety.",
       metrics: [
         { label: "Criminal Incidents", key: "criminal_incidents" },
         { label: "Arrests Made", key: "arrests_made" },
@@ -1469,7 +1465,7 @@ export default function DashboardClient({ initialData }: Props) {
       id: "cleaning",
       title: "Cleaning & Maintenance",
       theme: "cleaning",
-      iconPath: "/icons/pillar-cleaning.svg",
+      iconPath: "/icons/pillar-cleaning.webp",
       summary: "Public cleaning and infrastructure maintenance to keep our district pristine.",
       metrics: [
         { label: "Bags Filled and Collected", key: "cleaning_bags_collected", unitPlural: "bags", unitSingular: "bag" },
@@ -1482,7 +1478,7 @@ export default function DashboardClient({ initialData }: Props) {
       id: "social-services",
       title: "Social Services",
       theme: "social",
-      iconPath: "/icons/pillar-social.svg",
+      iconPath: "/icons/pillar-social.webp",
       summary: "Community support programs and social development initiatives",
       metrics: [
         { label: "Incidents", key: "social_incidents" },
@@ -1496,8 +1492,8 @@ export default function DashboardClient({ initialData }: Props) {
       id: "parks-recreation",
       title: "Parks and Recreation",
       theme: "parks",
-      iconPath: "/icons/pillar-parks.svg",
-      summary: "Maintaining and improving green spaces, recreational facilities, and community areas",
+      iconPath: "/icons/pillar-parks.webp",
+      summary: "Maintaining and improving green spaces and recreational facilities.",
       metrics: [
         { label: "Jutland Park", key: "parks_jutland_park_bags", unitPlural: "bags", unitSingular: "bag" },
         { label: "Maynard Park", key: "parks_maynard_park_bags", unitPlural: "bags", unitSingular: "bag" },
@@ -1536,7 +1532,7 @@ export default function DashboardClient({ initialData }: Props) {
       });
 
       const canvas = await html2canvas(exportNode, {
-        backgroundColor: "#FFFFFF",
+        backgroundColor: BRAND.colors.white,
         scale: 2,
         useCORS: true
       });
@@ -2056,7 +2052,7 @@ export default function DashboardClient({ initialData }: Props) {
               <BarChart data={c3OverallBreakdown} margin={{ top: 8, right: 8, left: 0, bottom: 70 }}>
                 <defs>
                   <pattern id="resolvedHatch" patternUnits="userSpaceOnUse" width="8" height="8">
-                    <rect width="8" height="8" fill="#F3F4F6" />
+                    <rect width="8" height="8" fill={BRAND.colors.white} />
                     <path d="M-2 2l4-4M0 8l8-8M6 10l4-4" stroke={C3_RESOLVED_GREY} strokeWidth="1.2" />
                   </pattern>
                 </defs>
@@ -2183,7 +2179,7 @@ export default function DashboardClient({ initialData }: Props) {
         </div>
 
         <div className="border-t border-white/15">
-          <div className="mx-auto w-full max-w-6xl px-4 py-5 text-sm text-[#999999]">
+          <div className="mx-auto w-full max-w-6xl px-4 py-5 text-sm text-white/70">
             Copyright © 2025 - Lower Gardens City Improvement District.
           </div>
         </div>

@@ -25,31 +25,17 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: "Roboto Condensed";
-  src: url("/fonts/RobotoCondensed-VariableFont_wght.ttf") format("truetype");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Roboto Condensed";
-  src: url("/fonts/RobotoCondensed-Italic-VariableFont_wght.ttf") format("truetype");
-  font-weight: 100 900;
-  font-style: italic;
-  font-display: swap;
-}
-
 :root {
   --lg-black: #000000;
   --lg-white: #ffffff;
-  --lg-safety: #fff103;
-  --lg-cleaning: #c5ff31;
-  --lg-social: #fe3088;
-  --lg-parks: #44D62C;
+  --lg-safety: #fff300;
+  --lg-cleaning: #c6ff2e;
+  --lg-social: #ff3087;
+  --lg-parks: #44d62c;
   --font-heading: "Montserrat", "Helvetica Neue", sans-serif;
-  --font-body: "Roboto Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Roboto", "Helvetica Neue", sans-serif;
+  --lg-border-subtle: rgba(0, 0, 0, 0.12);
+  --lg-neutral-muted: rgba(0, 0, 0, 0.42);
 }
 
 * {
@@ -66,7 +52,7 @@ body {
 body {
   background: var(--lg-white);
   color: var(--lg-black);
-  font-family: var(--font-body), "Arial Narrow", "Helvetica Neue", sans-serif;
+  font-family: var(--font-body);
   line-height: 1.45;
   letter-spacing: 0.01em;
 }
@@ -105,7 +91,7 @@ h6 {
 }
 
 .rail-neutral {
-  --rail-color: #000000;
+  --rail-color: var(--lg-black);
 }
 
 .rail-safety {
@@ -125,15 +111,15 @@ h6 {
 }
 
 .rail-urban {
-  --rail-color: #c59a00;
+  --rail-color: var(--lg-safety);
 }
 
 .rail-comms {
-  --rail-color: #c92a7a;
+  --rail-color: var(--lg-social);
 }
 
 .rail-muted {
-  --rail-color: #9ca3af;
+  --rail-color: var(--lg-neutral-muted);
 }
 
 .summary-infographic-grid {
@@ -316,7 +302,7 @@ h6 {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-left: 1px solid #d9d9d9;
+  border-left: 1px solid var(--lg-border-subtle);
   background: var(--lg-white);
   padding: 0.05rem 0.1rem;
 }
@@ -393,8 +379,8 @@ h6 {
 }
 
 .header {
-  border-bottom: 1px solid #e3e3e3;
-  background: #ffffff;
+  border-bottom: 1px solid var(--lg-border-subtle);
+  background: var(--lg-white);
 }
 
 .header p,
@@ -409,7 +395,7 @@ h6 {
 .header div,
 .header li,
 .header blockquote {
-  color: #1e1e1e;
+  color: var(--lg-black);
 }
 
 .header__menu {
@@ -428,17 +414,17 @@ h6 {
 .header__menu-link {
   width: 100%;
   font-size: 16px;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
   font-style: normal;
   font-weight: 400;
   text-decoration: none;
   text-transform: none;
   line-height: 1.2;
-  color: #1e1e1e;
+  color: var(--lg-black);
 }
 
 .header__menu-item--depth-1 > .header__menu-link:not(.button) {
-  color: #1e1e1e;
+  color: var(--lg-black);
 }
 
 .header__menu-link:hover {
@@ -450,16 +436,16 @@ h6 {
 .footer-cta.button,
 .hs-button.footer-incident-button,
 .hs-button.newsletter-submit {
-  border: 1px none #1e1e1e;
+  border: 1px solid var(--lg-black);
   padding: 12px 20px;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
   font-style: normal;
   font-weight: 400;
   text-decoration: none;
-  background-color: rgba(30, 30, 30, 1);
+  background-color: var(--lg-black);
   border-radius: 8px;
-  color: #ffffff;
-  fill: #ffffff;
+  color: var(--lg-white);
+  fill: var(--lg-white);
   font-size: 16px;
   text-transform: none;
   align-items: center;

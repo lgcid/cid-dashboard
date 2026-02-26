@@ -2,14 +2,14 @@ export const BRAND = {
   colors: {
     black: "#000000",
     white: "#FFFFFF",
-    safety: "#FFF103",
-    cleaning: "#C5FF31",
-    social: "#FE3088",
+    safety: "#FFF300",
+    cleaning: "#C6FF2E",
+    social: "#FF3087",
     parks: "#44D62C"
   },
   fonts: {
     heading: "Montserrat",
-    body: "Roboto Condensed"
+    body: "Roboto"
   },
   logoPath: "/logos/lgcid-horizontal-black.png",
   logoPathWhite: "/logos/lgcid-horizontal-white.png"
