@@ -1587,24 +1587,26 @@ export default function DashboardClient({ initialData }: Props) {
 
       <section className="border-b-2 border-black bg-black text-white">
         <div className="mx-auto w-full max-w-6xl px-4 py-7 md:py-9">
-          <div className="relative text-left">
-            <button
-              type="button"
-              onClick={handlePrintScreenshot}
-              disabled={isPrinting}
-              className="absolute right-0 top-0 inline-flex items-center rounded-md border border-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isPrinting ? "Preparing..." : "Print"}
-            </button>
+          <div className="text-left">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em]">Lower Gardens City Improvement District</p>
-            <h1 className="mt-3 max-w-4xl pr-24 text-3xl font-bold leading-tight md:text-5xl">Weekly Operations Dashboard</h1>
+            <h1 className="mt-3 max-w-4xl text-3xl font-bold leading-tight md:text-5xl">Weekly Operations Dashboard</h1>
             <p className="mt-3 max-w-3xl text-sm md:text-base">
               Weekly and historical operational performance for stakeholders, covering safety, cleaning, social upliftment, and urban management.
             </p>
 
-            <p className="mt-5 text-sm font-semibold uppercase tracking-[0.08em]">
-              Last Update <strong>{formatDataUpdate(initialData.meta.data_updated_at)}</strong>
-            </p>
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold uppercase tracking-[0.08em]">
+                Last Update <strong>{formatDataUpdate(initialData.meta.data_updated_at)}</strong>
+              </p>
+              <button
+                type="button"
+                onClick={handlePrintScreenshot}
+                disabled={isPrinting}
+                className="inline-flex items-center rounded-md border border-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isPrinting ? "Preparing..." : "Print"}
+              </button>
+            </div>
           </div>
         </div>
       </section>
