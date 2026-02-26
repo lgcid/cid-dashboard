@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
 import Image from "next/image";
 import clsx from "clsx";
-import html2canvas from "html2canvas";
+import domtoimage from "dom-to-image";
 import { format, parseISO } from "date-fns";
 import {
   Bar,
@@ -97,6 +97,7 @@ const URBAN_TREND_COLOR = BRAND.colors.safety;
 const CONTACTS_TREND_COLOR = BRAND.colors.black;
 const SUMMARY_PUBLIC_SAFETY_COLOR = BRAND.colors.safety;
 const SUMMARY_CLEANING_COLOR = BRAND.colors.cleaning;
+const SCREENSHOT_EXPORT_SCALE = 2;
 
 const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
   { id: "summary", label: "Summary" },
@@ -1531,10 +1532,23 @@ export default function DashboardClient({ initialData }: Props) {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
 
-      const canvas = await html2canvas(exportNode, {
-        backgroundColor: BRAND.colors.white,
-        scale: 2,
-        useCORS: true
+      if (typeof document !== "undefined" && "fonts" in document) {
+        await document.fonts.ready;
+      }
+
+      const exportWidth = Math.ceil(exportNode.scrollWidth);
+      const exportHeight = Math.ceil(exportNode.scrollHeight);
+      const pngDataUrl = await domtoimage.toPng(exportNode, {
+        bgcolor: BRAND.colors.white,
+        cacheBust: true,
+        width: exportWidth * SCREENSHOT_EXPORT_SCALE,
+        height: exportHeight * SCREENSHOT_EXPORT_SCALE,
+        style: {
+          transform: `scale(${SCREENSHOT_EXPORT_SCALE})`,
+          transformOrigin: "top left",
+          width: `${exportWidth}px`,
+          height: `${exportHeight}px`
+        }
       });
       const weekToken = currentWeek
         ? `${currentWeek.week_start}_to_${currentWeek.week_end}`
@@ -1542,7 +1556,7 @@ export default function DashboardClient({ initialData }: Props) {
       const tabToken = activeTab === "main" ? "current-week" : activeTab;
       const downloadName = `lgcid-${tabToken}-${weekToken}.png`;
       const link = document.createElement("a");
-      link.href = canvas.toDataURL("image/png");
+      link.href = pngDataUrl;
       link.download = downloadName;
       link.click();
     } finally {

@@ -11,7 +11,7 @@ Mobile-first, brand-compliant Next.js dashboard for Lower Gardens CID weekly ope
 - C3 efficiency tracker (totals-first + optional departmental breakdown)
 - Social value KPI module (shelter referrals + work readiness)
 - Public safety wins + hotspot street ranking
-- WhatsApp link sharing + PNG screenshot mode (`html2canvas`)
+- WhatsApp link sharing + PNG screenshot mode (`dom-to-image`)
 
 ## Project Paths
 
