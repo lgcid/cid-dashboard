@@ -29,3 +29,7 @@ pnpm-debug.log*
 
 # typescript
 *.tsbuildinfo
+
+# AI tools
+.playwright-cli
+.claude

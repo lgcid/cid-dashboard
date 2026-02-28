@@ -428,10 +428,6 @@ h6 {
   }
 }
 
-.snapshot-panel {
-  box-shadow: none;
-}
-
 .header {
   border-bottom: 1px solid var(--lg-border-subtle);
   background: var(--lg-white);

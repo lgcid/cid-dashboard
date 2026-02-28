@@ -2,16 +2,41 @@ export type RecordStatus = "REPORTED" | "NO_DATA_REPORTED";
 
 export type NullableNumber = number | null;
 
-export interface WeeklyMetricRow {
+export const SECTION_KEYS = [
+  "urban_management",
+  "public_safety",
+  "cleaning",
+  "social_services",
+  "parks",
+  "communications",
+  "c3_logged",
+  "c3_resolved"
+] as const;
+
+export type SectionKey = (typeof SECTION_KEYS)[number];
+
+export interface WeekRecord {
   week_start: string;
   week_end: string;
   week_label: string;
   record_status: RecordStatus;
+}
+
+export interface SectionCategoryRow {
+  category: string;
+  values: Record<string, NullableNumber>;
+}
+
+export interface SectionData {
+  key: SectionKey;
+  heading: string;
+  categories: SectionCategoryRow[];
+}
+
+export type SectionMap = Record<SectionKey, SectionData>;
+
+export interface HardcodedWeeklyMetrics {
   urban_total: NullableNumber;
-  urban_accidents: NullableNumber;
-  urban_emergency_medical_assistance: NullableNumber;
-  urban_public_safety_and_security: NullableNumber;
-  urban_public_space_interventions: NullableNumber;
   criminal_incidents: NullableNumber;
   arrests_made: NullableNumber;
   section56_notices: NullableNumber;
@@ -21,36 +46,18 @@ export interface WeeklyMetricRow {
   cleaning_servitudes_cleaned: NullableNumber;
   cleaning_stormwater_drains_cleaned: NullableNumber;
   cleaning_stormwater_bags_filled: NullableNumber;
-  social_incidents: NullableNumber;
-  social_client_follow_ups: NullableNumber;
-  social_successful_id_applications: NullableNumber;
-  social_shelter_referrals: NullableNumber;
-  social_work_readiness_bags: NullableNumber;
-  parks_jutland_park_bags: NullableNumber;
-  parks_maynard_park_bags: NullableNumber;
-  parks_tuin_plein_bags: NullableNumber;
-  parks_gordon_street_verge_bags: NullableNumber;
-  parks_wembley_square_verge_bags: NullableNumber;
+  social_touch_points: NullableNumber;
+  parks_total_bags: NullableNumber;
   c3_logged_total: NullableNumber;
   c3_resolved_total: NullableNumber;
-  c3_logged_roads_and_infrastructure: NullableNumber;
-  c3_resolved_roads_and_infrastructure: NullableNumber;
-  c3_logged_water_and_sanitation: NullableNumber;
-  c3_resolved_water_and_sanitation: NullableNumber;
-  c3_logged_electricity: NullableNumber;
-  c3_resolved_electricity: NullableNumber;
-  c3_logged_parks_and_recreation: NullableNumber;
-  c3_resolved_parks_and_recreation: NullableNumber;
-  c3_logged_waste_management: NullableNumber;
-  c3_resolved_waste_management: NullableNumber;
-  c3_logged_environmental_health: NullableNumber;
-  c3_resolved_environmental_health: NullableNumber;
-  c3_logged_law_enforcement: NullableNumber;
-  c3_resolved_law_enforcement: NullableNumber;
-  c3_logged_traffic: NullableNumber;
-  c3_resolved_traffic: NullableNumber;
   calls_received: NullableNumber;
   whatsapps_received: NullableNumber;
+}
+
+export type HardcodedWeeklyMetricKey = keyof HardcodedWeeklyMetrics;
+
+export interface WeeklyMetricRow extends WeekRecord {
+  metrics: HardcodedWeeklyMetrics;
 }
 
 export interface IncidentRow {
@@ -103,6 +110,8 @@ export interface DashboardMeta {
 
 export interface DashboardResponse {
   meta: DashboardMeta;
+  weeks: WeekRecord[];
+  sections: SectionMap;
   weekly: WeeklyMetricRow[];
   current_week: WeeklyMetricRow | null;
   trends: DerivedTrendPoint[];

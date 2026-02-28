@@ -2,8 +2,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { parseCsv } from "@/lib/csv";
 import { fetchSheetRows, readGoogleSheetsEnv } from "@/lib/google-sheets";
-import { incidentRowsSchema, weeklyMetricRowsSchema } from "@/lib/schemas";
-import type { IncidentRow, WeeklyMetricRow } from "@/types/dashboard";
+import { incidentRowsSchema } from "@/lib/schemas";
+import { parseSectionMatrix } from "@/lib/section-matrix";
+import { SECTION_KEYS, type IncidentRow, type SectionData, type SectionMap } from "@/types/dashboard";
 
 const ROOT = process.cwd();
 type DataSourceMode = "local_csv" | "google_sheets";
@@ -32,35 +33,65 @@ function rowsToObjects(rows: string[][]): Array<Record<string, string>> {
 }
 
 async function readLocalCsv(relativePath: string): Promise<Array<Record<string, string>>> {
-  const filePath = path.join(ROOT, relativePath);
-  const raw = await readFile(filePath, "utf8");
-  return rowsToObjects(parseCsv(raw));
+  const rows = await readLocalCsvRows(relativePath);
+  return rowsToObjects(rows);
 }
 
-async function readFromSheets(): Promise<{ weekly: WeeklyMetricRow[]; incidents: IncidentRow[] }> {
-  const weeklyRows = await fetchSheetRows("weekly_metrics!A1:AZ1000");
+async function readLocalCsvRows(relativePath: string): Promise<string[][]> {
+  const filePath = path.join(ROOT, relativePath);
+  const raw = await readFile(filePath, "utf8");
+  return parseCsv(raw);
+}
+
+function sectionEntriesToMap(entries: Array<readonly [SectionData["key"], SectionData]>): SectionMap {
+  return Object.fromEntries(entries) as SectionMap;
+}
+
+async function readSectionsFromSheets(): Promise<SectionMap> {
+  const sectionEntries = await Promise.all(
+    SECTION_KEYS.map(async (sectionKey) => {
+      const rows = await fetchSheetRows(`${sectionKey}!A1:ZZ5000`);
+      return [sectionKey, parseSectionMatrix(rows, sectionKey)] as const;
+    })
+  );
+
+  return sectionEntriesToMap(sectionEntries);
+}
+
+async function readSectionsFromLocalCsv(): Promise<SectionMap> {
+  const sectionEntries = await Promise.all(
+    SECTION_KEYS.map(async (sectionKey) => {
+      const rows = await readLocalCsvRows(`data/csv/sections/${sectionKey}.csv`);
+      return [sectionKey, parseSectionMatrix(rows, sectionKey)] as const;
+    })
+  );
+
+  return sectionEntriesToMap(sectionEntries);
+}
+
+async function readFromSheets(): Promise<{ sections: SectionMap; incidents: IncidentRow[] }> {
+  const sections = await readSectionsFromSheets();
   const incidentRows = await fetchSheetRows("incidents!A1:AZ5000");
-  const weeklyObjects = rowsToObjects(weeklyRows);
   const incidentObjects = rowsToObjects(incidentRows);
 
   return {
-    weekly: weeklyMetricRowsSchema.parse(weeklyObjects),
+    sections,
     incidents: incidentRowsSchema.parse(incidentObjects)
   };
 }
 
-async function readFromLocalCsv(): Promise<{ weekly: WeeklyMetricRow[]; incidents: IncidentRow[] }> {
-  const weeklyObjects = await readLocalCsv("data/exports/weekly_metrics.csv");
-  const incidentObjects = await readLocalCsv("data/exports/incidents.csv");
+async function readFromLocalCsv(): Promise<{ sections: SectionMap; incidents: IncidentRow[] }> {
+  const sections = await readSectionsFromLocalCsv();
+  const incidentObjects = await readLocalCsv("data/csv/incidents.csv");
 
   return {
-    weekly: weeklyMetricRowsSchema.parse(weeklyObjects),
+    sections,
     incidents: incidentRowsSchema.parse(incidentObjects)
   };
 }
 
 export async function loadData(): Promise<{
-  weekly: WeeklyMetricRow[];
+  sections: SectionMap;
   incidents: IncidentRow[];
   source: "google_sheets" | "local_csv";
 }> {

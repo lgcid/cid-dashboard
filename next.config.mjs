@@ -4,7 +4,7 @@ const nextConfig = {
     remotePatterns: []
   },
   outputFileTracingIncludes: {
-    "/*": ["./data/exports/**/*.csv"]
+    "/*": ["./data/csv/**/*.csv", "./data/csv/sections/**/*.csv"]
   }
 };
 

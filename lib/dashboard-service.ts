@@ -1,7 +1,16 @@
 import { weekEndFromStart } from "@/lib/date-utils";
-import { buildTrendSeries, deriveC3Breakdown, deriveC3Totals, deriveHotspots, pickCurrentWeek, sortWeekly } from "@/lib/derive";
+import {
+  buildTrendSeries,
+  buildWeeklyRows,
+  deriveC3Breakdown,
+  deriveC3Totals,
+  deriveHotspots,
+  deriveWeeks,
+  pickCurrentWeek,
+  sortWeekly
+} from "@/lib/derive";
 import { loadData } from "@/lib/data-source";
-import type { DashboardQuery, DashboardResponse, IncidentRow, WeeklyMetricRow } from "@/types/dashboard";
+import type { DashboardQuery, DashboardResponse, IncidentRow, WeekRecord, WeeklyMetricRow } from "@/types/dashboard";
 
 const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -21,9 +30,9 @@ function maxIso(values: string[]): string {
   return values.reduce((max, value) => (value > max ? value : max));
 }
 
-function deriveReportingWindow(weeklyRows: WeeklyMetricRow[], incidents: IncidentRow[]): { start: string; end: string } {
-  const weeklyStarts = weeklyRows.map((row) => row.week_start).filter(isIsoDay);
-  const weeklyEnds = weeklyRows.map((row) => row.week_end).filter(isIsoDay);
+function deriveReportingWindow(weeks: WeekRecord[], incidents: IncidentRow[]): { start: string; end: string } {
+  const weeklyStarts = weeks.map((row) => row.week_start).filter(isIsoDay);
+  const weeklyEnds = weeks.map((row) => row.week_end).filter(isIsoDay);
 
   if (weeklyStarts.length && weeklyEnds.length) {
     return {
@@ -67,14 +76,21 @@ function filterByWindow(rows: WeeklyMetricRow[], start: string, end: string): We
   return rows.filter((row) => inWindow(row.week_start, start, end));
 }
 
+function filterWeeksByWindow(weeks: WeekRecord[], start: string, end: string): WeekRecord[] {
+  return weeks.filter((week) => inWindow(week.week_start, start, end));
+}
+
 function filterIncidentsByWindow(incidents: IncidentRow[], start: string, end: string): IncidentRow[] {
   return incidents.filter((incident) => inWindow(incident.week_start, start, end));
 }
 
 export async function getDashboardData(query: DashboardQuery = {}): Promise<DashboardResponse> {
-  const { weekly, incidents, source } = await loadData();
-  const reportingWindow = deriveReportingWindow(weekly, incidents);
+  const { sections, incidents, source } = await loadData();
+  const weeks = deriveWeeks(sections);
+  const weekly = buildWeeklyRows(weeks, sections);
+  const reportingWindow = deriveReportingWindow(weeks, incidents);
   const weeklyWindowed = sortWeekly(filterByWindow(weekly, reportingWindow.start, reportingWindow.end));
+  const weeksWindowed = filterWeeksByWindow(weeks, reportingWindow.start, reportingWindow.end);
   const incidentsWindowed = filterIncidentsByWindow(incidents, reportingWindow.start, reportingWindow.end);
   const dataUpdatedAt = deriveDataUpdatedAt(weeklyWindowed, reportingWindow.end);
 
@@ -92,11 +108,13 @@ export async function getDashboardData(query: DashboardQuery = {}): Promise<Dash
       available_weeks: weeklyWindowed.map((row) => row.week_start),
       data_source: source
     },
+    weeks: weeksWindowed,
+    sections,
     weekly: weeklyWindowed,
     current_week: currentWeek,
     trends: buildTrendSeries(weeklyWindowed),
     c3_totals: deriveC3Totals(currentWeek),
-    c3_breakdown: deriveC3Breakdown(currentWeek),
+    c3_breakdown: deriveC3Breakdown(currentWeek, sections),
     hotspots: deriveHotspots(incidentsWindowed, weeklyWindowed, windowWeeks),
     incidents: incidentsWindowed
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useCallback, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
 import Image from "next/image";
 import clsx from "clsx";
 import domtoimage from "dom-to-image";
@@ -18,8 +18,14 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { BRAND, C3_DEPARTMENT_LABELS, C3_DEPARTMENTS, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
-import type { DashboardResponse, IncidentRow, WeeklyMetricRow } from "@/types/dashboard";
+import { BRAND, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
+import type {
+  DashboardResponse,
+  HardcodedWeeklyMetricKey,
+  IncidentRow,
+  SectionData,
+  WeeklyMetricRow
+} from "@/types/dashboard";
 
 type Props = {
   initialData: DashboardResponse;
@@ -56,8 +62,8 @@ type SummaryInfographicMetricDefinition = {
   label: string;
   icon: SummaryInfographicIconKind;
   groupId: SummaryInfographicGroupId;
-  key?: keyof WeeklyMetricRow;
-  derived?: "contacts_total" | "cleaning_total_bags" | "fines_issued" | "social_touch_points" | "parks_total_bags";
+  key?: HardcodedWeeklyMetricKey;
+  derived?: "contacts_total" | "cleaning_total_bags" | "fines_issued";
 };
 
 type SummaryInfographicMetric = SummaryInfographicMetricDefinition & {
@@ -164,7 +170,7 @@ const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
     label: "Touch points",
     icon: "calls",
     groupId: "social_services",
-    derived: "social_touch_points"
+    key: "social_touch_points"
   },
   { id: "c3_logged_total", label: "C3 logged requests", icon: "logged", groupId: "communications", key: "c3_logged_total" },
   { id: "contacts_total", label: "Calls + WhatsApp received", icon: "calls", groupId: "communications", derived: "contacts_total" },
@@ -173,24 +179,8 @@ const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
     label: "Bags",
     icon: "bags",
     groupId: "parks",
-    derived: "parks_total_bags"
+    key: "parks_total_bags"
   }
-];
-
-const SOCIAL_TOUCH_POINT_KEYS: Array<keyof WeeklyMetricRow> = [
-  "social_incidents",
-  "social_client_follow_ups",
-  "social_successful_id_applications",
-  "social_shelter_referrals",
-  "social_work_readiness_bags"
-];
-
-const PARKS_BAG_KEYS: Array<keyof WeeklyMetricRow> = [
-  "parks_jutland_park_bags",
-  "parks_maynard_park_bags",
-  "parks_tuin_plein_bags",
-  "parks_gordon_street_verge_bags",
-  "parks_wembley_square_verge_bags"
 ];
 
 function themeRailClass(theme: MetricTheme): string {
@@ -273,6 +263,70 @@ function toMetricNumber(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function normalizeCategoryLabel(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function sectionCategoryValue(section: SectionData, weekStart: string, category: string): number | null {
+  const normalized = normalizeCategoryLabel(category);
+  const matched = section.categories.find((row) => normalizeCategoryLabel(row.category) === normalized);
+  if (!matched) {
+    return null;
+  }
+  return toMetricNumber(matched.values[weekStart] ?? null);
+}
+
+function weekChartDataFromSection(section: SectionData, weekStart: string | null): Array<{ category: string; value: number }> {
+  if (!weekStart) {
+    return section.categories.map((row) => ({ category: row.category, value: 0 }));
+  }
+  return section.categories.map((row) => ({
+    category: row.category,
+    value: toMetricNumber(row.values[weekStart] ?? null) ?? 0
+  }));
+}
+
+function unitForCategoryLabel(label: string): { unitPlural?: string; unitSingular?: string } {
+  const normalized = normalizeCategoryLabel(label);
+  if (normalized.includes("bag")) {
+    return {
+      unitPlural: "bags",
+      unitSingular: "bag"
+    };
+  }
+  return {};
+}
+
+function unionSectionCategories(primary: SectionData, secondary: SectionData): string[] {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+
+  for (const row of primary.categories) {
+    const normalized = normalizeCategoryLabel(row.category);
+    if (seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    ordered.push(row.category);
+  }
+
+  for (const row of secondary.categories) {
+    const normalized = normalizeCategoryLabel(row.category);
+    if (seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    ordered.push(row.category);
+  }
+
+  return ordered;
+}
+
 function sumMetric(values: number[]): number | null {
   if (!values.length) {
     return null;
@@ -291,8 +345,8 @@ function movingAverage(values: Array<number | null>, index: number, windowSize =
 }
 
 function trendContactsTotal(row: WeeklyMetricRow): number | null {
-  const calls = toMetricNumber(row.calls_received);
-  const whatsapps = toMetricNumber(row.whatsapps_received);
+  const calls = toMetricNumber(row.metrics.calls_received);
+  const whatsapps = toMetricNumber(row.metrics.whatsapps_received);
   if (calls === null && whatsapps === null) {
     return null;
   }
@@ -334,9 +388,9 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
         period_start: row.week_start,
         period_end: row.week_end,
         period_label: formatIsoWithPattern(row.week_start, "dd MMM"),
-        urban_total: toMetricNumber(row.urban_total),
-        criminal_incidents: toMetricNumber(row.criminal_incidents),
-        cleaning_bags_collected: toMetricNumber(row.cleaning_bags_collected),
+        urban_total: toMetricNumber(row.metrics.urban_total),
+        criminal_incidents: toMetricNumber(row.metrics.criminal_incidents),
+        cleaning_bags_collected: toMetricNumber(row.metrics.cleaning_bags_collected),
         contacts_total: trendContactsTotal(row)
       });
     }
@@ -380,9 +434,9 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
       }
 
       bucket.period_end = row.week_end;
-      const urban = toMetricNumber(row.urban_total);
-      const criminal = toMetricNumber(row.criminal_incidents);
-      const cleaning = toMetricNumber(row.cleaning_bags_collected);
+      const urban = toMetricNumber(row.metrics.urban_total);
+      const criminal = toMetricNumber(row.metrics.criminal_incidents);
+      const cleaning = toMetricNumber(row.metrics.cleaning_bags_collected);
       const contacts = trendContactsTotal(row);
 
       if (urban !== null) {
@@ -439,29 +493,6 @@ function getPreviousReportedWeek(weekly: WeeklyMetricRow[], weekStart: string): 
   }
 
   return null;
-}
-
-function comparisonMeta(current: number | null | undefined, previous: number | null | undefined): {
-  tone: ComparisonTone;
-  text: string;
-} {
-  if (current === null || current === undefined) {
-    return { tone: "none", text: NO_DATA_LABEL };
-  }
-  if (previous === null || previous === undefined) {
-    return { tone: "none", text: "No prior reported week" };
-  }
-
-  const diff = current - previous;
-  if (diff === 0) {
-    return { tone: "flat", text: "No change from previous week" };
-  }
-
-  if (diff > 0) {
-    return { tone: "increase", text: `Increase of ${Math.abs(diff).toLocaleString()} vs previous week` };
-  }
-
-  return { tone: "decrease", text: `Decrease of ${Math.abs(diff).toLocaleString()} vs previous week` };
 }
 
 function incidentsForWeek(incidents: IncidentRow[], weekStart: string): IncidentRow[] {
@@ -596,26 +627,12 @@ function callsAndWhatsappsTotal(row: WeeklyMetricRow | null): number | null {
   if (!row) {
     return null;
   }
-  const calls = row.calls_received;
-  const whatsapps = row.whatsapps_received;
+  const calls = row.metrics.calls_received;
+  const whatsapps = row.metrics.whatsapps_received;
   if ((calls === null || calls === undefined) && (whatsapps === null || whatsapps === undefined)) {
     return null;
   }
   return (calls ?? 0) + (whatsapps ?? 0);
-}
-
-function summaryMetricsTotal(row: WeeklyMetricRow | null, keys: Array<keyof WeeklyMetricRow>): number | null {
-  if (!row) {
-    return null;
-  }
-
-  const values = keys
-    .map((key) => toMetricNumber(row[key] as number | null | undefined))
-    .filter((value): value is number => value !== null);
-  if (!values.length) {
-    return null;
-  }
-  return values.reduce((sum, value) => sum + value, 0);
 }
 
 function summaryMetricValue(
@@ -630,8 +647,8 @@ function summaryMetricValue(
     if (!row) {
       return null;
     }
-    const cleaning = row.cleaning_bags_collected;
-    const stormwater = row.cleaning_stormwater_bags_filled;
+    const cleaning = row.metrics.cleaning_bags_collected;
+    const stormwater = row.metrics.cleaning_stormwater_bags_filled;
     if ((cleaning === null || cleaning === undefined) && (stormwater === null || stormwater === undefined)) {
       return null;
     }
@@ -641,25 +658,18 @@ function summaryMetricValue(
     if (!row) {
       return null;
     }
-    const section56 = row.section56_notices;
-    const section341 = row.section341_notices;
+    const section56 = row.metrics.section56_notices;
+    const section341 = row.metrics.section341_notices;
     if ((section56 === null || section56 === undefined) && (section341 === null || section341 === undefined)) {
       return null;
     }
     return (section56 ?? 0) + (section341 ?? 0);
   }
-  if (metric.derived === "social_touch_points") {
-    return summaryMetricsTotal(row, SOCIAL_TOUCH_POINT_KEYS);
-  }
-  if (metric.derived === "parks_total_bags") {
-    return summaryMetricsTotal(row, PARKS_BAG_KEYS);
-  }
-
   if (!row || !metric.key) {
     return null;
   }
 
-  return row[metric.key] as number | null | undefined;
+  return row.metrics[metric.key];
 }
 
 function SummaryInfographicIcon({ kind, className }: { kind: SummaryInfographicIconKind; className?: string }) {
@@ -908,19 +918,16 @@ function PillarSection({
   iconPath,
   theme,
   summary,
-  currentWeek,
-  previousWeek,
   metrics
 }: {
   title: string;
   iconPath: string;
   theme: MetricTheme;
   summary: string;
-  currentWeek: WeeklyMetricRow | null;
-  previousWeek: WeeklyMetricRow | null;
   metrics: Array<{
     label: string;
-    key: keyof WeeklyMetricRow;
+    current: number | null | undefined;
+    previous: number | null | undefined;
     unitPlural?: string;
     unitSingular?: string;
   }>;
@@ -943,12 +950,12 @@ function PillarSection({
       <p className="mt-3 text-sm leading-relaxed text-black/80">{summary}</p>
 
       <ul className="mt-2">
-        {metrics.map((metric) => (
+        {metrics.map((metric, index) => (
           <PillarMetricRow
-            key={metric.key}
+            key={`${metric.label}-${index}`}
             label={metric.label}
-            current={currentWeek?.[metric.key] as number | null | undefined}
-            previous={previousWeek?.[metric.key] as number | null | undefined}
+            current={metric.current}
+            previous={metric.previous}
             unitPlural={metric.unitPlural}
             unitSingular={metric.unitSingular}
           />
@@ -1004,124 +1011,6 @@ function CurrentWeekBreakdownChart({
   );
 }
 
-function SnapshotPanel({
-  captureRef,
-  currentWeek,
-  previousWeek,
-  c3Breakdown,
-  hotspots,
-  incidents,
-  selectedWeekStart,
-  dataSource
-}: {
-  captureRef: RefObject<HTMLDivElement>;
-  currentWeek: WeeklyMetricRow | null;
-  previousWeek: WeeklyMetricRow | null;
-  c3Breakdown: Array<{ department: string; logged: number | null; resolved: number | null }>;
-  hotspots: Array<{ street: string; incident_count: number }>;
-  incidents: IncidentRow[];
-  selectedWeekStart: string;
-  dataSource: string;
-}) {
-  return (
-    <section ref={captureRef} className="snapshot-panel fixed left-[-10000px] top-0 w-[390px] border-2 border-black bg-white p-4 text-black">
-      <div className="border-b-2 border-black bg-black px-3 py-2 text-white">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Lower Gardens CID</p>
-        <p className="mt-1 text-xl font-bold">Weekly Snapshot</p>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{formatWeekDate(selectedWeekStart)}</p>
-      </div>
-
-      <div className="mt-3 space-y-3">
-        <div className="border border-black p-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em]">Current Week Stats</p>
-          <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-            <p>Urban: <strong>{valueText(currentWeek?.urban_total)}</strong></p>
-            <p>Criminal: <strong>{valueText(currentWeek?.criminal_incidents)}</strong></p>
-            <p>Arrests: <strong>{valueText(currentWeek?.arrests_made)}</strong></p>
-            <p>Proactive: <strong>{valueText(currentWeek?.proactive_actions)}</strong></p>
-            <p>Cleaning bags: <strong>{valueText(currentWeek?.cleaning_bags_collected)}</strong></p>
-            <p>Shelter referrals: <strong>{valueText(currentWeek?.social_shelter_referrals)}</strong></p>
-            <p>Work readiness bags: <strong>{valueText(currentWeek?.social_work_readiness_bags)}</strong></p>
-            <p>C3 logged: <strong>{valueText(currentWeek?.c3_logged_total)}</strong></p>
-            <p>C3 resolved: <strong>{valueText(currentWeek?.c3_resolved_total)}</strong></p>
-            <p>Calls: <strong>{valueText(currentWeek?.calls_received)}</strong></p>
-            <p>WhatsApps: <strong>{valueText(currentWeek?.whatsapps_received)}</strong></p>
-          </div>
-        </div>
-
-        <div className="border border-black p-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em]">Week-on-Week Change</p>
-          <div className="mt-2 space-y-1 text-[11px]">
-            <p>Criminal incidents: {comparisonMeta(currentWeek?.criminal_incidents, previousWeek?.criminal_incidents).text}</p>
-            <p>Arrests: {comparisonMeta(currentWeek?.arrests_made, previousWeek?.arrests_made).text}</p>
-            <p>Cleaning bags: {comparisonMeta(currentWeek?.cleaning_bags_collected, previousWeek?.cleaning_bags_collected).text}</p>
-            <p>C3 logged: {comparisonMeta(currentWeek?.c3_logged_total, previousWeek?.c3_logged_total).text}</p>
-            <p>C3 resolved: {comparisonMeta(currentWeek?.c3_resolved_total, previousWeek?.c3_resolved_total).text}</p>
-          </div>
-        </div>
-
-        <div className="border border-black p-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em]">C3 Department Breakdown</p>
-          <table className="mt-2 w-full text-[10px]">
-            <thead>
-              <tr className="border-b border-black">
-                <th className="py-1 text-left">Dept</th>
-                <th className="py-1 text-right">Logged</th>
-                <th className="py-1 text-right">Resolved</th>
-              </tr>
-            </thead>
-            <tbody>
-              {c3Breakdown.map((row) => (
-                <tr key={row.department} className="border-b border-black/30">
-                  <td className="py-1">{row.department}</td>
-                  <td className="py-1 text-right">{valueText(row.logged)}</td>
-                  <td className="py-1 text-right">{valueText(row.resolved)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="border border-black p-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em]">Top {HOTSPOT_LIMIT} Streets</p>
-          <ol className="mt-2 space-y-1 text-[11px]">
-            {hotspots.length ? (
-              hotspots.map((spot, index) => (
-                <li key={spot.street}>
-                  {index + 1}. {spot.street} ({spot.incident_count})
-                </li>
-              ))
-            ) : (
-              <li>{NO_DATA_LABEL}</li>
-            )}
-          </ol>
-        </div>
-
-        <div className="border border-black p-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em]">Incident Log ({incidents.length})</p>
-          <div className="mt-2 space-y-2 text-[10px]">
-            {incidents.length ? (
-                incidents.map((incident, index) => (
-                  <div key={`${incident.week_start}-${index}`} className="border border-black/40 p-2">
-                    <p className="font-semibold">{incident.incident_date ?? "No date"} - {incident.place}</p>
-                    <div className="mt-1">
-                      <IncidentCategoryTag category={incident.category} compact />
-                    </div>
-                    <p className="mt-1">{incident.summary}</p>
-                  </div>
-                ))
-              ) : (
-                <p>{NO_DATA_LABEL}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <p className="mt-3 text-[9px] uppercase tracking-[0.08em]">Source: {dataSource.replace("_", " ")}</p>
-    </section>
-  );
-}
-
 function ExportImageHeader() {
   return (
     <header className="export-image-header" aria-hidden>
@@ -1159,7 +1048,6 @@ export default function DashboardClient({ initialData }: Props) {
   const [trendFromDate, setTrendFromDate] = useState(defaultTrendBounds.from);
   const [trendToDate, setTrendToDate] = useState(defaultTrendBounds.to);
   const [trendGranularity, setTrendGranularity] = useState<TrendGranularity>("week");
-  const captureRef = useRef<HTMLDivElement>(null);
   const mainPrintableRef = useRef<HTMLDivElement>(null);
   const summaryPrintableRef = useRef<HTMLDivElement>(null);
   const trendsPrintableRef = useRef<HTMLDivElement>(null);
@@ -1256,26 +1144,33 @@ export default function DashboardClient({ initialData }: Props) {
     ),
     [weekly, trendFrom, trendTo, trendGranularity]
   );
+  const c3Categories = useMemo(
+    () => unionSectionCategories(initialData.sections.c3_logged, initialData.sections.c3_resolved),
+    [initialData.sections.c3_logged, initialData.sections.c3_resolved]
+  );
   const c3OverallBreakdown = useMemo(
     () =>
-      C3_DEPARTMENTS.map((department) => {
-        const loggedKey = `c3_logged_${department}` as keyof WeeklyMetricRow;
-        const resolvedKey = `c3_resolved_${department}` as keyof WeeklyMetricRow;
-
-        const logged = reportedWeeks.reduce((sum, row) => sum + ((row[loggedKey] as number | null) ?? 0), 0);
-        const resolved = reportedWeeks.reduce((sum, row) => sum + ((row[resolvedKey] as number | null) ?? 0), 0);
+      c3Categories.map((category) => {
+        const logged = reportedWeeks.reduce(
+          (sum, row) => sum + (sectionCategoryValue(initialData.sections.c3_logged, row.week_start, category) ?? 0),
+          0
+        );
+        const resolved = reportedWeeks.reduce(
+          (sum, row) => sum + (sectionCategoryValue(initialData.sections.c3_resolved, row.week_start, category) ?? 0),
+          0
+        );
         const backlog = Math.max(logged - resolved, 0);
         const resolutionRatio = logged === 0 ? null : resolved / logged;
 
         return {
-          department: C3_DEPARTMENT_LABELS[department],
+          department: category,
           logged,
           resolved,
           backlog,
           resolutionRatio
         };
       }),
-    [reportedWeeks]
+    [c3Categories, initialData.sections.c3_logged, initialData.sections.c3_resolved, reportedWeeks]
   );
   const c3OverallTotals = useMemo(
     () =>
@@ -1305,101 +1200,80 @@ export default function DashboardClient({ initialData }: Props) {
         .slice(0, 3),
     [c3OverallBreakdown]
   );
+  const currentWeekStart = currentWeek?.week_start ?? null;
+  const previousWeekStart = previousWeek?.week_start ?? null;
   const currentWeekUrbanBreakdown = useMemo(
-    () => [
-      { category: "Accidents", value: currentWeek?.urban_accidents ?? 0 },
-      { category: "Emergency / Medical", value: currentWeek?.urban_emergency_medical_assistance ?? 0 },
-      { category: "Pro-active Actions", value: currentWeek?.proactive_actions ?? 0 },
-      { category: "Safety & Security", value: currentWeek?.urban_public_safety_and_security ?? 0 },
-      { category: "Public Space", value: currentWeek?.urban_public_space_interventions ?? 0 }
-    ],
-    [currentWeek]
+    () => weekChartDataFromSection(initialData.sections.urban_management, currentWeekStart),
+    [currentWeekStart, initialData.sections.urban_management]
   );
   const currentWeekC3LoggedBreakdown = useMemo(
-    () => [
-      { category: "Roads & Infrastructure", value: currentWeek?.c3_logged_roads_and_infrastructure ?? 0 },
-      { category: "Water & Sanitation", value: currentWeek?.c3_logged_water_and_sanitation ?? 0 },
-      { category: "Electricity", value: currentWeek?.c3_logged_electricity ?? 0 },
-      { category: "Parks & Recreation", value: currentWeek?.c3_logged_parks_and_recreation ?? 0 },
-      { category: "Waste Management", value: currentWeek?.c3_logged_waste_management ?? 0 },
-      { category: "Environmental Health", value: currentWeek?.c3_logged_environmental_health ?? 0 },
-      { category: "Law Enforcement", value: currentWeek?.c3_logged_law_enforcement ?? 0 },
-      { category: "Traffic", value: currentWeek?.c3_logged_traffic ?? 0 }
-    ],
-    [currentWeek]
+    () => weekChartDataFromSection(initialData.sections.c3_logged, currentWeekStart),
+    [currentWeekStart, initialData.sections.c3_logged]
   );
-  const pillarSections: Array<{
-    id: string;
-    title: string;
-    theme: MetricTheme;
-    iconPath: string;
-    summary: string;
-    metrics: Array<{
-      label: string;
-      key: keyof WeeklyMetricRow;
-      unitPlural?: string;
-      unitSingular?: string;
-    }>;
-  }> = [
-    {
+
+  const toPillarMetrics = useCallback(
+    (section: SectionData) =>
+      section.categories.map((row) => {
+        const units = unitForCategoryLabel(row.category);
+        return {
+          label: row.category,
+          current: currentWeekStart ? toMetricNumber(row.values[currentWeekStart] ?? null) : null,
+          previous: previousWeekStart ? toMetricNumber(row.values[previousWeekStart] ?? null) : null,
+          ...units
+        };
+      }),
+    [currentWeekStart, previousWeekStart]
+  );
+
+  const publicSafetyPillar = useMemo(
+    () => ({
       id: "public-safety",
       title: "Public Safety",
-      theme: "safety",
+      theme: "safety" as const,
       iconPath: "/icons/pillar-safety.webp",
       summary: "Security patrols and emergency response to ensure community safety.",
-      metrics: [
-        { label: "Criminal Incidents", key: "criminal_incidents" },
-        { label: "Arrests Made", key: "arrests_made" },
-        { label: "Section 56 Notices", key: "section56_notices" },
-        { label: "Section 341 Notices", key: "section341_notices" }
-      ]
-    },
-    {
+      metrics: toPillarMetrics(initialData.sections.public_safety)
+    }),
+    [initialData.sections.public_safety, toPillarMetrics]
+  );
+  const cleaningPillar = useMemo(
+    () => ({
       id: "cleaning",
       title: "Cleaning & Maintenance",
-      theme: "cleaning",
+      theme: "cleaning" as const,
       iconPath: "/icons/pillar-cleaning.webp",
       summary: "Public cleaning and infrastructure maintenance to keep our district pristine.",
-      metrics: [
-        { label: "Bags Filled and Collected", key: "cleaning_bags_collected", unitPlural: "bags", unitSingular: "bag" },
-        { label: "Servitudes Cleaned", key: "cleaning_servitudes_cleaned" },
-        { label: "Stormwater Drains Cleaned", key: "cleaning_stormwater_drains_cleaned" },
-        { label: "Stormwater Bags Filled", key: "cleaning_stormwater_bags_filled", unitPlural: "bags", unitSingular: "bag" }
-      ]
-    },
-    {
+      metrics: toPillarMetrics(initialData.sections.cleaning)
+    }),
+    [initialData.sections.cleaning, toPillarMetrics]
+  );
+  const socialPillar = useMemo(
+    () => ({
       id: "social-services",
       title: "Social Services",
-      theme: "social",
+      theme: "social" as const,
       iconPath: "/icons/pillar-social.webp",
       summary: "Community support programs and social development initiatives",
-      metrics: [
-        { label: "Incidents", key: "social_incidents" },
-        { label: "Client Follow Ups", key: "social_client_follow_ups" },
-        { label: "Successful ID Applications", key: "social_successful_id_applications" },
-        { label: "Referred Clients to Shelters", key: "social_shelter_referrals" },
-        { label: "Work Readiness Bags Collected", key: "social_work_readiness_bags", unitPlural: "bags", unitSingular: "bag" }
-      ]
-    },
-    {
+      metrics: toPillarMetrics(initialData.sections.social_services)
+    }),
+    [initialData.sections.social_services, toPillarMetrics]
+  );
+  const parksPillar = useMemo(
+    () => ({
       id: "parks-recreation",
       title: "Parks and Recreation",
-      theme: "parks",
+      theme: "parks" as const,
       iconPath: "/icons/pillar-parks.webp",
       summary: "Maintaining and improving green spaces and recreational facilities.",
-      metrics: [
-        { label: "Jutland Park", key: "parks_jutland_park_bags", unitPlural: "bags", unitSingular: "bag" },
-        { label: "Maynard Park", key: "parks_maynard_park_bags", unitPlural: "bags", unitSingular: "bag" },
-        { label: "Tuin Plein", key: "parks_tuin_plein_bags", unitPlural: "bags", unitSingular: "bag" },
-        { label: "Gordon Street Verge", key: "parks_gordon_street_verge_bags", unitPlural: "bags", unitSingular: "bag" },
-        { label: "Wembley Square Verge", key: "parks_wembley_square_verge_bags", unitPlural: "bags", unitSingular: "bag" }
-      ]
-    }
-  ];
-  const publicSafetyPillar = pillarSections[0];
-  const cleaningPillar = pillarSections[1];
-  const socialPillar = pillarSections[2];
-  const parksPillar = pillarSections[3];
+      metrics: toPillarMetrics(initialData.sections.parks).map((metric) => ({
+        ...metric,
+        label: metric.label,
+        unitPlural: "bags",
+        unitSingular: "bag"
+      }))
+    }),
+    [initialData.sections.parks, toPillarMetrics]
+  );
   async function handlePrintScreenshot() {
     if (typeof window === "undefined") {
       return;
@@ -1631,8 +1505,6 @@ export default function DashboardClient({ initialData }: Props) {
                   iconPath={publicSafetyPillar.iconPath}
                   theme={publicSafetyPillar.theme}
                   summary={publicSafetyPillar.summary}
-                  currentWeek={currentWeek}
-                  previousWeek={previousWeek}
                   metrics={publicSafetyPillar.metrics}
                 />
 
@@ -1642,8 +1514,6 @@ export default function DashboardClient({ initialData }: Props) {
                   iconPath={cleaningPillar.iconPath}
                   theme={cleaningPillar.theme}
                   summary={cleaningPillar.summary}
-                  currentWeek={currentWeek}
-                  previousWeek={previousWeek}
                   metrics={cleaningPillar.metrics}
                 />
               </div>
@@ -1655,8 +1525,6 @@ export default function DashboardClient({ initialData }: Props) {
                   iconPath={socialPillar.iconPath}
                   theme={socialPillar.theme}
                   summary={socialPillar.summary}
-                  currentWeek={currentWeek}
-                  previousWeek={previousWeek}
                   metrics={socialPillar.metrics}
                 />
 
@@ -1666,8 +1534,6 @@ export default function DashboardClient({ initialData }: Props) {
                   iconPath={parksPillar.iconPath}
                   theme={parksPillar.theme}
                   summary={parksPillar.summary}
-                  currentWeek={currentWeek}
-                  previousWeek={previousWeek}
                   metrics={parksPillar.metrics}
                 />
               </div>
@@ -1691,7 +1557,7 @@ export default function DashboardClient({ initialData }: Props) {
 
           <section id="incidents" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
           <SectionHeading
-            title="Incidents"
+            title="Criminal Incidents"
             description={`Details of reported incidents for the current week: ${selectedWeekRange}`}
             icon="incidents"
           />
@@ -2015,20 +1881,6 @@ export default function DashboardClient({ initialData }: Props) {
           </div>
         ) : null}
 
-        <SnapshotPanel
-          captureRef={captureRef}
-          currentWeek={currentWeek}
-          previousWeek={previousWeek}
-          c3Breakdown={C3_DEPARTMENTS.map((department) => ({
-            department: C3_DEPARTMENT_LABELS[department],
-            logged: (currentWeek?.[`c3_logged_${department}` as keyof WeeklyMetricRow] as number | null | undefined) ?? null,
-            resolved: (currentWeek?.[`c3_resolved_${department}` as keyof WeeklyMetricRow] as number | null | undefined) ?? null
-          }))}
-          hotspots={initialData.hotspots}
-          incidents={currentIncidents}
-          selectedWeekStart={selectedWeekStart}
-          dataSource={initialData.meta.data_source}
-        />
       </div>
 
       <footer className="bg-black text-white">

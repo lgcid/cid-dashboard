@@ -17,7 +17,7 @@ Mobile-first, brand-compliant Next.js dashboard for Lower Gardens CID weekly ope
 
 - App entry: `/Users/dagmar/Code/personal/cid-dashboard/app/page.tsx`
 - API route: `/Users/dagmar/Code/personal/cid-dashboard/app/api/dashboard/route.ts`
-- Exported CSV: `/Users/dagmar/Code/personal/cid-dashboard/data/exports`
+- CSV data: `/Users/dagmar/Code/personal/cid-dashboard/data/csv`
 - Sheet template spec: `/Users/dagmar/Code/personal/cid-dashboard/data/sheet-template.md`
 
 ## Local Setup
@@ -47,19 +47,26 @@ npm run dev
 ```
 
 The app will now read directly from:
-- `/Users/dagmar/Code/personal/cid-dashboard/data/exports/weekly_metrics.csv`
-- `/Users/dagmar/Code/personal/cid-dashboard/data/exports/incidents.csv`
+- `/Users/dagmar/Code/personal/cid-dashboard/data/csv/sections/*.csv`
+- `/Users/dagmar/Code/personal/cid-dashboard/data/csv/incidents.csv`
 
 ## Data Flow
 
 1. Dashboard data is maintained in CSV files:
-- `weekly_metrics.csv`
-- `incidents.csv`
-2. CSVs can be manually imported into a Google Sheet with tabs:
-- `weekly_metrics`
-- `incidents`
-3. Dashboard reads local CSV exports by default.
-4. Optional: switch to Google Sheets later by setting:
+- `data/csv/sections/urban_management.csv`
+- `data/csv/sections/public_safety.csv`
+- `data/csv/sections/cleaning.csv`
+- `data/csv/sections/social_services.csv`
+- `data/csv/sections/parks.csv`
+- `data/csv/sections/communications.csv`
+- `data/csv/sections/c3_logged.csv`
+- `data/csv/sections/c3_resolved.csv`
+- `data/csv/incidents.csv`
+2. CSV section files mirror spreadsheet sheets:
+- one sheet per section with category names in column A and week columns in row 1
+3. Week list always starts at `2025-08-01` and is derived from section-sheet week headers.
+4. Dashboard reads local CSV exports by default.
+5. Optional: switch to Google Sheets later by setting:
 
 ```bash
 DATA_SOURCE=google_sheets
@@ -75,7 +82,8 @@ GOOGLE_SHEET_ID=...
 `windowWeeks` is optional. When omitted, hotspot intelligence is cumulative across all loaded incident data.
 
 Returns:
-- normalized weekly rows
+- week metadata (`weeks`) + section datasets (`sections`)
+- hardcoded summary/trend weekly metrics derived from sections
 - selected/current week
 - trend series with MA(4)
 - C3 totals and breakdown
