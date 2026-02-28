@@ -1533,7 +1533,7 @@ export default function DashboardClient({ initialData }: Props) {
           <select
             value={selectedWeekStart}
             onChange={(event) => setSelectedWeekStart(event.target.value)}
-            className="mt-1 w-full border-2 border-black bg-white px-3 py-2 text-sm text-black"
+            className="mt-1 h-11 w-full border-2 border-black bg-white px-3 text-sm text-black"
           >
             {weekOptions.map((option) => (
               <option key={option.weekStart} value={option.weekStart}>
@@ -1564,7 +1564,7 @@ export default function DashboardClient({ initialData }: Props) {
                   setTrendToDate(boundedFrom);
                 }
               }}
-              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-3 py-2 text-sm text-black"
+              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-0 py-2 text-sm text-black sm:px-3"
             />
           </div>
           <div className="w-full min-w-0 sm:w-[220px]">
@@ -1585,7 +1585,7 @@ export default function DashboardClient({ initialData }: Props) {
                   setTrendFromDate(boundedTo);
                 }
               }}
-              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-3 py-2 text-sm text-black"
+              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-0 py-2 text-sm text-black sm:px-3"
             />
           </div>
           <div className="w-full sm:w-auto">
