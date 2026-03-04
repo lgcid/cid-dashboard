@@ -1065,10 +1065,23 @@ export default function DashboardClient({ initialData }: Props) {
         const weekEnd = row?.week_end ?? weekStart;
         return {
           weekStart,
+          year: weekStart.slice(0, 4),
           label: formatWeekRange(weekStart, weekEnd)
         };
       }),
     [initialData.meta.available_weeks, weeklyByStart]
+  );
+  const weekYears = useMemo(
+    () => [...new Set(weekOptions.map((option) => option.year))].sort((a, b) => b.localeCompare(a)),
+    [weekOptions]
+  );
+  const selectedWeekYear = useMemo(
+    () => weekOptions.find((option) => option.weekStart === selectedWeekStart)?.year ?? weekYears[0] ?? "",
+    [weekOptions, selectedWeekStart, weekYears]
+  );
+  const visibleWeekOptions = useMemo(
+    () => weekOptions.filter((option) => option.year === selectedWeekYear),
+    [weekOptions, selectedWeekYear]
   );
 
   const currentWeek = useMemo(
@@ -1402,19 +1415,41 @@ export default function DashboardClient({ initialData }: Props) {
 
       <div className="mx-auto w-full max-w-6xl px-4 py-6 md:py-8">
         {activeTab === "main" || activeTab === "summary" ? (
-        <div className="mb-4 max-w-[420px]">
-          <label className="block text-[11px] font-semibold uppercase tracking-[0.14em]">Reporting week</label>
-          <select
-            value={selectedWeekStart}
-            onChange={(event) => setSelectedWeekStart(event.target.value)}
-            className="mt-1 h-11 w-full border-2 border-black bg-white px-3 text-sm text-black"
-          >
-            {weekOptions.map((option) => (
-              <option key={option.weekStart} value={option.weekStart}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+        <div className="mb-4 grid max-w-[520px] gap-3 sm:grid-cols-[130px_minmax(0,1fr)]">
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.14em]">Year</label>
+            <select
+              value={selectedWeekYear}
+              onChange={(event) => {
+                const nextYear = event.target.value;
+                const nextWeek = [...weekOptions].reverse().find((option) => option.year === nextYear);
+                if (nextWeek) {
+                  setSelectedWeekStart(nextWeek.weekStart);
+                }
+              }}
+              className="mt-1 h-11 w-full border-2 border-black bg-white px-3 text-sm text-black"
+            >
+              {weekYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.14em]">Reporting week</label>
+            <select
+              value={selectedWeekStart}
+              onChange={(event) => setSelectedWeekStart(event.target.value)}
+              className="mt-1 h-11 w-full border-2 border-black bg-white px-3 text-sm text-black"
+            >
+              {visibleWeekOptions.map((option) => (
+                <option key={option.weekStart} value={option.weekStart}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         ) : null}
 
