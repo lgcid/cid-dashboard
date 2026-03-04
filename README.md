@@ -13,13 +13,6 @@ Mobile-first, brand-compliant Next.js dashboard for Lower Gardens CID weekly ope
 - Public safety wins + hotspot street ranking
 - WhatsApp link sharing + PNG screenshot mode (`dom-to-image`)
 
-## Project Paths
-
-- App entry: `/Users/dagmar/Code/personal/cid-dashboard/app/page.tsx`
-- API route: `/Users/dagmar/Code/personal/cid-dashboard/app/api/dashboard/route.ts`
-- CSV data: `/Users/dagmar/Code/personal/cid-dashboard/data/csv`
-- Sheet template spec: `/Users/dagmar/Code/personal/cid-dashboard/data/sheet-template.md`
-
 ## Local Setup
 
 1. Install dependencies:
@@ -45,10 +38,6 @@ DATA_SOURCE=local_csv
 ```bash
 npm run dev
 ```
-
-The app will now read directly from:
-- `/Users/dagmar/Code/personal/cid-dashboard/data/csv/sections/*.csv`
-- `/Users/dagmar/Code/personal/cid-dashboard/data/csv/incidents.csv`
 
 ## Data Flow
 
