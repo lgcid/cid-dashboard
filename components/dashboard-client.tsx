@@ -138,7 +138,7 @@ const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
   },
   {
     id: "parks",
-    title: "Parks",
+    title: "Parks & Recreation",
     description: "Bags collected across all tracked parks sites",
     accent: BRAND.colors.parks
   }
@@ -1285,7 +1285,7 @@ export default function DashboardClient({ initialData }: Props) {
   const parksPillar = useMemo(
     () => ({
       id: "parks-recreation",
-      title: "Parks and Recreation",
+      title: "Parks & Recreation",
       theme: "parks" as const,
       iconPath: "/icons/pillar-parks.webp",
       summary: "Maintaining and improving green spaces and recreational facilities.",
