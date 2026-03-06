@@ -392,6 +392,15 @@ function trendContactsTotal(row: WeeklyMetricRow): number | null {
   return (calls ?? 0) + (whatsapps ?? 0);
 }
 
+function trendCleaningTotal(row: WeeklyMetricRow): number | null {
+  const cleaning = toMetricNumber(row.metrics.cleaning_bags_collected);
+  const stormwater = toMetricNumber(row.metrics.cleaning_stormwater_bags_filled);
+  if (cleaning === null && stormwater === null) {
+    return null;
+  }
+  return (cleaning ?? 0) + (stormwater ?? 0);
+}
+
 function trendDateBounds(rows: WeeklyMetricRow[], fallbackDate: string): { from: string; to: string } {
   const sorted = [...rows].sort((a, b) => a.week_start.localeCompare(b.week_start));
   const reported = sorted.filter((row) => row.record_status === "REPORTED");
@@ -431,7 +440,7 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
         period_label: formatIsoWithPattern(row.week_start, "dd MMM"),
         urban_total: toMetricNumber(row.metrics.urban_total),
         criminal_incidents: toMetricNumber(row.metrics.criminal_incidents),
-        cleaning_bags_collected: toMetricNumber(row.metrics.cleaning_bags_collected),
+        cleaning_bags_collected: trendCleaningTotal(row),
         social_touch_points: toMetricNumber(row.metrics.social_touch_points),
         parks_total_bags: toMetricNumber(row.metrics.parks_total_bags),
         contacts_total: trendContactsTotal(row)
@@ -483,7 +492,7 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
       bucket.period_end = row.week_end;
       const urban = toMetricNumber(row.metrics.urban_total);
       const criminal = toMetricNumber(row.metrics.criminal_incidents);
-      const cleaning = toMetricNumber(row.metrics.cleaning_bags_collected);
+      const cleaning = trendCleaningTotal(row);
       const social = toMetricNumber(row.metrics.social_touch_points);
       const parks = toMetricNumber(row.metrics.parks_total_bags);
       const contacts = trendContactsTotal(row);
@@ -1790,7 +1799,7 @@ export default function DashboardClient({ initialData }: Props) {
             {trendSeries.length ? (
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Crime Trend</p>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Public Safety Trend</p>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
@@ -1804,7 +1813,7 @@ export default function DashboardClient({ initialData }: Props) {
                         stroke={CRIME_TREND_COLOR}
                         strokeWidth={3}
                         dot={false}
-                        name={`${trendPeriodLabel} incidents`}
+                        name={`${trendPeriodLabel} criminal incidents`}
                       />
                       <Line
                         type="monotone"
@@ -1834,7 +1843,7 @@ export default function DashboardClient({ initialData }: Props) {
                         stroke={CLEANING_TREND_COLOR}
                         strokeWidth={3}
                         dot={false}
-                        name={`${trendPeriodLabel} bags`}
+                        name={`${trendPeriodLabel} bags (total)`}
                       />
                       <Line
                         type="monotone"
@@ -1894,7 +1903,7 @@ export default function DashboardClient({ initialData }: Props) {
                         stroke={PARKS_TREND_COLOR}
                         strokeWidth={3}
                         dot={false}
-                        name={`${trendPeriodLabel} bags`}
+                        name={`${trendPeriodLabel} bags (total)`}
                       />
                       <Line
                         type="monotone"

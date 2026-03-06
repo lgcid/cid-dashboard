@@ -232,7 +232,17 @@ export function buildTrendSeries(rows: WeeklyMetricRow[]): DerivedTrendPoint[] {
   const sorted = sortWeekly(rows);
   const urban = sorted.map((row) => (row.record_status === "REPORTED" ? toNumber(row.metrics.urban_total) : null));
   const crimes = sorted.map((row) => (row.record_status === "REPORTED" ? toNumber(row.metrics.criminal_incidents) : null));
-  const cleaning = sorted.map((row) => (row.record_status === "REPORTED" ? toNumber(row.metrics.cleaning_bags_collected) : null));
+  const cleaning = sorted.map((row) => {
+    if (row.record_status !== "REPORTED") {
+      return null;
+    }
+    const collected = toNumber(row.metrics.cleaning_bags_collected);
+    const stormwater = toNumber(row.metrics.cleaning_stormwater_bags_filled);
+    if (collected === null && stormwater === null) {
+      return null;
+    }
+    return (collected ?? 0) + (stormwater ?? 0);
+  });
   const contacts = sorted.map((row) => {
     if (row.record_status !== "REPORTED") {
       return null;
