@@ -1820,7 +1820,7 @@ export default function DashboardClient({ initialData }: Props) {
                 </div>
 
                 <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Cleaning Trend</p>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Cleaning & Maintenance Trend</p>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
