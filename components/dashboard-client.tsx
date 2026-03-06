@@ -82,17 +82,23 @@ type TrendChartPoint = {
   urban_total: number | null;
   criminal_incidents: number | null;
   cleaning_bags_collected: number | null;
+  social_touch_points: number | null;
+  parks_total_bags: number | null;
   contacts_total: number | null;
   urban_ma4: number | null;
   criminal_ma4: number | null;
   cleaning_ma4: number | null;
+  social_touch_points_ma4: number | null;
+  parks_total_bags_ma4: number | null;
   contacts_total_ma4: number | null;
 };
 
 const C3_RESOLVED_GREY = "rgba(0, 0, 0, 0.35)";
 const CRIME_TREND_COLOR = BRAND.colors.safety;
 const CLEANING_TREND_COLOR = BRAND.colors.cleaning;
-const URBAN_TREND_COLOR = BRAND.colors.safety;
+const URBAN_TREND_COLOR = BRAND.colors.black;
+const SOCIAL_TREND_COLOR = BRAND.colors.social;
+const PARKS_TREND_COLOR = BRAND.colors.parks;
 const CONTACTS_TREND_COLOR = BRAND.colors.black;
 const SUMMARY_PUBLIC_SAFETY_COLOR = BRAND.colors.safety;
 const SUMMARY_CLEANING_COLOR = BRAND.colors.cleaning;
@@ -208,6 +214,39 @@ function valueText(value: number | null | undefined): string {
     return NO_DATA_LABEL;
   }
   return value.toLocaleString();
+}
+
+function legendLabelFormatter(value: string) {
+  return <span style={{ color: BRAND.colors.black }}>{value}</span>;
+}
+
+function TrendLegend({
+  payload
+}: {
+  payload?: Array<{ value?: string; color?: string; dataKey?: string | number }>;
+}) {
+  if (!payload?.length) {
+    return null;
+  }
+
+  return (
+    <ul className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px]">
+      {payload.map((entry, index) => {
+        const isMovingAverage = typeof entry.dataKey === "string" && entry.dataKey.endsWith("_ma4");
+        const color = entry.color ?? BRAND.colors.black;
+        const key = `${entry.dataKey ?? entry.value ?? index}`;
+
+        return (
+          <li key={key} className="flex items-center gap-2">
+            <svg width="24" height="10" viewBox="0 0 24 10" aria-hidden>
+              <line x1="0" y1="5" x2="24" y2="5" stroke={color} strokeWidth={2} strokeDasharray={isMovingAverage ? "6 4" : undefined} />
+            </svg>
+            <span style={{ color: BRAND.colors.black }}>{entry.value}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 function IncidentCategoryTag({ category, compact = false }: { category: string; compact?: boolean }) {
@@ -379,6 +418,8 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
     urban_total: number | null;
     criminal_incidents: number | null;
     cleaning_bags_collected: number | null;
+    social_touch_points: number | null;
+    parks_total_bags: number | null;
     contacts_total: number | null;
   }> = [];
 
@@ -391,6 +432,8 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
         urban_total: toMetricNumber(row.metrics.urban_total),
         criminal_incidents: toMetricNumber(row.metrics.criminal_incidents),
         cleaning_bags_collected: toMetricNumber(row.metrics.cleaning_bags_collected),
+        social_touch_points: toMetricNumber(row.metrics.social_touch_points),
+        parks_total_bags: toMetricNumber(row.metrics.parks_total_bags),
         contacts_total: trendContactsTotal(row)
       });
     }
@@ -404,6 +447,8 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
         urban: number[];
         criminal: number[];
         cleaning: number[];
+        social: number[];
+        parks: number[];
         contacts: number[];
       }
     >();
@@ -424,6 +469,8 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
           urban: [],
           criminal: [],
           cleaning: [],
+          social: [],
+          parks: [],
           contacts: []
         });
       }
@@ -437,6 +484,8 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
       const urban = toMetricNumber(row.metrics.urban_total);
       const criminal = toMetricNumber(row.metrics.criminal_incidents);
       const cleaning = toMetricNumber(row.metrics.cleaning_bags_collected);
+      const social = toMetricNumber(row.metrics.social_touch_points);
+      const parks = toMetricNumber(row.metrics.parks_total_bags);
       const contacts = trendContactsTotal(row);
 
       if (urban !== null) {
@@ -447,6 +496,12 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
       }
       if (cleaning !== null) {
         bucket.cleaning.push(cleaning);
+      }
+      if (social !== null) {
+        bucket.social.push(social);
+      }
+      if (parks !== null) {
+        bucket.parks.push(parks);
       }
       if (contacts !== null) {
         bucket.contacts.push(contacts);
@@ -461,6 +516,8 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
         urban_total: sumMetric(bucket.urban),
         criminal_incidents: sumMetric(bucket.criminal),
         cleaning_bags_collected: sumMetric(bucket.cleaning),
+        social_touch_points: sumMetric(bucket.social),
+        parks_total_bags: sumMetric(bucket.parks),
         contacts_total: sumMetric(bucket.contacts)
       });
     }
@@ -469,6 +526,8 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
   const urbanValues = aggregated.map((point) => point.urban_total);
   const crimeValues = aggregated.map((point) => point.criminal_incidents);
   const cleaningValues = aggregated.map((point) => point.cleaning_bags_collected);
+  const socialValues = aggregated.map((point) => point.social_touch_points);
+  const parksValues = aggregated.map((point) => point.parks_total_bags);
   const contactsValues = aggregated.map((point) => point.contacts_total);
 
   return aggregated.map((point, index) => ({
@@ -476,6 +535,8 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
     urban_ma4: movingAverage(urbanValues, index, 4),
     criminal_ma4: movingAverage(crimeValues, index, 4),
     cleaning_ma4: movingAverage(cleaningValues, index, 4),
+    social_touch_points_ma4: movingAverage(socialValues, index, 4),
+    parks_total_bags_ma4: movingAverage(parksValues, index, 4),
     contacts_total_ma4: movingAverage(contactsValues, index, 4)
   }));
 }
@@ -1736,12 +1797,12 @@ export default function DashboardClient({ initialData }: Props) {
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip />
-                      <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
+                      <Legend content={<TrendLegend />} />
                       <Line
                         type="monotone"
                         dataKey="criminal_incidents"
                         stroke={CRIME_TREND_COLOR}
-                        strokeWidth={2}
+                        strokeWidth={3}
                         dot={false}
                         name={`${trendPeriodLabel} incidents`}
                       />
@@ -1766,12 +1827,12 @@ export default function DashboardClient({ initialData }: Props) {
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip />
-                      <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
+                      <Legend content={<TrendLegend />} />
                       <Line
                         type="monotone"
                         dataKey="cleaning_bags_collected"
                         stroke={CLEANING_TREND_COLOR}
-                        strokeWidth={2}
+                        strokeWidth={3}
                         dot={false}
                         name={`${trendPeriodLabel} bags`}
                       />
@@ -1789,19 +1850,79 @@ export default function DashboardClient({ initialData }: Props) {
                 </div>
 
                 <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Urban Management Incidents Trend</p>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Social Services Trend</p>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip />
-                      <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
+                      <Legend content={<TrendLegend />} />
+                      <Line
+                        type="monotone"
+                        dataKey="social_touch_points"
+                        stroke={SOCIAL_TREND_COLOR}
+                        strokeWidth={3}
+                        dot={false}
+                        name={`${trendPeriodLabel} touch points`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="social_touch_points_ma4"
+                        stroke={BRAND.colors.black}
+                        strokeWidth={2}
+                        strokeDasharray="6 4"
+                        dot={false}
+                        name={trendAverageLabel}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="h-[300px] rounded-xl border border-black p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Parks & Recreation Trend</p>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
+                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Legend content={<TrendLegend />} />
+                      <Line
+                        type="monotone"
+                        dataKey="parks_total_bags"
+                        stroke={PARKS_TREND_COLOR}
+                        strokeWidth={3}
+                        dot={false}
+                        name={`${trendPeriodLabel} bags`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="parks_total_bags_ma4"
+                        stroke={BRAND.colors.black}
+                        strokeWidth={2}
+                        strokeDasharray="6 4"
+                        dot={false}
+                        name={trendAverageLabel}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="h-[300px] rounded-xl border border-black p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Urban Management Trend</p>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
+                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Legend content={<TrendLegend />} />
                       <Line
                         type="monotone"
                         dataKey="urban_total"
                         stroke={URBAN_TREND_COLOR}
-                        strokeWidth={2}
+                        strokeWidth={3}
                         dot={false}
                         name={`${trendPeriodLabel} incidents`}
                       />
@@ -1819,21 +1940,21 @@ export default function DashboardClient({ initialData }: Props) {
                 </div>
 
                 <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Calls + WhatsApp Trend</p>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Communication Trend</p>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip />
-                      <Legend wrapperStyle={{ paddingTop: 8, paddingBottom: 8 }} />
+                      <Legend content={<TrendLegend />} />
                       <Line
                         type="monotone"
                         dataKey="contacts_total"
                         stroke={CONTACTS_TREND_COLOR}
-                        strokeWidth={2}
+                        strokeWidth={3}
                         dot={false}
-                        name={`${trendPeriodLabel} calls + WhatsApp`}
+                        name={`${trendPeriodLabel} calls + Whatsapps`}
                       />
                       <Line
                         type="monotone"
@@ -1894,7 +2015,7 @@ export default function DashboardClient({ initialData }: Props) {
                 <XAxis dataKey="department" tick={{ fontSize: 9 }} interval={0} angle={-24} textAnchor="end" height={74} />
                 <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip />
-                <Legend />
+                <Legend formatter={legendLabelFormatter} />
                 <Bar dataKey="logged" fill={BRAND.colors.black} name="Logged (overall)">
                   <LabelList dataKey="logged" position="top" fill="#000000" fontSize={9} />
                 </Bar>
