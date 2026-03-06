@@ -155,7 +155,7 @@ h6 {
 .dashboard-export-mode .export-image-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   flex-wrap: wrap;
   gap: 0.55rem 0.9rem;
   padding: 0.45rem 1rem;
