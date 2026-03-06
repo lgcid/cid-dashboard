@@ -1219,9 +1219,20 @@ export default function DashboardClient({ initialData }: Props) {
     () => weekChartDataFromSection(initialData.sections.urban_management, currentWeekStart),
     [currentWeekStart, initialData.sections.urban_management]
   );
+  const currentWeekCommunicationBreakdown = useMemo(
+    () => [
+      { category: "Calls", value: toMetricNumber(currentWeek?.metrics.calls_received) ?? 0 },
+      { category: "WhatsApp", value: toMetricNumber(currentWeek?.metrics.whatsapps_received) ?? 0 }
+    ],
+    [currentWeek]
+  );
   const currentWeekC3LoggedBreakdown = useMemo(
     () => weekChartDataFromSection(initialData.sections.c3_logged, currentWeekStart),
     [currentWeekStart, initialData.sections.c3_logged]
+  );
+  const currentWeekC3ResolvedBreakdown = useMemo(
+    () => weekChartDataFromSection(initialData.sections.c3_resolved, currentWeekStart),
+    [currentWeekStart, initialData.sections.c3_resolved]
   );
 
   const toPillarMetrics = useCallback(
@@ -1581,8 +1592,22 @@ export default function DashboardClient({ initialData }: Props) {
                 />
 
                 <CurrentWeekBreakdownChart
+                  title="Communication"
+                  data={currentWeekCommunicationBreakdown}
+                  color={BRAND.colors.black}
+                />
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <CurrentWeekBreakdownChart
                   title="CoCT C3 Logged Requests"
                   data={currentWeekC3LoggedBreakdown}
+                  color={BRAND.colors.black}
+                />
+
+                <CurrentWeekBreakdownChart
+                  title="CoCT C3 Resolved Requests"
+                  data={currentWeekC3ResolvedBreakdown}
                   color={BRAND.colors.black}
                 />
               </div>
