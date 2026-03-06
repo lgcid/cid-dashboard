@@ -52,8 +52,8 @@ npm run dev
 - `data/csv/sections/c3_resolved.csv`
 - `data/csv/incidents.csv`
 2. CSV section files mirror spreadsheet sheets:
-- one sheet per section with category names in column A and week columns in row 1
-3. Week list always starts at `2025-08-01` and is derived from section-sheet week headers.
+- one sheet per section with `week_start` in column A, week rows, and category/stat columns in row 1
+3. Week list always starts at `2025-08-01` and is derived from section-sheet week rows in column A.
 4. Dashboard reads local CSV exports by default.
 5. Optional: switch to Google Sheets later by setting:
 

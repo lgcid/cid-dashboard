@@ -21,39 +21,40 @@ function parseNullableNumber(value: unknown): number | null {
 
 export function parseSectionMatrix(rows: string[][], key: SectionKey): SectionData {
   const header = rows[0] ?? [];
-  const heading = String(header[0] ?? "").trim() || "Categories";
+  const heading = String(header[0] ?? "").trim() || "week_start";
 
-  const weekColumns: Array<{ columnIndex: number; weekStart: string }> = [];
+  const categoryColumns: Array<{ columnIndex: number; category: string }> = [];
   for (let columnIndex = 1; columnIndex < header.length; columnIndex += 1) {
-    const weekStart = String(header[columnIndex] ?? "").trim();
+    const category = String(header[columnIndex] ?? "").trim();
+    if (!category) {
+      continue;
+    }
+    categoryColumns.push({ columnIndex, category });
+  }
+
+  const weekRows: Array<{ row: string[]; weekStart: string }> = [];
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex] ?? [];
+    const weekStart = String(row[0] ?? "").trim();
     if (!isIsoDay(weekStart)) {
       continue;
     }
     if (weekStart < MIN_WEEK_START) {
       continue;
     }
-    weekColumns.push({ columnIndex, weekStart });
+    weekRows.push({ row, weekStart });
   }
 
-  const categories = rows
-    .slice(1)
-    .map((row) => {
-      const category = String(row[0] ?? "").trim();
-      if (!category) {
-        return null;
-      }
-
-      const values: Record<string, number | null> = {};
-      for (const { columnIndex, weekStart } of weekColumns) {
-        values[weekStart] = parseNullableNumber(row[columnIndex]);
-      }
-
-      return {
-        category,
-        values
-      };
-    })
-    .filter((row): row is NonNullable<typeof row> => row !== null);
+  const categories = categoryColumns.map(({ columnIndex, category }) => {
+    const values: Record<string, number | null> = {};
+    for (const { row, weekStart } of weekRows) {
+      values[weekStart] = parseNullableNumber(row[columnIndex]);
+    }
+    return {
+      category,
+      values
+    };
+  });
 
   return {
     key,

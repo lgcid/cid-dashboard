@@ -16,22 +16,20 @@ This dashboard now reads **one spreadsheet sheet per section**.
 
 ## Section sheet format (all sheets except `incidents`)
 
-- Cell `A1`: heading text (for example `Categories`)
-- Row `1`, columns `B...`: week start dates (`YYYY-MM-DD`)
-- Column `A`, rows `2...`: category names
+- Cell `A1`: `week_start`
+- Row `1`, columns `B...`: category / stat names
+- Column `A`, rows `2...`: week start dates (`YYYY-MM-DD`)
 - Data cells: numbers or blank
 
 Example (`urban_management`):
 
-| A                                   | B          |
-|-------------------------------------|------------|
-| Categories                          | 2025-08-01 |
-| Accidents                           | 2          |
-| Emergency, Medical and Assistance   | 0          |
-| Pro-active Actions                  | 0          |
-| Public Space Interventions          | 63         |
+| A          | B         | C                               | D                 | E                           |
+|------------|-----------|---------------------------------|-------------------|-----------------------------|
+| week_start | Accidents | Emergency, Medical and Assistance | Pro-active Actions | Public Space Interventions |
+| 2025-08-01 | 2         | 0                               | 0                 | 63                          |
+| 2025-08-08 | 1         | 1                               | 2                 | 54                          |
 
-## Required row names for hardcoded Summary/Trends
+## Required column names for hardcoded Summary/Trends
 
 ### `public_safety`
 
@@ -80,9 +78,14 @@ The local CSV mode mirrors spreadsheet sheets:
 ## Week logic
 
 - Week list always starts at `2025-08-01`
-- Weeks are discovered from section sheet headers (`>= 2025-08-01`)
+- Weeks are discovered from section sheet rows in column `A` (`>= 2025-08-01`)
 - `record_status` is `REPORTED` if any section has a numeric value for that week
 - Otherwise `record_status` is `NO_DATA_REPORTED`
+
+## Extending data
+
+- Add a new stat by adding a new column (new header in row `1`); it will be read automatically and shown in section-based views such as the `Current Week` tab.
+- Add a new reporting week by adding a new row with `week_start` in column `A`; it will automatically be included in week selection, trends, and dashboard calculations.
 
 ## Security notes
 
