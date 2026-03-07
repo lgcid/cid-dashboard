@@ -18,6 +18,8 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
+import type { TooltipProps } from "recharts/types/component/Tooltip";
 import { BRAND, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
 import type {
   DashboardResponse,
@@ -218,6 +220,114 @@ function valueText(value: number | null | undefined): string {
 
 function legendLabelFormatter(value: string) {
   return <span style={{ color: BRAND.colors.black }}>{value}</span>;
+}
+
+function colorToRgb(color: string): { r: number; g: number; b: number } | null {
+  const normalized = color.trim().toLowerCase();
+  const shortHexMatch = normalized.match(/^#([0-9a-f]{3})$/i);
+  if (shortHexMatch) {
+    const [r, g, b] = shortHexMatch[1].split("").map((channel) => Number.parseInt(`${channel}${channel}`, 16));
+    return { r, g, b };
+  }
+
+  const hexMatch = normalized.match(/^#([0-9a-f]{6})$/i);
+  if (hexMatch) {
+    const value = hexMatch[1];
+    return {
+      r: Number.parseInt(value.slice(0, 2), 16),
+      g: Number.parseInt(value.slice(2, 4), 16),
+      b: Number.parseInt(value.slice(4, 6), 16)
+    };
+  }
+
+  const rgbMatch = normalized.match(/^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i);
+  if (rgbMatch) {
+    return {
+      r: Number.parseInt(rgbMatch[1], 10),
+      g: Number.parseInt(rgbMatch[2], 10),
+      b: Number.parseInt(rgbMatch[3], 10)
+    };
+  }
+
+  return null;
+}
+
+function tooltipTextColorForBackground(color: string): string {
+  const rgb = colorToRgb(color);
+  if (!rgb) {
+    return BRAND.colors.black;
+  }
+
+  const luminance = (0.299 * rgb.r) + (0.587 * rgb.g) + (0.114 * rgb.b);
+  return luminance > 150 ? BRAND.colors.black : BRAND.colors.white;
+}
+
+function formatTrendTooltipValue(value: ValueType | undefined): string {
+  if (typeof value === "number") {
+    if (Number.isInteger(value)) {
+      return value.toLocaleString();
+    }
+    return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.join(", ");
+  }
+  return NO_DATA_LABEL;
+}
+
+function TrendTooltip({
+  active,
+  payload
+}: TooltipProps<ValueType, NameType>) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const chartPoint = payload[0]?.payload as TrendChartPoint | undefined;
+  const dateLabel = chartPoint?.period_start ? formatWeekDate(chartPoint.period_start) : "";
+
+  return (
+    <div className="rounded-lg border border-black/15 bg-white px-5 py-4 shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
+      <p className="text-lg font-semibold leading-none" style={{ fontFamily: "var(--font-heading)" }}>
+        {dateLabel || NO_DATA_LABEL}
+      </p>
+
+      <div className="mt-5 space-y-3">
+        {payload.map((entry, index) => {
+          const key = `${entry.dataKey ?? entry.name ?? index}`;
+          const seriesColor = entry.color ?? BRAND.colors.black;
+          const valueColor = tooltipTextColorForBackground(seriesColor);
+          const isMovingAverage = typeof entry.dataKey === "string" && entry.dataKey.endsWith("_ma4");
+          const label = `${String(entry.name ?? "Value")}:`;
+
+          return (
+            <div key={key} className="flex items-center gap-2.5">
+              <span
+                className="inline-block w-5 border-t-[3px]"
+                style={{
+                  borderTopColor: seriesColor,
+                  borderTopStyle: isMovingAverage ? "dashed" : "solid"
+                }}
+              />
+              <span className="text-[16px] leading-none text-black">{label}</span>
+              <span
+                className="ml-auto inline-flex min-w-[2rem] items-center justify-center rounded-md px-2 py-1 text-[16px] font-semibold leading-none"
+                style={{
+                  backgroundColor: seriesColor,
+                  color: valueColor
+                }}
+              >
+                {formatTrendTooltipValue(entry.value)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function TrendLegend({
@@ -1805,7 +1915,7 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
+                      <Tooltip content={<TrendTooltip />} />
                       <Legend content={<TrendLegend />} />
                       <Line
                         type="monotone"
@@ -1835,7 +1945,7 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
+                      <Tooltip content={<TrendTooltip />} />
                       <Legend content={<TrendLegend />} />
                       <Line
                         type="monotone"
@@ -1865,7 +1975,7 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
+                      <Tooltip content={<TrendTooltip />} />
                       <Legend content={<TrendLegend />} />
                       <Line
                         type="monotone"
@@ -1895,7 +2005,7 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
+                      <Tooltip content={<TrendTooltip />} />
                       <Legend content={<TrendLegend />} />
                       <Line
                         type="monotone"
@@ -1925,7 +2035,7 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
+                      <Tooltip content={<TrendTooltip />} />
                       <Legend content={<TrendLegend />} />
                       <Line
                         type="monotone"
@@ -1955,7 +2065,7 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
+                      <Tooltip content={<TrendTooltip />} />
                       <Legend content={<TrendLegend />} />
                       <Line
                         type="monotone"
