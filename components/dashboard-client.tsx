@@ -1164,7 +1164,7 @@ function CurrentWeekBreakdownChart({
       {subtitle ? <p className="mt-1 text-sm text-black/75">{subtitle}</p> : null}
       <div className="mt-3 h-[290px] rounded-xl border border-black p-2">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ top: 6, right: 10, left: 0, bottom: 6 }}>
+          <BarChart data={data} layout="vertical" margin={{ top: 6, right: 28, left: 0, bottom: 6 }}>
             <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.2} />
             <XAxis type="number" tick={{ fontSize: 10 }} />
             <YAxis
