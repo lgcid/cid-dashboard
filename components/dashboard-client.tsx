@@ -1482,6 +1482,9 @@ export default function DashboardClient({ initialData }: Props) {
     if (typeof window === "undefined") {
       return;
     }
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      return;
+    }
 
     const exportRefByTab: Record<DashboardTab, RefObject<HTMLDivElement>> = {
       main: mainPrintableRef,
@@ -1572,7 +1575,7 @@ export default function DashboardClient({ initialData }: Props) {
                 type="button"
                 onClick={handlePrintScreenshot}
                 disabled={isPrinting}
-                className="inline-flex items-center rounded-md border border-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
+                className="hidden items-center rounded-md border border-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60 md:inline-flex"
               >
                 {isPrinting ? "Preparing..." : "Print"}
               </button>
