@@ -105,7 +105,6 @@ const CONTACTS_TREND_COLOR = BRAND.colors.black;
 const SUMMARY_PUBLIC_SAFETY_COLOR = BRAND.colors.safety;
 const SUMMARY_CLEANING_COLOR = BRAND.colors.cleaning;
 const SCREENSHOT_EXPORT_SCALE = 2;
-const PRINT_LOG_PREFIX = "[dashboard-print]";
 
 const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
   { id: "summary", label: "Summary" },
@@ -217,22 +216,6 @@ function valueText(value: number | null | undefined): string {
     return NO_DATA_LABEL;
   }
   return value.toLocaleString();
-}
-
-function nowMs(): number {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
-}
-
-function toErrorDetails(error: unknown): Record<string, unknown> {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    };
-  }
-
-  return { error };
 }
 
 function legendLabelFormatter(value: string) {
@@ -1500,23 +1483,6 @@ export default function DashboardClient({ initialData }: Props) {
       return;
     }
 
-    const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    const startedAtMs = nowMs();
-    let stage = "init";
-    const log = (
-      level: "info" | "warn" | "error",
-      message: string,
-      details: Record<string, unknown> = {}
-    ) => {
-      console[level](`${PRINT_LOG_PREFIX} ${message}`, {
-        requestId,
-        tab: activeTab,
-        stage,
-        elapsedMs: Math.round(nowMs() - startedAtMs),
-        ...details
-      });
-    };
-
     const exportRefByTab: Record<DashboardTab, RefObject<HTMLDivElement>> = {
       main: mainPrintableRef,
       summary: summaryPrintableRef,
@@ -1525,45 +1491,23 @@ export default function DashboardClient({ initialData }: Props) {
     };
     const exportNode = exportRefByTab[activeTab].current;
     if (!exportNode) {
-      log("warn", "No export node found for active tab.");
       return;
     }
 
-    const watchdogTimers = [5000, 15000, 30000].map((timeoutMs) =>
-      window.setTimeout(() => {
-        log("warn", "Print still in progress.", { timeoutMs });
-      }, timeoutMs)
-    );
-
     setIsPrinting(true);
-    log("info", "Print started.", {
-      userAgent: navigator.userAgent,
-      viewportWidth: window.innerWidth,
-      viewportHeight: window.innerHeight
-    });
     try {
-      stage = "prepare-dom";
       exportNode.classList.add("dashboard-export-mode");
       exportNode.classList.add("summary-export-mode");
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
-      log("info", "Export classes applied.");
 
       if (typeof document !== "undefined" && "fonts" in document) {
-        stage = "fonts-ready";
         await document.fonts.ready;
-        log("info", "Fonts ready.");
       }
 
-      stage = "render-image";
       const exportWidth = Math.ceil(exportNode.scrollWidth);
       const exportHeight = Math.ceil(exportNode.scrollHeight);
-      log("info", "Starting dom-to-image render.", {
-        exportWidth,
-        exportHeight,
-        screenshotScale: SCREENSHOT_EXPORT_SCALE
-      });
       const pngDataUrl = await domtoimage.toPng(exportNode, {
         bgcolor: BRAND.colors.white,
         cacheBust: true,
@@ -1576,11 +1520,6 @@ export default function DashboardClient({ initialData }: Props) {
           height: `${exportHeight}px`
         }
       });
-      log("info", "dom-to-image render completed.", {
-        dataUrlLength: pngDataUrl.length
-      });
-
-      stage = "trigger-download";
       const weekToken = currentWeek
         ? `${currentWeek.week_start}_to_${currentWeek.week_end}`
         : selectedWeekStart;
@@ -1590,18 +1529,10 @@ export default function DashboardClient({ initialData }: Props) {
       link.href = pngDataUrl;
       link.download = downloadName;
       link.click();
-      log("info", "Download click dispatched.", {
-        downloadName
-      });
-    } catch (error) {
-      log("error", "Print failed.", toErrorDetails(error));
     } finally {
-      stage = "cleanup";
-      watchdogTimers.forEach((timeoutId) => window.clearTimeout(timeoutId));
       exportNode.classList.remove("dashboard-export-mode");
       exportNode.classList.remove("summary-export-mode");
       setIsPrinting(false);
-      log("info", "Print cleanup complete.");
     }
   }
 
