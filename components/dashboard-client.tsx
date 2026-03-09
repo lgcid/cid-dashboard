@@ -1308,6 +1308,9 @@ export default function DashboardClient({ initialData }: Props) {
     () => incidentsForWeek(initialData.incidents, selectedWeekStart),
     [initialData.incidents, selectedWeekStart]
   );
+  const incidentLogEmptyLabel = currentWeek?.metrics.criminal_incidents === 0
+    ? "No incidents this week"
+    : NO_DATA_LABEL;
 
   const reportedWeeks = useMemo(
     () => weekly.filter((row) => row.record_status === "REPORTED"),
@@ -1855,7 +1858,7 @@ export default function DashboardClient({ initialData }: Props) {
                     </article>
                   ))
                 ) : (
-                  <p className="border border-dashed border-black p-3 text-sm">{NO_DATA_LABEL}</p>
+                  <p className="border border-dashed border-black p-3 text-sm">{incidentLogEmptyLabel}</p>
                 )}
               </div>
             </div>
