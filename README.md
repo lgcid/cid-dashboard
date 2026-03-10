@@ -44,10 +44,11 @@ npm run dev
 1. Dashboard data is maintained in CSV files:
 - `data/csv/sections/urban_management.csv`
 - `data/csv/sections/public_safety.csv`
+- `data/csv/sections/law_enforcement.csv`
 - `data/csv/sections/cleaning.csv`
 - `data/csv/sections/social_services.csv`
 - `data/csv/sections/parks.csv`
-- `data/csv/sections/communications.csv`
+- `data/csv/sections/control_room_engagement.csv`
 - `data/csv/sections/c3_logged.csv`
 - `data/csv/sections/c3_resolved.csv`
 - `data/csv/incidents.csv`

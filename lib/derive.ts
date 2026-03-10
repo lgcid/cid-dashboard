@@ -21,9 +21,13 @@ const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const PUBLIC_SAFETY_LABELS = {
   criminal_incidents: ["Criminal Incidents"],
   arrests_made: ["Arrests Made"],
+  proactive_actions: ["Stop and Search", "Stop & Search", "Pro-active Actions", "Proactive Actions"],
+  public_space_interventions: ["Public Space Interventions"]
+} as const;
+
+const LAW_ENFORCEMENT_LABELS = {
   section56_notices: ["Section 56 Notices"],
-  section341_notices: ["Section 341 Notices"],
-  proactive_actions: ["Pro-active Actions", "Proactive Actions"]
+  section341_notices: ["Section 341 Notices"]
 } as const;
 
 const CLEANING_LABELS = {
@@ -33,10 +37,21 @@ const CLEANING_LABELS = {
   cleaning_stormwater_bags_filled: ["Stormwater Bags Filled"]
 } as const;
 
-const COMMUNICATION_LABELS = {
+const CONTROL_ROOM_ENGAGEMENT_LABELS = {
   calls_received: ["Calls Received", "Calls"],
   whatsapps_received: ["WhatsApps Received", "WhatsApp Received", "WhatsApp Messages Received", "WhatsApps"]
 } as const;
+
+const PARKS_LABELS = {
+  pruned_trees: ["Pruned Trees", "Pruned trees"]
+} as const;
+
+const SOCIAL_TOUCH_POINT_EXCLUDED_LABELS = [
+  "Work Readiness Bags Collected",
+  "Work Readiness Bag Collected",
+  "Successful ID Applications",
+  "Successful ID Application"
+] as const;
 
 function isIsoDay(value: string): boolean {
   return ISO_DAY_PATTERN.test(value);
@@ -80,13 +95,11 @@ function sumSectionForWeek(section: SectionData, weekStart: string): number | nu
   return sumNullable(section.categories.map((row) => row.values[weekStart] ?? null));
 }
 
-function sumSectionForWeekExcludingWorkReadiness(section: SectionData, weekStart: string): number | null {
+function sumSectionForWeekExcluding(section: SectionData, weekStart: string, excludedCategories: readonly string[]): number | null {
+  const excluded = new Set(excludedCategories.map(normalizeLabel));
   return sumNullable(
     section.categories
-      .filter((row) => {
-        const normalized = normalizeLabel(row.category);
-        return !normalized.includes("work readiness") && !normalized.includes("workreadiness");
-      })
+      .filter((row) => !excluded.has(normalizeLabel(row.category)))
       .map((row) => row.values[weekStart] ?? null)
   );
 }
@@ -169,22 +182,25 @@ export function buildWeeklyRows(weeks: WeekRecord[], sections: SectionMap): Week
     const weekStart = week.week_start;
 
     const publicSafety = sections.public_safety;
+    const lawEnforcement = sections.law_enforcement;
     const cleaning = sections.cleaning;
-    const communications = sections.communications;
+    const controlRoomEngagement = sections.control_room_engagement;
 
     const criminalIncidents = findCategoryValue(publicSafety, weekStart, PUBLIC_SAFETY_LABELS.criminal_incidents);
     const arrestsMade = findCategoryValue(publicSafety, weekStart, PUBLIC_SAFETY_LABELS.arrests_made);
-    const section56Notices = findCategoryValue(publicSafety, weekStart, PUBLIC_SAFETY_LABELS.section56_notices);
-    const section341Notices = findCategoryValue(publicSafety, weekStart, PUBLIC_SAFETY_LABELS.section341_notices);
+    const section56Notices = findCategoryValue(lawEnforcement, weekStart, LAW_ENFORCEMENT_LABELS.section56_notices);
+    const section341Notices = findCategoryValue(lawEnforcement, weekStart, LAW_ENFORCEMENT_LABELS.section341_notices);
     const proactiveActions = findCategoryValue(publicSafety, weekStart, PUBLIC_SAFETY_LABELS.proactive_actions);
+    const publicSpaceInterventions = findCategoryValue(publicSafety, weekStart, PUBLIC_SAFETY_LABELS.public_space_interventions);
 
     const cleaningBagsCollected = findCategoryValue(cleaning, weekStart, CLEANING_LABELS.cleaning_bags_collected);
     const cleaningServitudesCleaned = findCategoryValue(cleaning, weekStart, CLEANING_LABELS.cleaning_servitudes_cleaned);
     const cleaningStormwaterDrains = findCategoryValue(cleaning, weekStart, CLEANING_LABELS.cleaning_stormwater_drains_cleaned);
     const cleaningStormwaterBags = findCategoryValue(cleaning, weekStart, CLEANING_LABELS.cleaning_stormwater_bags_filled);
 
-    const callsReceived = findCategoryValue(communications, weekStart, COMMUNICATION_LABELS.calls_received);
-    const whatsappsReceived = findCategoryValue(communications, weekStart, COMMUNICATION_LABELS.whatsapps_received);
+    const callsReceived = findCategoryValue(controlRoomEngagement, weekStart, CONTROL_ROOM_ENGAGEMENT_LABELS.calls_received);
+    const whatsappsReceived = findCategoryValue(controlRoomEngagement, weekStart, CONTROL_ROOM_ENGAGEMENT_LABELS.whatsapps_received);
+    const parksPrunedTrees = findCategoryValue(sections.parks, weekStart, PARKS_LABELS.pruned_trees);
 
     return {
       ...week,
@@ -195,12 +211,14 @@ export function buildWeeklyRows(weeks: WeekRecord[], sections: SectionMap): Week
         section56_notices: section56Notices,
         section341_notices: section341Notices,
         proactive_actions: proactiveActions,
+        public_space_interventions: publicSpaceInterventions,
         cleaning_bags_collected: cleaningBagsCollected,
         cleaning_servitudes_cleaned: cleaningServitudesCleaned,
         cleaning_stormwater_drains_cleaned: cleaningStormwaterDrains,
         cleaning_stormwater_bags_filled: cleaningStormwaterBags,
-        social_touch_points: sumSectionForWeekExcludingWorkReadiness(sections.social_services, weekStart),
-        parks_total_bags: sumSectionForWeek(sections.parks, weekStart),
+        social_touch_points: sumSectionForWeekExcluding(sections.social_services, weekStart, SOCIAL_TOUCH_POINT_EXCLUDED_LABELS),
+        parks_total_bags: sumSectionForWeekExcluding(sections.parks, weekStart, PARKS_LABELS.pruned_trees),
+        parks_pruned_trees: parksPrunedTrees,
         c3_logged_total: sumSectionForWeek(sections.c3_logged, weekStart),
         c3_resolved_total: sumSectionForWeek(sections.c3_resolved, weekStart),
         calls_received: callsReceived,

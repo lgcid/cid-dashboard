@@ -38,7 +38,14 @@ type SectionIconKind = "summary" | "currentWeek" | "incidents" | "trends" | "c3"
 type ComparisonTone = "increase" | "decrease" | "flat" | "none";
 type DashboardTab = "main" | "summary" | "trends" | "c3";
 type TrendGranularity = "week" | "month" | "year";
-type SummaryInfographicGroupId = "safety_response" | "cleaning_urban" | "social_services" | "communications" | "parks";
+type SummaryInfographicGroupId =
+  | "safety_response"
+  | "law_enforcement"
+  | "urban_management"
+  | "cleaning_urban"
+  | "social_services"
+  | "control_room_engagement"
+  | "parks";
 type SummaryInfographicIconKind =
   | "urban"
   | "crime"
@@ -47,6 +54,7 @@ type SummaryInfographicIconKind =
   | "cleaning"
   | "drain"
   | "shelter"
+  | "tree"
   | "bags"
   | "logged"
   | "calls";
@@ -82,27 +90,34 @@ type TrendChartPoint = {
   period_end: string;
   period_label: string;
   urban_total: number | null;
+  fines_total: number | null;
   criminal_incidents: number | null;
   cleaning_bags_collected: number | null;
   social_touch_points: number | null;
   parks_total_bags: number | null;
   contacts_total: number | null;
+  c3_logged_total: number | null;
   urban_ma4: number | null;
+  fines_total_ma4: number | null;
   criminal_ma4: number | null;
   cleaning_ma4: number | null;
   social_touch_points_ma4: number | null;
   parks_total_bags_ma4: number | null;
   contacts_total_ma4: number | null;
+  c3_logged_total_ma4: number | null;
 };
 
 const C3_RESOLVED_GREY = "rgba(0, 0, 0, 0.35)";
 const CRIME_TREND_COLOR = BRAND.colors.safety;
 const CLEANING_TREND_COLOR = BRAND.colors.cleaning;
 const URBAN_TREND_COLOR = BRAND.colors.black;
+const LAW_ENFORCEMENT_TREND_COLOR = BRAND.colors.black;
 const SOCIAL_TREND_COLOR = BRAND.colors.social;
 const PARKS_TREND_COLOR = BRAND.colors.parks;
 const CONTACTS_TREND_COLOR = BRAND.colors.black;
+const C3_LOGGED_TREND_COLOR = BRAND.colors.black;
 const SUMMARY_PUBLIC_SAFETY_COLOR = BRAND.colors.safety;
+const SUMMARY_LAW_ENFORCEMENT_COLOR = BRAND.colors.black;
 const SUMMARY_CLEANING_COLOR = BRAND.colors.cleaning;
 const SCREENSHOT_EXPORT_SCALE = 2;
 
@@ -122,42 +137,79 @@ const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
   {
     id: "safety_response",
     title: "Public Safety",
-    description: "Public safety and urban managenment outcomes",
+    description: "Crime and crime prevention activities",
     accent: SUMMARY_PUBLIC_SAFETY_COLOR
+  },
+  {
+    id: "law_enforcement",
+    title: "Law Enforcement",
+    description: "Total fines issued (Section 56 + Section 341)",
+    accent: SUMMARY_LAW_ENFORCEMENT_COLOR,
+    headingAccent: BRAND.colors.white
+  },
+  {
+    id: "urban_management",
+    title: "Urban Management",
+    description: "Operational incidents and actions",
+    accent: BRAND.colors.black,
+    headingAccent: BRAND.colors.white
   },
   {
     id: "cleaning_urban",
     title: "Cleaning & Maintenance",
-    description: "Cleaning and maintenance outputs",
+    description: "Street and public area cleaning and maintenance",
     accent: SUMMARY_CLEANING_COLOR
   },
   {
     id: "social_services",
     title: "Social Services",
-    description: "Community support and outreach touch points",
+    description: "Engagements with the homeless and vulnerable",
     accent: BRAND.colors.social
-  },
-  {
-    id: "communications",
-    title: "Communications",
-    description: "Resident reporting and service request activity",
-    accent: BRAND.colors.black,
-    headingAccent: BRAND.colors.white
   },
   {
     id: "parks",
     title: "Parks & Recreation",
-    description: "Bags collected across all tracked parks sites",
+    description: "Maintenance of green spaces and public areas",
     accent: BRAND.colors.parks
+  },
+  {
+    id: "control_room_engagement",
+    title: "Control Room Engagement",
+    description: "Reporting to the 24-hour control room",
+    accent: BRAND.colors.black,
+    headingAccent: BRAND.colors.white
   }
 ];
 
+const SUMMARY_INFOGRAPHIC_RENDER_ORDER: SummaryInfographicGroupId[] = [
+  "safety_response",
+  "cleaning_urban",
+  "social_services",
+  "parks",
+  "law_enforcement",
+  "urban_management",
+  "control_room_engagement"
+];
+
+const SUMMARY_INFOGRAPHIC_COLUMNS: SummaryInfographicGroupId[][] = [
+  ["safety_response", "social_services"],
+  ["cleaning_urban", "parks"],
+  ["law_enforcement", "urban_management", "control_room_engagement"]
+];
+
 const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
-  { id: "urban_total", label: "Urban management incidents", icon: "urban", groupId: "safety_response", key: "urban_total" },
-  { id: "fines_issued", label: "Fines issued", icon: "logged", groupId: "safety_response", derived: "fines_issued" },
   { id: "criminal_incidents", label: "Criminal incidents", icon: "crime", groupId: "safety_response", key: "criminal_incidents" },
   { id: "arrests_made", label: "Arrests", icon: "arrests", groupId: "safety_response", key: "arrests_made" },
-  { id: "proactive_actions", label: "Proactive interventions", icon: "proactive", groupId: "safety_response", key: "proactive_actions" },
+  { id: "proactive_actions", label: "Stop and Search", icon: "proactive", groupId: "safety_response", key: "proactive_actions" },
+  {
+    id: "public_space_interventions",
+    label: "Public space interventions",
+    icon: "urban",
+    groupId: "safety_response",
+    key: "public_space_interventions"
+  },
+  { id: "fines_issued", label: "Fines issued", icon: "logged", groupId: "law_enforcement", derived: "fines_issued" },
+  { id: "urban_total", label: "Total incidents", icon: "urban", groupId: "urban_management", key: "urban_total" },
   {
     id: "cleaning_total_bags",
     label: "Cleaning bags collected",
@@ -180,15 +232,16 @@ const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
     groupId: "social_services",
     key: "social_touch_points"
   },
-  { id: "c3_logged_total", label: "C3 logged requests", icon: "logged", groupId: "communications", key: "c3_logged_total" },
-  { id: "contacts_total", label: "Calls + WhatsApp received", icon: "calls", groupId: "communications", derived: "contacts_total" },
+  { id: "c3_logged_total", label: "C3 logged requests", icon: "logged", groupId: "control_room_engagement", key: "c3_logged_total" },
+  { id: "contacts_total", label: "Calls + WhatsApp received", icon: "calls", groupId: "control_room_engagement", derived: "contacts_total" },
   {
     id: "parks_total_bags",
     label: "Bags",
     icon: "bags",
     groupId: "parks",
     key: "parks_total_bags"
-  }
+  },
+  { id: "parks_pruned_trees", label: "Pruned trees", icon: "tree", groupId: "parks", key: "parks_pruned_trees" }
 ];
 
 function themeRailClass(theme: MetricTheme): string {
@@ -440,17 +493,6 @@ function weekChartDataFromSection(section: SectionData, weekStart: string | null
   }));
 }
 
-function unitForCategoryLabel(label: string): { unitPlural?: string; unitSingular?: string } {
-  const normalized = normalizeCategoryLabel(label);
-  if (normalized.includes("bag")) {
-    return {
-      unitPlural: "bags",
-      unitSingular: "bag"
-    };
-  }
-  return {};
-}
-
 function unionSectionCategories(primary: SectionData, secondary: SectionData): string[] {
   const ordered: string[] = [];
   const seen = new Set<string>();
@@ -511,6 +553,19 @@ function trendCleaningTotal(row: WeeklyMetricRow): number | null {
   return (cleaning ?? 0) + (stormwater ?? 0);
 }
 
+function trendFinesTotal(row: WeeklyMetricRow): number | null {
+  const section56 = toMetricNumber(row.metrics.section56_notices);
+  const section341 = toMetricNumber(row.metrics.section341_notices);
+  if (section56 === null && section341 === null) {
+    return null;
+  }
+  return (section56 ?? 0) + (section341 ?? 0);
+}
+
+function trendC3LoggedTotal(row: WeeklyMetricRow): number | null {
+  return toMetricNumber(row.metrics.c3_logged_total);
+}
+
 function trendDateBounds(rows: WeeklyMetricRow[], fallbackDate: string): { from: string; to: string } {
   const sorted = [...rows].sort((a, b) => a.week_start.localeCompare(b.week_start));
   const reported = sorted.filter((row) => row.record_status === "REPORTED");
@@ -535,11 +590,13 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
     period_end: string;
     period_label: string;
     urban_total: number | null;
+    fines_total: number | null;
     criminal_incidents: number | null;
     cleaning_bags_collected: number | null;
     social_touch_points: number | null;
     parks_total_bags: number | null;
     contacts_total: number | null;
+    c3_logged_total: number | null;
   }> = [];
 
   if (granularity === "week") {
@@ -549,11 +606,13 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
         period_end: row.week_end,
         period_label: formatIsoWithPattern(row.week_start, "dd MMM"),
         urban_total: toMetricNumber(row.metrics.urban_total),
+        fines_total: trendFinesTotal(row),
         criminal_incidents: toMetricNumber(row.metrics.criminal_incidents),
         cleaning_bags_collected: trendCleaningTotal(row),
         social_touch_points: toMetricNumber(row.metrics.social_touch_points),
         parks_total_bags: toMetricNumber(row.metrics.parks_total_bags),
-        contacts_total: trendContactsTotal(row)
+        contacts_total: trendContactsTotal(row),
+        c3_logged_total: trendC3LoggedTotal(row)
       });
     }
   } else {
@@ -564,11 +623,13 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
         period_end: string;
         period_label: string;
         urban: number[];
+        fines: number[];
         criminal: number[];
         cleaning: number[];
         social: number[];
         parks: number[];
         contacts: number[];
+        c3Logged: number[];
       }
     >();
 
@@ -586,11 +647,13 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
           period_end: row.week_end,
           period_label: periodLabel,
           urban: [],
+          fines: [],
           criminal: [],
           cleaning: [],
           social: [],
           parks: [],
-          contacts: []
+          contacts: [],
+          c3Logged: []
         });
       }
 
@@ -601,14 +664,19 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
 
       bucket.period_end = row.week_end;
       const urban = toMetricNumber(row.metrics.urban_total);
+      const fines = trendFinesTotal(row);
       const criminal = toMetricNumber(row.metrics.criminal_incidents);
       const cleaning = trendCleaningTotal(row);
       const social = toMetricNumber(row.metrics.social_touch_points);
       const parks = toMetricNumber(row.metrics.parks_total_bags);
       const contacts = trendContactsTotal(row);
+      const c3Logged = trendC3LoggedTotal(row);
 
       if (urban !== null) {
         bucket.urban.push(urban);
+      }
+      if (fines !== null) {
+        bucket.fines.push(fines);
       }
       if (criminal !== null) {
         bucket.criminal.push(criminal);
@@ -625,6 +693,9 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
       if (contacts !== null) {
         bucket.contacts.push(contacts);
       }
+      if (c3Logged !== null) {
+        bucket.c3Logged.push(c3Logged);
+      }
     }
 
     for (const bucket of grouped.values()) {
@@ -633,30 +704,36 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
         period_end: bucket.period_end,
         period_label: bucket.period_label,
         urban_total: sumMetric(bucket.urban),
+        fines_total: sumMetric(bucket.fines),
         criminal_incidents: sumMetric(bucket.criminal),
         cleaning_bags_collected: sumMetric(bucket.cleaning),
         social_touch_points: sumMetric(bucket.social),
         parks_total_bags: sumMetric(bucket.parks),
-        contacts_total: sumMetric(bucket.contacts)
+        contacts_total: sumMetric(bucket.contacts),
+        c3_logged_total: sumMetric(bucket.c3Logged)
       });
     }
   }
 
   const urbanValues = aggregated.map((point) => point.urban_total);
+  const finesValues = aggregated.map((point) => point.fines_total);
   const crimeValues = aggregated.map((point) => point.criminal_incidents);
   const cleaningValues = aggregated.map((point) => point.cleaning_bags_collected);
   const socialValues = aggregated.map((point) => point.social_touch_points);
   const parksValues = aggregated.map((point) => point.parks_total_bags);
   const contactsValues = aggregated.map((point) => point.contacts_total);
+  const c3LoggedValues = aggregated.map((point) => point.c3_logged_total);
 
   return aggregated.map((point, index) => ({
     ...point,
     urban_ma4: movingAverage(urbanValues, index, 4),
+    fines_total_ma4: movingAverage(finesValues, index, 4),
     criminal_ma4: movingAverage(crimeValues, index, 4),
     cleaning_ma4: movingAverage(cleaningValues, index, 4),
     social_touch_points_ma4: movingAverage(socialValues, index, 4),
     parks_total_bags_ma4: movingAverage(parksValues, index, 4),
-    contacts_total_ma4: movingAverage(contactsValues, index, 4)
+    contacts_total_ma4: movingAverage(contactsValues, index, 4),
+    c3_logged_total_ma4: movingAverage(c3LoggedValues, index, 4)
   }));
 }
 
@@ -760,18 +837,11 @@ function SectionHeading({
   );
 }
 
-function metricValueText(value: number | null | undefined, unitPlural?: string, unitSingular?: string): string {
+function metricValueText(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) {
     return NO_DATA_LABEL;
   }
-  if (!unitPlural) {
-    return value.toLocaleString();
-  }
-
-  if (value === 1 && unitSingular) {
-    return `${value.toLocaleString()} ${unitSingular}`;
-  }
-  return `${value.toLocaleString()} ${unitPlural}`;
+  return value.toLocaleString();
 }
 
 function deltaSigned(current: number | null | undefined, previous: number | null | undefined): {
@@ -914,6 +984,16 @@ function SummaryInfographicIcon({ kind, className }: { kind: SummaryInfographicI
         <path d="M4 12 12 5l8 7" />
         <path d="M6 11.5V20h12v-8.5" />
         <path d="M10 20v-4h4v4" />
+      </svg>
+    );
+  }
+
+  if (kind === "tree") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
+        <path d="M12 20v-4" />
+        <path d="M8 20h8" />
+        <path d="m12 4 4 4h-2l3 3h-3l2 3H8l2-3H7l3-3H8l4-4Z" />
       </svg>
     );
   }
@@ -1061,15 +1141,11 @@ function SummaryMetricCard({
 function PillarMetricRow({
   label,
   current,
-  previous,
-  unitPlural,
-  unitSingular
+  previous
 }: {
   label: string;
   current: number | null | undefined;
   previous: number | null | undefined;
-  unitPlural?: string;
-  unitSingular?: string;
 }) {
   const delta = deltaSigned(current, previous);
 
@@ -1077,7 +1153,7 @@ function PillarMetricRow({
     <li className="flex items-center justify-between gap-3 border-b border-black/15 py-2 last:border-b-0">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.08em]">{label}</p>
-        <p className="mt-1 text-xl font-bold">{metricValueText(current, unitPlural, unitSingular)}</p>
+        <p className="mt-1 text-xl font-bold">{metricValueText(current)}</p>
       </div>
       <div className="shrink-0">
         <span
@@ -1108,8 +1184,6 @@ function PillarSection({
     label: string;
     current: number | null | undefined;
     previous: number | null | undefined;
-    unitPlural?: string;
-    unitSingular?: string;
   }>;
 }) {
   return (
@@ -1136,8 +1210,6 @@ function PillarSection({
             label={metric.label}
             current={metric.current}
             previous={metric.previous}
-            unitPlural={metric.unitPlural}
-            unitSingular={metric.unitSingular}
           />
         ))}
       </ul>
@@ -1217,6 +1289,17 @@ function ExportImageFooter() {
       <p className="export-image-footer__cell">lowergardenscid.co.za</p>
     </footer>
   );
+}
+
+function parksMetricLabel(label: string): string {
+  const normalized = normalizeCategoryLabel(label);
+  if (normalized === "pruned trees" || normalized === "pruned tree") {
+    return "Trees Pruned";
+  }
+  if (normalized.includes("bag")) {
+    return label;
+  }
+  return `${label} Bags`;
 }
 
 export default function DashboardClient({ initialData }: Props) {
@@ -1402,12 +1485,16 @@ export default function DashboardClient({ initialData }: Props) {
     () => weekChartDataFromSection(initialData.sections.urban_management, currentWeekStart),
     [currentWeekStart, initialData.sections.urban_management]
   );
-  const currentWeekCommunicationBreakdown = useMemo(
+  const currentWeekLawEnforcementBreakdown = useMemo(
     () => [
-      { category: "Calls", value: toMetricNumber(currentWeek?.metrics.calls_received) ?? 0 },
-      { category: "WhatsApp", value: toMetricNumber(currentWeek?.metrics.whatsapps_received) ?? 0 }
+      { category: "Section 56 Notices", value: toMetricNumber(currentWeek?.metrics.section56_notices) ?? 0 },
+      { category: "Section 341 Notices", value: toMetricNumber(currentWeek?.metrics.section341_notices) ?? 0 }
     ],
     [currentWeek]
+  );
+  const currentWeekControlRoomBreakdown = useMemo(
+    () => weekChartDataFromSection(initialData.sections.control_room_engagement, currentWeekStart),
+    [currentWeekStart, initialData.sections.control_room_engagement]
   );
   const currentWeekC3LoggedBreakdown = useMemo(
     () => weekChartDataFromSection(initialData.sections.c3_logged, currentWeekStart),
@@ -1420,15 +1507,11 @@ export default function DashboardClient({ initialData }: Props) {
 
   const toPillarMetrics = useCallback(
     (section: SectionData) =>
-      section.categories.map((row) => {
-        const units = unitForCategoryLabel(row.category);
-        return {
-          label: row.category,
-          current: currentWeekStart ? toMetricNumber(row.values[currentWeekStart] ?? null) : null,
-          previous: previousWeekStart ? toMetricNumber(row.values[previousWeekStart] ?? null) : null,
-          ...units
-        };
-      }),
+      section.categories.map((row) => ({
+        label: row.category,
+        current: currentWeekStart ? toMetricNumber(row.values[currentWeekStart] ?? null) : null,
+        previous: previousWeekStart ? toMetricNumber(row.values[previousWeekStart] ?? null) : null
+      })),
     [currentWeekStart, previousWeekStart]
   );
 
@@ -1474,9 +1557,7 @@ export default function DashboardClient({ initialData }: Props) {
       summary: "Maintaining and improving green spaces and recreational facilities.",
       metrics: toPillarMetrics(initialData.sections.parks).map((metric) => ({
         ...metric,
-        label: metric.label,
-        unitPlural: "bags",
-        unitSingular: "bag"
+        label: parksMetricLabel(metric.label)
       }))
     }),
     [initialData.sections.parks, toPillarMetrics]
@@ -1772,19 +1853,24 @@ export default function DashboardClient({ initialData }: Props) {
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <CurrentWeekBreakdownChart
-                  title="Urban Management Incidents"
-                  data={currentWeekUrbanBreakdown}
+                  title="Law Enforcement Fines Issued"
+                  data={currentWeekLawEnforcementBreakdown}
                   color={BRAND.colors.black}
                 />
 
                 <CurrentWeekBreakdownChart
-                  title="Communication"
-                  data={currentWeekCommunicationBreakdown}
+                  title="Urban Management Incidents"
+                  data={currentWeekUrbanBreakdown}
                   color={BRAND.colors.black}
                 />
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className="grid gap-4 lg:grid-cols-3">
+                <CurrentWeekBreakdownChart
+                  title="Control Room Engagement"
+                  data={currentWeekControlRoomBreakdown}
+                  color={BRAND.colors.black}
+                />
                 <CurrentWeekBreakdownChart
                   title="CoCT C3 Logged Requests"
                   data={currentWeekC3LoggedBreakdown}
@@ -1874,7 +1960,7 @@ export default function DashboardClient({ initialData }: Props) {
             <section id="summary-infographic" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
               <SectionHeading
                 title="Summary"
-                description={`Activity report showing the key Lower Gardens CID metrics for ${selectedWeekRange}.`}
+                description={`Activity report showing the key metrics for ${selectedWeekRange}.`}
                 icon="summary"
                 iconColor={BRAND.colors.black}
                 iconBackground="transparent"
@@ -1884,17 +1970,18 @@ export default function DashboardClient({ initialData }: Props) {
                 <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
               ) : (
                 <div className="summary-infographic-grid">
-                  <div className="summary-infographic-column">
-                    {summaryGroupsById.safety_response ? <SummaryGroupCard group={summaryGroupsById.safety_response} groupIndex={0} /> : null}
-                  </div>
-                  <div className="summary-infographic-column">
-                    {summaryGroupsById.cleaning_urban ? <SummaryGroupCard group={summaryGroupsById.cleaning_urban} groupIndex={1} /> : null}
-                    {summaryGroupsById.social_services ? <SummaryGroupCard group={summaryGroupsById.social_services} groupIndex={2} /> : null}
-                  </div>
-                  <div className="summary-infographic-column">
-                    {summaryGroupsById.parks ? <SummaryGroupCard group={summaryGroupsById.parks} groupIndex={3} /> : null}
-                    {summaryGroupsById.communications ? <SummaryGroupCard group={summaryGroupsById.communications} groupIndex={4} /> : null}
-                  </div>
+                  {SUMMARY_INFOGRAPHIC_COLUMNS.map((columnGroupIds, columnIndex) => (
+                    <div key={`summary-column-${columnIndex}`} className="summary-infographic-column">
+                      {columnGroupIds.map((groupId) => {
+                        const group = summaryGroupsById[groupId];
+                        if (!group) {
+                          return null;
+                        }
+                        const groupIndex = SUMMARY_INFOGRAPHIC_RENDER_ORDER.indexOf(groupId);
+                        return <SummaryGroupCard key={groupId} group={group} groupIndex={groupIndex} />;
+                      })}
+                    </div>
+                  ))}
                 </div>
               )}
             </section>
@@ -2035,6 +2122,36 @@ export default function DashboardClient({ initialData }: Props) {
                 </div>
 
                 <div className="h-[300px] rounded-xl border border-black p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Law Enforcement Trend</p>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
+                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip content={<TrendTooltip />} />
+                      <Legend content={<TrendLegend />} />
+                      <Line
+                        type="monotone"
+                        dataKey="fines_total"
+                        stroke={LAW_ENFORCEMENT_TREND_COLOR}
+                        strokeWidth={3}
+                        dot={false}
+                        name={`${trendPeriodLabel} fines (total)`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="fines_total_ma4"
+                        stroke={BRAND.colors.black}
+                        strokeWidth={2}
+                        strokeDasharray="6 4"
+                        dot={false}
+                        name={trendAverageLabel}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="h-[300px] rounded-xl border border-black p-3">
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Urban Management Trend</p>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
@@ -2065,7 +2182,7 @@ export default function DashboardClient({ initialData }: Props) {
                 </div>
 
                 <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Communication Trend</p>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Control Room Engagement Trend</p>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
@@ -2084,6 +2201,36 @@ export default function DashboardClient({ initialData }: Props) {
                       <Line
                         type="monotone"
                         dataKey="contacts_total_ma4"
+                        stroke={BRAND.colors.black}
+                        strokeWidth={2}
+                        strokeDasharray="6 4"
+                        dot={false}
+                        name={trendAverageLabel}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="h-[300px] rounded-xl border border-black p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">CoCT C3 Logged Requests Trend</p>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
+                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip content={<TrendTooltip />} />
+                      <Legend content={<TrendLegend />} />
+                      <Line
+                        type="monotone"
+                        dataKey="c3_logged_total"
+                        stroke={C3_LOGGED_TREND_COLOR}
+                        strokeWidth={3}
+                        dot={false}
+                        name={`${trendPeriodLabel} logged requests`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="c3_logged_total_ma4"
                         stroke={BRAND.colors.black}
                         strokeWidth={2}
                         strokeDasharray="6 4"

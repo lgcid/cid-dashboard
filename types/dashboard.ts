@@ -5,10 +5,11 @@ export type NullableNumber = number | null;
 export const SECTION_KEYS = [
   "urban_management",
   "public_safety",
+  "law_enforcement",
   "cleaning",
   "social_services",
   "parks",
-  "communications",
+  "control_room_engagement",
   "c3_logged",
   "c3_resolved"
 ] as const;
@@ -42,12 +43,14 @@ export interface HardcodedWeeklyMetrics {
   section56_notices: NullableNumber;
   section341_notices: NullableNumber;
   proactive_actions: NullableNumber;
+  public_space_interventions: NullableNumber;
   cleaning_bags_collected: NullableNumber;
   cleaning_servitudes_cleaned: NullableNumber;
   cleaning_stormwater_drains_cleaned: NullableNumber;
   cleaning_stormwater_bags_filled: NullableNumber;
   social_touch_points: NullableNumber;
   parks_total_bags: NullableNumber;
+  parks_pruned_trees: NullableNumber;
   c3_logged_total: NullableNumber;
   c3_resolved_total: NullableNumber;
   calls_received: NullableNumber;

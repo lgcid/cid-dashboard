@@ -6,13 +6,14 @@ This dashboard now reads **one spreadsheet sheet per section**.
 
 1. `urban_management`
 2. `public_safety`
-3. `cleaning`
-4. `social_services`
-5. `parks`
-6. `communications`
-7. `c3_logged`
-8. `c3_resolved`
-9. `incidents`
+3. `law_enforcement`
+4. `cleaning`
+5. `social_services`
+6. `parks`
+7. `control_room_engagement`
+8. `c3_logged`
+9. `c3_resolved`
+10. `incidents`
 
 ## Section sheet format (all sheets except `incidents`)
 
@@ -23,11 +24,11 @@ This dashboard now reads **one spreadsheet sheet per section**.
 
 Example (`urban_management`):
 
-| A          | B         | C                               | D                 | E                           |
-|------------|-----------|---------------------------------|-------------------|-----------------------------|
-| week_start | Accidents | Emergency, Medical and Assistance | Pro-active Actions | Public Space Interventions |
-| 2025-08-01 | 2         | 0                               | 0                 | 63                          |
-| 2025-08-08 | 1         | 1                               | 2                 | 54                          |
+| A          | B                        | C                               | D                 | E                 |
+|------------|--------------------------|---------------------------------|-------------------|-------------------|
+| week_start | Motor Vehicle Accidents  | Emergency, Medical and Assistance | Pro-active Actions | By-law management |
+| 2025-08-01 | 2                        | 0                               | 0                 | 1                 |
+| 2025-08-08 | 1                        | 1                               | 2                 | 0                 |
 
 ## Required column names for hardcoded Summary/Trends
 
@@ -35,9 +36,14 @@ Example (`urban_management`):
 
 - `Criminal Incidents`
 - `Arrests Made`
+- `Stop and Search`
+- `Public Space Interventions`
+
+### `law_enforcement`
+
 - `Section 56 Notices`
 - `Section 341 Notices`
-- `Pro-active Actions`
+- `Fines Issued` is derived in the dashboard: `Section 56 Notices + Section 341 Notices` (do not add as a source row)
 
 ### `cleaning`
 
@@ -46,10 +52,26 @@ Example (`urban_management`):
 - `Stormwater Drains Cleaned`
 - `Stormwater Bags Filled`
 
-### `communications`
+### `social_services`
+
+- `Incidents`
+- `Client Follow ups`
+- `Individual Engagements`
+- `Support Sessions`
+- `ID Applications`
+- `Successful ID Applications`
+- `Referred Clients to Shelters`
+- `Work Readiness Bags Collected` (excluded from touch-point totals)
+- `Successful ID Applications` (excluded from touch-point totals)
+
+### `control_room_engagement`
 
 - `Calls Received`
 - `WhatsApps Received`
+
+### `parks`
+
+- `Pruned Trees` (optional, shown on Summary + Current Week)
 
 ## `incidents` sheet format
 
@@ -67,10 +89,11 @@ The local CSV mode mirrors spreadsheet sheets:
 
 - `data/csv/sections/urban_management.csv`
 - `data/csv/sections/public_safety.csv`
+- `data/csv/sections/law_enforcement.csv`
 - `data/csv/sections/cleaning.csv`
 - `data/csv/sections/social_services.csv`
 - `data/csv/sections/parks.csv`
-- `data/csv/sections/communications.csv`
+- `data/csv/sections/control_room_engagement.csv`
 - `data/csv/sections/c3_logged.csv`
 - `data/csv/sections/c3_resolved.csv`
 - `data/csv/incidents.csv`
