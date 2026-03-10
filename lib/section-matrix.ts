@@ -22,6 +22,47 @@ function parseNullableNumber(value: unknown): number | null {
 export function parseSectionMatrix(rows: string[][], key: SectionKey): SectionData {
   const header = rows[0] ?? [];
   const heading = String(header[0] ?? "").trim() || "week_start";
+  const firstDataCell = String(rows[1]?.[0] ?? "").trim();
+
+  const dateColumns: Array<{ columnIndex: number; weekStart: string }> = [];
+  for (let columnIndex = 1; columnIndex < header.length; columnIndex += 1) {
+    const weekStart = String(header[columnIndex] ?? "").trim();
+    if (!isIsoDay(weekStart)) {
+      continue;
+    }
+    if (weekStart < MIN_WEEK_START) {
+      continue;
+    }
+    dateColumns.push({ columnIndex, weekStart });
+  }
+
+  const isTransposedMatrix = dateColumns.length > 0 && !isIsoDay(firstDataCell);
+  if (isTransposedMatrix) {
+    const categories = rows.slice(1).flatMap((row) => {
+      const category = String(row[0] ?? "").trim();
+      if (!category) {
+        return [];
+      }
+
+      const values: Record<string, number | null> = {};
+      for (const { columnIndex, weekStart } of dateColumns) {
+        values[weekStart] = parseNullableNumber(row[columnIndex]);
+      }
+
+      return [
+        {
+          category,
+          values
+        }
+      ];
+    });
+
+    return {
+      key,
+      heading,
+      categories
+    };
+  }
 
   const categoryColumns: Array<{ columnIndex: number; category: string }> = [];
   for (let columnIndex = 1; columnIndex < header.length; columnIndex += 1) {
