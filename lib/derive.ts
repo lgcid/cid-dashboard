@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import type { C3RequestInsights } from "@/lib/c3-requests";
 import { WEEK_START_BASELINE } from "@/lib/section-matrix";
 import { safeDate, weekEndFromStart } from "@/lib/date-utils";
 import { rankHotspots } from "@/lib/hotspots";
@@ -104,27 +105,6 @@ function sumSectionForWeekExcluding(section: SectionData, weekStart: string, exc
   );
 }
 
-function c3Categories(sections: SectionMap): string[] {
-  const ordered: string[] = [];
-  const seen = new Set<string>();
-
-  for (const row of sections.c3_logged.categories) {
-    if (!seen.has(row.category)) {
-      seen.add(row.category);
-      ordered.push(row.category);
-    }
-  }
-
-  for (const row of sections.c3_resolved.categories) {
-    if (!seen.has(row.category)) {
-      seen.add(row.category);
-      ordered.push(row.category);
-    }
-  }
-
-  return ordered;
-}
-
 function sectionCategoryValue(section: SectionData, category: string, weekStart: string): number | null {
   const normalizedTarget = normalizeLabel(category);
   const matched = section.categories.find((row) => normalizeLabel(row.category) === normalizedTarget);
@@ -132,6 +112,31 @@ function sectionCategoryValue(section: SectionData, category: string, weekStart:
     return null;
   }
   return toNumber(matched.values[weekStart] ?? null);
+}
+
+function c3ResolvedTotalForWeek(
+  c3Insights: C3RequestInsights,
+  weekStart: string,
+  loggedTotal: number | null
+): number | null {
+  const resolved = c3Insights.weeklyResolvedTotals[weekStart];
+  if (resolved !== undefined) {
+    return resolved;
+  }
+  return loggedTotal !== null ? 0 : null;
+}
+
+function c3ResolvedValueForCategory(
+  c3Insights: C3RequestInsights,
+  weekStart: string,
+  category: string,
+  loggedValue: number | null
+): number | null {
+  const resolved = c3Insights.weeklyResolvedByCategory[weekStart]?.[category];
+  if (resolved !== undefined) {
+    return resolved;
+  }
+  return loggedValue !== null ? 0 : null;
 }
 
 export function deriveWeeks(sections: SectionMap): WeekRecord[] {
@@ -177,7 +182,11 @@ export function deriveWeeks(sections: SectionMap): WeekRecord[] {
   });
 }
 
-export function buildWeeklyRows(weeks: WeekRecord[], sections: SectionMap): WeeklyMetricRow[] {
+export function buildWeeklyRows(
+  weeks: WeekRecord[],
+  sections: SectionMap,
+  c3Insights: C3RequestInsights
+): WeeklyMetricRow[] {
   return weeks.map((week) => {
     const weekStart = week.week_start;
 
@@ -201,6 +210,7 @@ export function buildWeeklyRows(weeks: WeekRecord[], sections: SectionMap): Week
     const callsReceived = findCategoryValue(controlRoomEngagement, weekStart, CONTROL_ROOM_ENGAGEMENT_LABELS.calls_received);
     const whatsappsReceived = findCategoryValue(controlRoomEngagement, weekStart, CONTROL_ROOM_ENGAGEMENT_LABELS.whatsapps_received);
     const parksPrunedTrees = findCategoryValue(sections.parks, weekStart, PARKS_LABELS.pruned_trees);
+    const c3LoggedTotal = sumSectionForWeek(sections.c3_requests, weekStart);
 
     return {
       ...week,
@@ -219,8 +229,8 @@ export function buildWeeklyRows(weeks: WeekRecord[], sections: SectionMap): Week
         social_touch_points: sumSectionForWeekExcluding(sections.social_services, weekStart, SOCIAL_TOUCH_POINT_EXCLUDED_LABELS),
         parks_total_bags: sumSectionForWeekExcluding(sections.parks, weekStart, PARKS_LABELS.pruned_trees),
         parks_pruned_trees: parksPrunedTrees,
-        c3_logged_total: sumSectionForWeek(sections.c3_logged, weekStart),
-        c3_resolved_total: sumSectionForWeek(sections.c3_resolved, weekStart),
+        c3_logged_total: c3LoggedTotal,
+        c3_resolved_total: c3ResolvedTotalForWeek(c3Insights, weekStart, c3LoggedTotal),
         calls_received: callsReceived,
         whatsapps_received: whatsappsReceived
       }
@@ -305,14 +315,25 @@ export function deriveC3Totals(currentWeek: WeeklyMetricRow | null): C3Totals {
   };
 }
 
-export function deriveC3Breakdown(currentWeek: WeeklyMetricRow | null, sections: SectionMap): C3BreakdownRow[] {
+export function deriveC3Breakdown(
+  currentWeek: WeeklyMetricRow | null,
+  sections: SectionMap,
+  c3Insights: C3RequestInsights
+): C3BreakdownRow[] {
   const weekStart = currentWeek?.week_start ?? null;
-  const categories = c3Categories(sections);
+  const categories = sections.c3_requests.categories.map((row) => row.category);
 
   return categories.map((category) => ({
     department: category,
-    logged: weekStart ? sectionCategoryValue(sections.c3_logged, category, weekStart) : null,
-    resolved: weekStart ? sectionCategoryValue(sections.c3_resolved, category, weekStart) : null
+    logged: weekStart ? sectionCategoryValue(sections.c3_requests, category, weekStart) : null,
+    resolved: weekStart
+      ? c3ResolvedValueForCategory(
+          c3Insights,
+          weekStart,
+          category,
+          sectionCategoryValue(sections.c3_requests, category, weekStart)
+        )
+      : null
   }));
 }
 

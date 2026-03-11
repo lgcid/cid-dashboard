@@ -85,9 +85,9 @@ function filterIncidentsByWindow(incidents: IncidentRow[], start: string, end: s
 }
 
 export async function getDashboardData(query: DashboardQuery = {}): Promise<DashboardResponse> {
-  const { sections, incidents, source } = await loadData();
+  const { sections, incidents, c3Insights, c3Requests, source } = await loadData();
   const weeks = deriveWeeks(sections);
-  const weekly = buildWeeklyRows(weeks, sections);
+  const weekly = buildWeeklyRows(weeks, sections, c3Insights);
   const reportingWindow = deriveReportingWindow(weeks, incidents);
   const weeklyWindowed = sortWeekly(filterByWindow(weekly, reportingWindow.start, reportingWindow.end));
   const weeksWindowed = filterWeeksByWindow(weeks, reportingWindow.start, reportingWindow.end);
@@ -114,7 +114,10 @@ export async function getDashboardData(query: DashboardQuery = {}): Promise<Dash
     current_week: currentWeek,
     trends: buildTrendSeries(weeklyWindowed),
     c3_totals: deriveC3Totals(currentWeek),
-    c3_breakdown: deriveC3Breakdown(currentWeek, sections),
+    c3_breakdown: deriveC3Breakdown(currentWeek, sections, c3Insights),
+    c3_tracker_totals: c3Insights.trackerTotals,
+    c3_tracker_breakdown: c3Insights.trackerBreakdown,
+    c3_request_rows: c3Requests,
     hotspots: deriveHotspots(incidentsWindowed, weeklyWindowed, windowWeeks),
     incidents: incidentsWindowed
   };

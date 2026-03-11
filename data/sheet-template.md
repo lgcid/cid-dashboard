@@ -11,11 +11,10 @@ This dashboard now reads **one spreadsheet sheet per section**.
 5. `social_services`
 6. `parks`
 7. `control_room_engagement`
-8. `c3_logged`
-9. `c3_resolved`
-10. `incidents`
+8. `c3_requests`
+9. `incidents`
 
-## Section sheet format (all sheets except `incidents`)
+## Section sheet format (all sheets except `c3_requests` and `incidents`)
 
 - Cell `A1`: `week_start`
 - Row `1`, columns `B...`: category / stat names
@@ -73,6 +72,25 @@ Example (`urban_management`):
 
 - `Pruned Trees` (optional, shown on Summary + Current Week)
 
+## `c3_requests` sheet format
+
+Columns (in order):
+
+1. `category`
+2. `reference_number`
+3. `date_logged`
+4. `request_status`
+5. `issue_description`
+6. `service`
+7. `address`
+
+Notes:
+
+- `date_logged` should be a day value such as `2026-03-03` or `03/03/2026`.
+- Summary, Current Week, and Trends derive weekly **logged** counts from `date_logged`.
+- The `C3 Tracker` tab derives **currently resolved** counts from `request_status`.
+- Final/resolved statuses are currently treated as `Closed` and `Service Request Completed`.
+
 ## `incidents` sheet format
 
 Columns (in order):
@@ -94,8 +112,7 @@ The local CSV mode mirrors spreadsheet sheets:
 - `data/csv/sections/social_services.csv`
 - `data/csv/sections/parks.csv`
 - `data/csv/sections/control_room_engagement.csv`
-- `data/csv/sections/c3_logged.csv`
-- `data/csv/sections/c3_resolved.csv`
+- `data/csv/sections/c3_requests.csv`
 - `data/csv/incidents.csv`
 
 ## Week logic

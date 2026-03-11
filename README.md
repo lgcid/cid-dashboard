@@ -8,7 +8,7 @@ Mobile-first, brand-compliant Next.js dashboard for Lower Gardens CID weekly ope
 - Secure server-side Google Sheets proxy (`/api/dashboard`)
 - CSV-backed dashboard data (local files or Google Sheets)
 - Weekly trend charts with 4-week moving averages
-- C3 efficiency tracker (totals-first + optional departmental breakdown)
+- C3 tracker based on current request status + backlog by category
 - Social value KPI module (shelter referrals + work readiness)
 - Public safety wins + hotspot street ranking
 - WhatsApp link sharing + PNG screenshot mode (`dom-to-image`)
@@ -49,11 +49,11 @@ npm run dev
 - `data/csv/sections/social_services.csv`
 - `data/csv/sections/parks.csv`
 - `data/csv/sections/control_room_engagement.csv`
-- `data/csv/sections/c3_logged.csv`
-- `data/csv/sections/c3_resolved.csv`
+- `data/csv/sections/c3_requests.csv`
 - `data/csv/incidents.csv`
 2. CSV section files mirror spreadsheet sheets:
 - one sheet per section with `week_start` in column A, week rows, and category/stat columns in row 1
+- `c3_requests` is the exception: it is row-level request data, and the dashboard derives weekly logged counts plus tracker status totals from it
 3. Week list always starts at `2025-08-01` and is derived from section-sheet week rows in column A.
 4. Dashboard reads local CSV exports by default.
 5. Optional: switch to Google Sheets later by setting:

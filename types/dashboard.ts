@@ -10,11 +10,14 @@ export const SECTION_KEYS = [
   "social_services",
   "parks",
   "control_room_engagement",
-  "c3_logged",
-  "c3_resolved"
+  "c3_requests"
 ] as const;
 
 export type SectionKey = (typeof SECTION_KEYS)[number];
+export type MatrixSectionKey = Exclude<SectionKey, "c3_requests">;
+export const MATRIX_SECTION_KEYS = SECTION_KEYS.filter(
+  (key): key is MatrixSectionKey => key !== "c3_requests"
+);
 
 export interface WeekRecord {
   week_start: string;
@@ -71,6 +74,16 @@ export interface IncidentRow {
   category: string;
 }
 
+export interface C3RequestRow {
+  category: string;
+  reference_number: string | null;
+  date_logged: string | null;
+  request_status: string | null;
+  issue_description: string;
+  service: string;
+  address: string;
+}
+
 export interface DerivedTrendPoint {
   week_start: string;
   week_label: string;
@@ -101,6 +114,21 @@ export interface C3BreakdownRow {
   resolved: NullableNumber;
 }
 
+export interface C3TrackerTotals {
+  logged: number;
+  resolved: number;
+  backlog: number;
+  resolution_ratio: NullableNumber;
+}
+
+export interface C3TrackerBreakdownRow {
+  department: string;
+  logged: number;
+  resolved: number;
+  backlog: number;
+  resolution_ratio: NullableNumber;
+}
+
 export interface DashboardMeta {
   generated_at: string;
   reporting_window_start: string;
@@ -120,6 +148,9 @@ export interface DashboardResponse {
   trends: DerivedTrendPoint[];
   c3_totals: C3Totals;
   c3_breakdown: C3BreakdownRow[];
+  c3_tracker_totals: C3TrackerTotals;
+  c3_tracker_breakdown: C3TrackerBreakdownRow[];
+  c3_request_rows: C3RequestRow[];
   hotspots: HotspotRow[];
   incidents: IncidentRow[];
 }

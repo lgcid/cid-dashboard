@@ -20,8 +20,12 @@ import {
 } from "recharts";
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import type { TooltipProps } from "recharts/types/component/Tooltip";
+import { compareC3Categories, isResolvedC3Status } from "@/lib/c3-requests";
 import { BRAND, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
 import type {
+  C3RequestRow,
+  C3TrackerBreakdownRow,
+  C3TrackerTotals,
   DashboardResponse,
   HardcodedWeeklyMetricKey,
   IncidentRow,
@@ -474,15 +478,6 @@ function normalizeCategoryLabel(value: string): string {
     .replace(/\s+/g, " ");
 }
 
-function sectionCategoryValue(section: SectionData, weekStart: string, category: string): number | null {
-  const normalized = normalizeCategoryLabel(category);
-  const matched = section.categories.find((row) => normalizeCategoryLabel(row.category) === normalized);
-  if (!matched) {
-    return null;
-  }
-  return toMetricNumber(matched.values[weekStart] ?? null);
-}
-
 function weekChartDataFromSection(section: SectionData, weekStart: string | null): Array<{ category: string; value: number }> {
   if (!weekStart) {
     return section.categories.map((row) => ({ category: row.category, value: 0 }));
@@ -491,31 +486,6 @@ function weekChartDataFromSection(section: SectionData, weekStart: string | null
     category: row.category,
     value: toMetricNumber(row.values[weekStart] ?? null) ?? 0
   }));
-}
-
-function unionSectionCategories(primary: SectionData, secondary: SectionData): string[] {
-  const ordered: string[] = [];
-  const seen = new Set<string>();
-
-  for (const row of primary.categories) {
-    const normalized = normalizeCategoryLabel(row.category);
-    if (seen.has(normalized)) {
-      continue;
-    }
-    seen.add(normalized);
-    ordered.push(row.category);
-  }
-
-  for (const row of secondary.categories) {
-    const normalized = normalizeCategoryLabel(row.category);
-    if (seen.has(normalized)) {
-      continue;
-    }
-    seen.add(normalized);
-    ordered.push(row.category);
-  }
-
-  return ordered;
 }
 
 function sumMetric(values: number[]): number | null {
@@ -1302,14 +1272,85 @@ function parksMetricLabel(label: string): string {
   return `${label} Bags`;
 }
 
+function c3DateBounds(rows: C3RequestRow[], fallbackDate: string): { from: string; to: string } {
+  const dates = rows
+    .map((row) => row.date_logged)
+    .filter((value): value is string => Boolean(value))
+    .sort((a, b) => a.localeCompare(b));
+
+  if (!dates.length) {
+    return { from: fallbackDate, to: fallbackDate };
+  }
+
+  return {
+    from: dates[0],
+    to: dates[dates.length - 1]
+  };
+}
+
+function buildC3TrackerSummary(rows: C3RequestRow[]): {
+  breakdown: C3TrackerBreakdownRow[];
+  totals: C3TrackerTotals;
+} {
+  const counts = new Map<string, { logged: number; resolved: number }>();
+
+  for (const row of rows) {
+    if (!row.category) {
+      continue;
+    }
+
+    const existing = counts.get(row.category) ?? { logged: 0, resolved: 0 };
+    existing.logged += 1;
+    if (isResolvedC3Status(row.request_status)) {
+      existing.resolved += 1;
+    }
+    counts.set(row.category, existing);
+  }
+
+  const breakdown = [...counts.entries()]
+    .sort(([left], [right]) => compareC3Categories(left, right))
+    .map(([department, values]) => ({
+      department,
+      logged: values.logged,
+      resolved: values.resolved,
+      backlog: Math.max(values.logged - values.resolved, 0),
+      resolution_ratio:
+        values.logged === 0 ? null : Number((values.resolved / values.logged).toFixed(2))
+    }));
+
+  const totals = breakdown.reduce(
+    (acc, row) => ({
+      logged: acc.logged + row.logged,
+      resolved: acc.resolved + row.resolved,
+      backlog: acc.backlog + row.backlog
+    }),
+    { logged: 0, resolved: 0, backlog: 0 }
+  );
+
+  return {
+    breakdown,
+    totals: {
+      ...totals,
+      resolution_ratio:
+        totals.logged === 0 ? null : Number((totals.resolved / totals.logged).toFixed(2))
+    }
+  };
+}
+
 export default function DashboardClient({ initialData }: Props) {
   const weekly = initialData.weekly;
   const defaultTrendBounds = trendDateBounds(weekly, initialData.meta.selected_week_start);
+  const defaultC3Bounds = c3DateBounds(
+    initialData.c3_request_rows,
+    initialData.meta.selected_week_start
+  );
 
   const [selectedWeekStart, setSelectedWeekStart] = useState(initialData.meta.selected_week_start);
   const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
   const [trendFromDate, setTrendFromDate] = useState(defaultTrendBounds.from);
   const [trendToDate, setTrendToDate] = useState(defaultTrendBounds.to);
+  const [c3FromDate, setC3FromDate] = useState(defaultC3Bounds.from);
+  const [c3ToDate, setC3ToDate] = useState(defaultC3Bounds.to);
   const [trendGranularity, setTrendGranularity] = useState<TrendGranularity>("week");
   const mainPrintableRef = useRef<HTMLDivElement>(null);
   const summaryPrintableRef = useRef<HTMLDivElement>(null);
@@ -1395,10 +1436,6 @@ export default function DashboardClient({ initialData }: Props) {
     ? "No incidents this week"
     : NO_DATA_LABEL;
 
-  const reportedWeeks = useMemo(
-    () => weekly.filter((row) => row.record_status === "REPORTED"),
-    [weekly]
-  );
   const trendDateBoundsConfig = useMemo(
     () => trendDateBounds(weekly, initialData.meta.selected_week_start),
     [weekly, initialData.meta.selected_week_start]
@@ -1416,6 +1453,10 @@ export default function DashboardClient({ initialData }: Props) {
     : trendGranularity === "month"
       ? "Monthly"
       : "Yearly";
+  const c3DateBoundsConfig = defaultC3Bounds;
+  const c3From = c3FromDate <= c3ToDate ? c3FromDate : c3ToDate;
+  const c3To = c3FromDate <= c3ToDate ? c3ToDate : c3FromDate;
+  const c3RangeLabel = `${formatWeekDate(c3From)} to ${formatWeekDate(c3To)}`;
   const trendSeries = useMemo(
     () => buildTrendSeries(
       weekly.filter((row) => row.week_start >= trendFrom && row.week_start <= trendTo),
@@ -1423,50 +1464,23 @@ export default function DashboardClient({ initialData }: Props) {
     ),
     [weekly, trendFrom, trendTo, trendGranularity]
   );
-  const c3Categories = useMemo(
-    () => unionSectionCategories(initialData.sections.c3_logged, initialData.sections.c3_resolved),
-    [initialData.sections.c3_logged, initialData.sections.c3_resolved]
-  );
-  const c3OverallBreakdown = useMemo(
+  const c3FilteredRows = useMemo(
     () =>
-      c3Categories.map((category) => {
-        const logged = reportedWeeks.reduce(
-          (sum, row) => sum + (sectionCategoryValue(initialData.sections.c3_logged, row.week_start, category) ?? 0),
-          0
-        );
-        const resolved = reportedWeeks.reduce(
-          (sum, row) => sum + (sectionCategoryValue(initialData.sections.c3_resolved, row.week_start, category) ?? 0),
-          0
-        );
-        const backlog = Math.max(logged - resolved, 0);
-        const resolutionRatio = logged === 0 ? null : resolved / logged;
-
-        return {
-          department: category,
-          logged,
-          resolved,
-          backlog,
-          resolutionRatio
-        };
+      initialData.c3_request_rows.filter((row) => {
+        if (!row.date_logged) {
+          return false;
+        }
+        return row.date_logged >= c3From && row.date_logged <= c3To;
       }),
-    [c3Categories, initialData.sections.c3_logged, initialData.sections.c3_resolved, reportedWeeks]
+    [c3From, c3To, initialData.c3_request_rows]
   );
-  const c3OverallTotals = useMemo(
-    () =>
-      c3OverallBreakdown.reduce(
-        (acc, row) => ({
-          logged: acc.logged + row.logged,
-          resolved: acc.resolved + row.resolved,
-          backlog: acc.backlog + row.backlog
-        }),
-        { logged: 0, resolved: 0, backlog: 0 }
-      ),
-    [c3OverallBreakdown]
+  const c3TrackerSummary = useMemo(
+    () => buildC3TrackerSummary(c3FilteredRows),
+    [c3FilteredRows]
   );
-  const c3OverallResolutionRatio = useMemo(
-    () => (c3OverallTotals.logged === 0 ? null : c3OverallTotals.resolved / c3OverallTotals.logged),
-    [c3OverallTotals]
-  );
+  const c3OverallBreakdown = c3TrackerSummary.breakdown;
+  const c3OverallTotals = c3TrackerSummary.totals;
+  const c3OverallResolutionRatio = c3TrackerSummary.totals.resolution_ratio;
   const c3BacklogTop3 = useMemo(
     () =>
       [...c3OverallBreakdown]
@@ -1497,12 +1511,8 @@ export default function DashboardClient({ initialData }: Props) {
     [currentWeekStart, initialData.sections.control_room_engagement]
   );
   const currentWeekC3LoggedBreakdown = useMemo(
-    () => weekChartDataFromSection(initialData.sections.c3_logged, currentWeekStart),
-    [currentWeekStart, initialData.sections.c3_logged]
-  );
-  const currentWeekC3ResolvedBreakdown = useMemo(
-    () => weekChartDataFromSection(initialData.sections.c3_resolved, currentWeekStart),
-    [currentWeekStart, initialData.sections.c3_resolved]
+    () => weekChartDataFromSection(initialData.sections.c3_requests, currentWeekStart),
+    [currentWeekStart, initialData.sections.c3_requests]
   );
 
   const toPillarMetrics = useCallback(
@@ -1797,6 +1807,53 @@ export default function DashboardClient({ initialData }: Props) {
         </div>
         ) : null}
 
+        {activeTab === "c3" ? (
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <div className="w-full min-w-0 sm:w-[220px]">
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">From</label>
+            <input
+              type="date"
+              value={c3FromDate}
+              min={c3DateBoundsConfig.from}
+              max={c3ToDate}
+              onChange={(event) => {
+                const nextFrom = event.target.value;
+                if (!nextFrom) {
+                  return;
+                }
+                const boundedFrom = nextFrom < c3DateBoundsConfig.from ? c3DateBoundsConfig.from : nextFrom;
+                setC3FromDate(boundedFrom);
+                if (boundedFrom > c3ToDate) {
+                  setC3ToDate(boundedFrom);
+                }
+              }}
+              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-0 py-2 text-sm text-black sm:px-3"
+            />
+          </div>
+          <div className="w-full min-w-0 sm:w-[220px]">
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">To</label>
+            <input
+              type="date"
+              value={c3ToDate}
+              min={c3FromDate}
+              max={c3DateBoundsConfig.to}
+              onChange={(event) => {
+                const nextTo = event.target.value;
+                if (!nextTo) {
+                  return;
+                }
+                const boundedTo = nextTo > c3DateBoundsConfig.to ? c3DateBoundsConfig.to : nextTo;
+                setC3ToDate(boundedTo);
+                if (boundedTo < c3FromDate) {
+                  setC3FromDate(boundedTo);
+                }
+              }}
+              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-0 py-2 text-sm text-black sm:px-3"
+            />
+          </div>
+        </div>
+        ) : null}
+
         {activeTab === "main" ? (
         <div ref={mainPrintableRef} className="space-y-6">
           <ExportImageHeader />
@@ -1865,7 +1922,7 @@ export default function DashboardClient({ initialData }: Props) {
                 />
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-3">
+              <div className="grid gap-4 lg:grid-cols-2">
                 <CurrentWeekBreakdownChart
                   title="Control Room Engagement"
                   data={currentWeekControlRoomBreakdown}
@@ -1874,12 +1931,6 @@ export default function DashboardClient({ initialData }: Props) {
                 <CurrentWeekBreakdownChart
                   title="CoCT C3 Logged Requests"
                   data={currentWeekC3LoggedBreakdown}
-                  color={BRAND.colors.black}
-                />
-
-                <CurrentWeekBreakdownChart
-                  title="CoCT C3 Resolved Requests"
-                  data={currentWeekC3ResolvedBreakdown}
                   color={BRAND.colors.black}
                 />
               </div>
@@ -2257,13 +2308,13 @@ export default function DashboardClient({ initialData }: Props) {
             <section id="c3" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
             <SectionHeading
               title="C3 Tracker"
-              description="Cumulative City service requests logged vs resolved by category across all reported weeks."
+              description={`City service requests logged vs resolved by category for ${c3RangeLabel}.`}
               icon="c3"
             />
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <SummaryMetricCard label="Total Logged" current={c3OverallTotals.logged} previous={null} showDelta={false} />
-            <SummaryMetricCard label="Total Resolved" current={c3OverallTotals.resolved} previous={null} showDelta={false} />
+            <SummaryMetricCard label="Resolved" current={c3OverallTotals.resolved} previous={null} showDelta={false} />
             <SummaryMetricCard label="Open Backlog" current={c3OverallTotals.backlog} previous={null} showDelta={false} />
             <SummaryMetricCard
               label="Resolution Rate"
@@ -2288,10 +2339,10 @@ export default function DashboardClient({ initialData }: Props) {
                 <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip />
                 <Legend formatter={legendLabelFormatter} />
-                <Bar dataKey="logged" fill={BRAND.colors.black} name="Logged (overall)">
+                <Bar dataKey="logged" fill={BRAND.colors.black} name="Logged">
                   <LabelList dataKey="logged" position="top" fill="#000000" fontSize={9} />
                 </Bar>
-                <Bar dataKey="resolved" fill="url(#resolvedHatch)" stroke={C3_RESOLVED_GREY} strokeWidth={1} name="Resolved (overall)">
+                <Bar dataKey="resolved" fill="url(#resolvedHatch)" stroke={C3_RESOLVED_GREY} strokeWidth={1} name="Resolved">
                   <LabelList dataKey="resolved" position="top" fill="#000000" fontSize={9} />
                 </Bar>
               </BarChart>
@@ -2316,17 +2367,23 @@ export default function DashboardClient({ initialData }: Props) {
 
             <div className="rounded-xl border border-black p-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Pressure Points</p>
-              <ol className="mt-3 space-y-2 text-sm">
-                {c3BacklogTop3.map((row, index) => (
-                  <li key={row.department} className="rounded-md border border-black p-2">
-                    <p className="font-semibold">{index + 1}. {row.department}</p>
-                    <p className="mt-1">Open backlog: <strong>{row.backlog.toLocaleString()}</strong></p>
-                    <p className="text-xs">
-                      Resolution rate: <strong>{row.resolutionRatio === null ? NO_DATA_LABEL : `${Math.round(row.resolutionRatio * 100)}%`}</strong>
-                    </p>
-                  </li>
-                ))}
-              </ol>
+              {c3BacklogTop3.length ? (
+                <ol className="mt-3 space-y-2 text-sm">
+                  {c3BacklogTop3.map((row, index) => (
+                    <li key={row.department} className="rounded-md border border-black p-2">
+                      <p className="font-semibold">{index + 1}. {row.department}</p>
+                      <p className="mt-1">Open backlog: <strong>{row.backlog.toLocaleString()}</strong></p>
+                      <p className="text-xs">
+                        Resolution rate: <strong>{row.resolution_ratio === null ? NO_DATA_LABEL : `${Math.round(row.resolution_ratio * 100)}%`}</strong>
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <div className="mt-3 rounded-md border border-dashed border-black p-3 text-sm">
+                  {NO_DATA_LABEL}
+                </div>
+              )}
             </div>
             </div>
             </section>
