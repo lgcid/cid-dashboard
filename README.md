@@ -54,7 +54,7 @@ npm run dev
 2. CSV section files mirror spreadsheet sheets:
 - one sheet per section with `week_start` in column A, week rows, and category/stat columns in row 1
 - `c3_requests` is the exception: it is row-level request data, and the dashboard derives weekly logged counts plus tracker status totals from it
-3. Week list always starts at `2025-08-01` and is derived from section-sheet week rows in column A.
+3. Week list always starts at `2025-08-01` and is derived from the weekly matrix sheets' `week_start` rows in column A (`c3_requests` does not create reporting weeks).
 4. Dashboard reads local CSV exports by default.
 5. Optional: switch to Google Sheets later by setting:
 

@@ -3,6 +3,7 @@ import type { C3RequestInsights } from "@/lib/c3-requests";
 import { WEEK_START_BASELINE } from "@/lib/section-matrix";
 import { safeDate, weekEndFromStart } from "@/lib/date-utils";
 import { rankHotspots } from "@/lib/hotspots";
+import { MATRIX_SECTION_KEYS } from "@/types/dashboard";
 import type {
   C3BreakdownRow,
   C3Totals,
@@ -139,10 +140,15 @@ function c3ResolvedValueForCategory(
   return loggedValue !== null ? 0 : null;
 }
 
+function matrixSections(sections: SectionMap): SectionData[] {
+  return MATRIX_SECTION_KEYS.map((key) => sections[key]);
+}
+
 export function deriveWeeks(sections: SectionMap): WeekRecord[] {
+  const weeklySections = matrixSections(sections);
   const weekStarts = new Set<string>([WEEK_START_BASELINE]);
 
-  for (const section of Object.values(sections)) {
+  for (const section of weeklySections) {
     for (const row of section.categories) {
       for (const weekStart of Object.keys(row.values)) {
         if (!isIsoDay(weekStart)) {
@@ -160,7 +166,7 @@ export function deriveWeeks(sections: SectionMap): WeekRecord[] {
 
   return sortedWeekStarts.map((weekStart) => {
     let hasAnyNumber = false;
-    for (const section of Object.values(sections)) {
+    for (const section of weeklySections) {
       for (const row of section.categories) {
         if (toNumber(row.values[weekStart] ?? null) !== null) {
           hasAnyNumber = true;

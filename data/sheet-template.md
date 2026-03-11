@@ -118,8 +118,8 @@ The local CSV mode mirrors spreadsheet sheets:
 ## Week logic
 
 - Week list always starts at `2025-08-01`
-- Weeks are discovered from section sheet rows in column `A` (`>= 2025-08-01`)
-- `record_status` is `REPORTED` if any section has a numeric value for that week
+- Weeks are discovered from the weekly matrix sheet rows in column `A` (`>= 2025-08-01`); `c3_requests` does not create reporting weeks
+- `record_status` is `REPORTED` if any weekly matrix section has a numeric value for that week
 - Otherwise `record_status` is `NO_DATA_REPORTED`
 
 ## Extending data
