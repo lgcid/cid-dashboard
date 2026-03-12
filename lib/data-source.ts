@@ -168,20 +168,18 @@ export async function loadData(): Promise<{
   if (mode === "google_sheets") {
     const hasSheetsConfig = readGoogleSheetsEnv() !== null;
     if (!hasSheetsConfig) {
-      throw new Error(
-        "DATA_SOURCE is set to google_sheets but Sheets credentials are missing. Provide GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY, and GOOGLE_SHEET_ID."
-      );
+      const fromLocal = await readFromLocalCsv();
+      return {
+        ...fromLocal,
+        source: "local_csv"
+      };
     }
 
-    try {
-      const fromSheets = await readFromSheets();
-      return {
-        ...fromSheets,
-        source: "google_sheets"
-      };
-    } catch (error) {
-      console.warn("Falling back to local CSV data", error);
-    }
+    const fromSheets = await readFromSheets();
+    return {
+      ...fromSheets,
+      source: "google_sheets"
+    };
   }
 
   const fromLocal = await readFromLocalCsv();
