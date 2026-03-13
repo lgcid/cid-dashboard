@@ -39,6 +39,43 @@ DATA_SOURCE=local_csv
 npm run dev
 ```
 
+## Localhost Google Sheets
+
+Use this when you want `localhost` to read from the live Google Sheet through the same Vercel OIDC flow as the deployed app.
+
+1. Link the repo to the Vercel project:
+
+```bash
+npx vercel link
+```
+
+2. Pull env vars into `.env.local`:
+
+```bash
+npx vercel env pull .env.local
+```
+
+3. Edit `.env.local` so it contains:
+
+```bash
+DATA_SOURCE=google_sheets
+GOOGLE_SERVICE_ACCOUNT_EMAIL=...
+GOOGLE_SHEET_ID=...
+GOOGLE_WORKLOAD_IDENTITY_AUDIENCE=//iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID
+VERCEL_OIDC_TOKEN=<DO NOT EDIT THIS LINE>
+```
+
+4. Start the app:
+
+```bash
+npm run dev
+```
+
+Notes:
+- `VERCEL_OIDC_TOKEN` is pulled from Vercel for local development; you do not create it manually.
+- If the token expires, rerun `npx vercel env pull .env.local`.
+- If `vercel env pull` writes `DATA_SOURCE=local_csv`, change it back to `DATA_SOURCE=google_sheets` in `.env.local`.
+
 ## Data Flow
 
 1. Dashboard data is maintained in CSV files:
@@ -62,9 +99,24 @@ npm run dev
 ```bash
 DATA_SOURCE=google_sheets
 GOOGLE_SERVICE_ACCOUNT_EMAIL=...
-GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=...
 GOOGLE_SHEET_ID=...
+GOOGLE_WORKLOAD_IDENTITY_AUDIENCE=//iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID
 ```
+
+On Vercel, the recommended setup is keyless Workload Identity Federation:
+- share the spreadsheet with the Google service account email
+- configure a workload identity provider that trusts Vercel OIDC
+- set `GOOGLE_WORKLOAD_IDENTITY_AUDIENCE` to the provider audience above
+
+## Google Cloud Setup
+
+At a high level, the Google Cloud side is:
+
+1. Create a service account for the dashboard.
+2. Share the spreadsheet with that service account email as a reader.
+3. Create a Workload Identity Pool and OIDC provider for Vercel.
+4. Grant the Vercel workload identities permission to impersonate the service account.
+5. Use the provider resource name as `GOOGLE_WORKLOAD_IDENTITY_AUDIENCE`.
 
 ## API
 
@@ -87,12 +139,20 @@ Returns:
 2. Create/import Vercel project from repo.
 3. For CSV mode, set:
 - `DATA_SOURCE=local_csv`
-4. Optional (Google Sheets mode), set:
+4. Optional (Google Sheets mode on Vercel, recommended), set:
 - `DATA_SOURCE=google_sheets`
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`
-- `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
 - `GOOGLE_SHEET_ID`
+- `GOOGLE_WORKLOAD_IDENTITY_AUDIENCE`
 5. Deploy from `main` branch.
+
+## Testing Google Sheets Mode
+
+1. Set `DATA_SOURCE=google_sheets` in Vercel.
+2. Deploy.
+3. Open `/api/dashboard` on the deployment.
+4. Confirm `meta.data_source` is `"google_sheets"`.
+5. Change a visible spreadsheet value, wait for the cache window to pass, and confirm the API response updates.
 
 ## Validation Checklist
 

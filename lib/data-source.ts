@@ -168,11 +168,9 @@ export async function loadData(): Promise<{
   if (mode === "google_sheets") {
     const hasSheetsConfig = readGoogleSheetsEnv() !== null;
     if (!hasSheetsConfig) {
-      const fromLocal = await readFromLocalCsv();
-      return {
-        ...fromLocal,
-        source: "local_csv"
-      };
+      throw new Error(
+        "DATA_SOURCE is set to google_sheets, but the Google Sheets authentication environment variables are incomplete."
+      );
     }
 
     const fromSheets = await readFromSheets();

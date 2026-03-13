@@ -1,6 +1,8 @@
 import DashboardClient from "@/components/dashboard-client";
 import { getDashboardData } from "@/lib/dashboard-service";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   searchParams: Promise<{
     weekStart?: string;
