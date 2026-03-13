@@ -1,3 +1,4 @@
+import { normalizeSheetDay } from "@/lib/date-utils";
 import { z } from "zod";
 
 const trimmedString = z.string().transform((value) => value.trim());
@@ -28,11 +29,23 @@ const nullableBooleanish = z.preprocess((value) => {
 }, z.boolean().nullable());
 
 export const incidentSchema = z.object({
-  week_start: z.string(),
+  week_start: z.preprocess((value) => {
+    const normalized = normalizeSheetDay(value);
+    if (normalized) {
+      return normalized;
+    }
+    return String(value ?? "").trim();
+  }, z.string()),
   incident_date: z.preprocess((value) => {
     if (value === null || value === undefined) {
       return null;
     }
+
+    const normalized = normalizeSheetDay(value);
+    if (normalized) {
+      return normalized;
+    }
+
     const str = String(value).trim();
     return str ? str : null;
   }, z.string().nullable()),

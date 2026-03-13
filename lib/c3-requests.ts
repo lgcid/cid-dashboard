@@ -1,3 +1,4 @@
+import { isIsoDay, isValidDateParts, parseSheetDay, toIsoDay } from "@/lib/date-utils";
 import { WEEK_START_BASELINE } from "@/lib/section-matrix";
 import type {
   C3RequestRow,
@@ -6,7 +7,6 @@ import type {
   SectionData
 } from "@/types/dashboard";
 
-const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const FINAL_STATUSES = new Set(["closed", "completed", "service request completed"]);
@@ -70,47 +70,8 @@ export function normalizeC3RequestCategory(value: string): string {
   return CATEGORY_ALIASES[normalized] ?? normalizeWhitespace(value);
 }
 
-function isValidDateParts(year: number, month: number, day: number): boolean {
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-  );
-}
-
 function parseLoggedDate(value: string | null): Date | null {
-  const cleaned = normalizeWhitespace(value).replace(/['"]/g, "");
-  if (!cleaned) {
-    return null;
-  }
-
-  if (ISO_DAY_PATTERN.test(cleaned)) {
-    const [year, month, day] = cleaned.split("-").map((part) => Number.parseInt(part, 10));
-    if (!isValidDateParts(year, month, day)) {
-      return null;
-    }
-    return new Date(Date.UTC(year, month - 1, day));
-  }
-
-  const match = cleaned.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/);
-  if (!match) {
-    return null;
-  }
-
-  const [, dayRaw, monthRaw, yearRaw] = match;
-  const day = Number.parseInt(dayRaw, 10);
-  const month = Number.parseInt(monthRaw, 10);
-  const year = Number.parseInt(yearRaw, 10);
-  if (!isValidDateParts(year, month, day)) {
-    return null;
-  }
-
-  return new Date(Date.UTC(year, month - 1, day));
-}
-
-function toIsoDay(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return parseSheetDay(normalizeWhitespace(value));
 }
 
 export function normalizeC3RequestDate(value: string | null): string | null {
@@ -119,7 +80,7 @@ export function normalizeC3RequestDate(value: string | null): string | null {
 }
 
 function parseIsoDay(value: string): Date | null {
-  if (!ISO_DAY_PATTERN.test(value)) {
+  if (!isIsoDay(value)) {
     return null;
   }
 
@@ -179,7 +140,7 @@ function collectKnownWeekStarts(sections: SectionData[]): string[] {
   for (const section of sections) {
     for (const row of section.categories) {
       for (const weekStart of Object.keys(row.values)) {
-        if (!ISO_DAY_PATTERN.test(weekStart)) {
+        if (!isIsoDay(weekStart)) {
           continue;
         }
         if (weekStart < WEEK_START_BASELINE) {

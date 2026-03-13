@@ -1,11 +1,7 @@
+import { normalizeSheetDay } from "@/lib/date-utils";
 import type { SectionData, SectionKey } from "@/types/dashboard";
 
-const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MIN_WEEK_START = "2025-08-01";
-
-function isIsoDay(value: string): boolean {
-  return ISO_DAY_PATTERN.test(value);
-}
 
 function parseNullableNumber(value: unknown): number | null {
   if (value === null || value === undefined) {
@@ -22,12 +18,12 @@ function parseNullableNumber(value: unknown): number | null {
 export function parseSectionMatrix(rows: string[][], key: SectionKey): SectionData {
   const header = rows[0] ?? [];
   const heading = String(header[0] ?? "").trim() || "week_start";
-  const firstDataCell = String(rows[1]?.[0] ?? "").trim();
+  const firstDataCellWeekStart = normalizeSheetDay(rows[1]?.[0]);
 
   const dateColumns: Array<{ columnIndex: number; weekStart: string }> = [];
   for (let columnIndex = 1; columnIndex < header.length; columnIndex += 1) {
-    const weekStart = String(header[columnIndex] ?? "").trim();
-    if (!isIsoDay(weekStart)) {
+    const weekStart = normalizeSheetDay(header[columnIndex]);
+    if (!weekStart) {
       continue;
     }
     if (weekStart < MIN_WEEK_START) {
@@ -36,7 +32,7 @@ export function parseSectionMatrix(rows: string[][], key: SectionKey): SectionDa
     dateColumns.push({ columnIndex, weekStart });
   }
 
-  const isTransposedMatrix = dateColumns.length > 0 && !isIsoDay(firstDataCell);
+  const isTransposedMatrix = dateColumns.length > 0 && !firstDataCellWeekStart;
   if (isTransposedMatrix) {
     const categories = rows.slice(1).flatMap((row) => {
       const category = String(row[0] ?? "").trim();
@@ -76,8 +72,8 @@ export function parseSectionMatrix(rows: string[][], key: SectionKey): SectionDa
   const weekRows: Array<{ row: string[]; weekStart: string }> = [];
   for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
     const row = rows[rowIndex] ?? [];
-    const weekStart = String(row[0] ?? "").trim();
-    if (!isIsoDay(weekStart)) {
+    const weekStart = normalizeSheetDay(row[0]);
+    if (!weekStart) {
       continue;
     }
     if (weekStart < MIN_WEEK_START) {
