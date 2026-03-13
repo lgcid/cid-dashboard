@@ -26,6 +26,8 @@ function onOpen() {
     .createMenu("C3 Requests")
     .addItem("Sync Open Requests", "syncOpenC3Requests")
     .addItem("Sync Selected Row", "syncSelectedC3Request")
+    .addSeparator()
+    .addItem("Clear Green Highlights", "clearAllC3Highlights")
     .addToUi();
 }
 
@@ -57,17 +59,7 @@ function syncOpenC3Requests() {
     return;
   }
 
-  clearSyncHighlights_(
-    context.sheet,
-    context.columns,
-    context.rowCount,
-    context.firstSheetRow
-  );
-
-  var statusWrites = 0;
-  var serviceWrites = 0;
-  var addressWrites = 0;
-  var updatedCells = 0;
+  var updatedReferences = [];
   var errors = [];
 
   for (var i = 0; i < pendingRows.length; i += 1) {
@@ -80,10 +72,9 @@ function syncOpenC3Requests() {
 
     try {
       var writeCounts = syncC3Row_(context.sheet, context.columns, row);
-      statusWrites += writeCounts.statusWrites;
-      serviceWrites += writeCounts.serviceWrites;
-      addressWrites += writeCounts.addressWrites;
-      updatedCells += writeCounts.updatedCells;
+      if (writeCounts.updatedCells > 0) {
+        updatedReferences.push(row.reference);
+      }
     } catch (error) {
       errors.push(
         "Row " +
@@ -108,22 +99,10 @@ function syncOpenC3Requests() {
     "Sync complete. Checked " +
     pendingRows.length +
     " row(s); updated " +
-    updatedCells +
-    " cell(s). " +
-    "Status: " +
-    statusWrites +
-    ", service: " +
-    serviceWrites +
-    ", address: " +
-    addressWrites +
-    ", errors: " +
-    errors.length +
-    ".";
-  context.spreadsheet.toast(
-    summaryText,
-    "C3 Requests",
-    C3_REQUESTS_CONFIG.summaryToastSeconds
-  );
+    updatedReferences.length +
+    " request(s): " +
+    formatUpdatedReferences_(updatedReferences);
+  SpreadsheetApp.getUi().alert(summaryText);
 }
 
 function syncSelectedC3Request() {
@@ -180,18 +159,9 @@ function syncSelectedC3Request() {
     var summaryText =
       "Selected row complete. Updated " +
       writeCounts.updatedCells +
-      " cell(s). Status: " +
-      writeCounts.statusWrites +
-      ", service: " +
-      writeCounts.serviceWrites +
-      ", address: " +
-      writeCounts.addressWrites +
-      ".";
-    context.spreadsheet.toast(
-      summaryText,
-      "C3 Requests",
-      C3_REQUESTS_CONFIG.summaryToastSeconds
-    );
+      " cell(s). Latest request status: " +
+      (writeCounts.latestRequestStatus || "Unknown");
+    SpreadsheetApp.getUi().alert(summaryText);
   } catch (error) {
     context.spreadsheet.toast(
       "Selected row failed: " +
@@ -200,6 +170,22 @@ function syncSelectedC3Request() {
       C3_REQUESTS_CONFIG.summaryToastSeconds
     );
   }
+}
+
+function clearAllC3Highlights() {
+  var context = getC3SheetContext_();
+  if (!context) {
+    return;
+  }
+
+  var dataRange = context.sheet.getDataRange();
+  var clearedCells = clearHighlightColorInRange_(dataRange);
+
+  context.spreadsheet.toast(
+    "Cleared " + clearedCells + " green highlight cell(s).",
+    "C3 Requests",
+    5
+  );
 }
 
 function syncC3Row_(sheet, columns, row) {
@@ -261,7 +247,8 @@ function syncC3Row_(sheet, columns, row) {
     statusWrites: statusWrites,
     serviceWrites: serviceWrites,
     addressWrites: addressWrites,
-    updatedCells: updatedCells
+    updatedCells: updatedCells,
+    latestRequestStatus: row.currentStatus
   };
 }
 
@@ -400,22 +387,10 @@ function getHeaderMap_(headerRow) {
   return map;
 }
 
-function clearSyncHighlights_(sheet, columns, rowCount, firstSheetRow) {
-  sheet
-    .getRange(firstSheetRow, columns.requestStatus + 1, rowCount, 1)
-    .setBackground(null);
-  sheet
-    .getRange(firstSheetRow, columns.service + 1, rowCount, 1)
-    .setBackground(null);
-  sheet
-    .getRange(firstSheetRow, columns.address + 1, rowCount, 1)
-    .setBackground(null);
-}
-
 function clearRowHighlights_(sheet, columns, rowNumber) {
-  sheet.getRange(rowNumber, columns.requestStatus + 1).setBackground(null);
-  sheet.getRange(rowNumber, columns.service + 1).setBackground(null);
-  sheet.getRange(rowNumber, columns.address + 1).setBackground(null);
+  clearHighlightColorInRange_(sheet.getRange(rowNumber, columns.requestStatus + 1));
+  clearHighlightColorInRange_(sheet.getRange(rowNumber, columns.service + 1));
+  clearHighlightColorInRange_(sheet.getRange(rowNumber, columns.address + 1));
 }
 
 function writeUpdatedCell_(sheet, rowNumber, columnNumber, value) {
@@ -423,6 +398,43 @@ function writeUpdatedCell_(sheet, rowNumber, columnNumber, value) {
     .getRange(rowNumber, columnNumber)
     .setValue(value)
     .setBackground(C3_REQUESTS_CONFIG.highlightColor);
+}
+
+function clearHighlightColorInRange_(range) {
+  var backgrounds = range.getBackgrounds();
+  var sheet = range.getSheet();
+  var startRow = range.getRow();
+  var startColumn = range.getColumn();
+  var highlightColor = C3_REQUESTS_CONFIG.highlightColor.toLowerCase();
+  var clearedCells = 0;
+  var highlightedCells = [];
+
+  for (var rowIndex = 0; rowIndex < backgrounds.length; rowIndex += 1) {
+    for (
+      var columnIndex = 0;
+      columnIndex < backgrounds[rowIndex].length;
+      columnIndex += 1
+    ) {
+      var currentColor = normalizeBackgroundColor_(
+        backgrounds[rowIndex][columnIndex]
+      );
+      if (currentColor === highlightColor) {
+        highlightedCells.push(
+          buildCellA1Notation_(
+            startRow + rowIndex,
+            startColumn + columnIndex
+          )
+        );
+        clearedCells += 1;
+      }
+    }
+  }
+
+  if (highlightedCells.length > 0) {
+    sheet.getRangeList(highlightedCells).setBackground(null);
+  }
+
+  return clearedCells;
 }
 
 function resolveColumns_(headerMap) {
@@ -462,6 +474,31 @@ function normalizeText_(value) {
   return String(value == null ? "" : value)
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeBackgroundColor_(value) {
+  return String(value == null ? "" : value).toLowerCase();
+}
+
+function formatUpdatedReferences_(references) {
+  return references.length > 0 ? references.join(", ") : "none";
+}
+
+function buildCellA1Notation_(rowNumber, columnNumber) {
+  return toColumnLetter_(columnNumber) + rowNumber;
+}
+
+function toColumnLetter_(columnNumber) {
+  var dividend = columnNumber;
+  var columnLabel = "";
+
+  while (dividend > 0) {
+    var modulo = (dividend - 1) % 26;
+    columnLabel = String.fromCharCode(65 + modulo) + columnLabel;
+    dividend = Math.floor((dividend - modulo) / 26);
+  }
+
+  return columnLabel;
 }
 
 function isFinalStatus_(status) {
