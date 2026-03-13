@@ -2394,7 +2394,29 @@ export default function DashboardClient({ initialData }: Props) {
                 </div>
               )}
             </div>
-            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-black bg-stone-50 p-4 text-sm leading-relaxed">
+            <p>
+              Need to check an existing City of Cape Town reference? You can use the{" "}
+              <a
+                href="https://eservices1.capetown.gov.za/coct/wapl/zsreq_app/index.html"
+                className="font-semibold underline underline-offset-4"
+                target="_blank"
+                rel="noreferrer"
+              >
+                CoCT service request portal
+              </a>{" "}
+              to look up a reference directly. The portal also allows new submissions, but please report new requests through us where possible so we can track and follow up. Contact us on WhatsApp at{" "}
+              <a href="https://wa.me/27690078644" className="font-semibold underline underline-offset-4" target="_blank" rel="noreferrer">
+                069 007 8644
+              </a>{" "}
+              (message only) or call the LGCID 24-hour line on{" "}
+              <a href="tel:0873302177" className="font-semibold underline underline-offset-4">
+                087 330 2177
+              </a>
+            </p>
+          </div>
             </section>
             <ExportImageFooter />
           </div>
