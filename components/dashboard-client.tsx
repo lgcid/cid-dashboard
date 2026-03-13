@@ -20,7 +20,7 @@ import {
 } from "recharts";
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import type { TooltipProps } from "recharts/types/component/Tooltip";
-import { compareC3Categories, isResolvedC3Status } from "@/lib/c3-requests";
+import { compareC3Categories, isResolvedC3Request } from "@/lib/c3-requests";
 import { BRAND, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
 import type {
   C3RequestRow,
@@ -1301,7 +1301,7 @@ function buildC3TrackerSummary(rows: C3RequestRow[]): {
 
     const existing = counts.get(row.category) ?? { logged: 0, resolved: 0 };
     existing.logged += 1;
-    if (isResolvedC3Status(row.request_status)) {
+    if (isResolvedC3Request(row)) {
       existing.resolved += 1;
     }
     counts.set(row.category, existing);

@@ -5,6 +5,27 @@ const nullableTrimmedString = z.string().transform((value) => {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
 });
+const nullableBooleanish = z.preprocess((value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  if (["true", "yes", "y", "1", "resolved"].includes(normalized)) {
+    return true;
+  }
+  if (["false", "no", "n", "0", "unresolved"].includes(normalized)) {
+    return false;
+  }
+
+  return value;
+}, z.boolean().nullable());
 
 export const incidentSchema = z.object({
   week_start: z.string(),
@@ -27,6 +48,7 @@ export const c3RequestRowSchema = z.object({
   reference_number: nullableTrimmedString,
   date_logged: nullableTrimmedString,
   request_status: nullableTrimmedString,
+  resolved: nullableBooleanish.optional().transform((value) => value ?? null),
   issue_description: trimmedString,
   service: trimmedString,
   address: trimmedString

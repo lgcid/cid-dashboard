@@ -80,16 +80,18 @@ Columns (in order):
 2. `reference_number`
 3. `date_logged`
 4. `request_status`
-5. `issue_description`
-6. `service`
-7. `address`
+5. `resolved`
+6. `issue_description`
+7. `service`
+8. `address`
 
 Notes:
 
 - `date_logged` should be a day value such as `2026-03-03` or `03/03/2026`.
 - Summary, Current Week, and Trends derive weekly **logged** counts from `date_logged`.
-- The `C3 Tracker` tab derives **currently resolved** counts from `request_status`.
-- Final/resolved statuses are currently treated as `Closed` and `Service Request Completed`.
+- `request_status` tracks the City of Cape Town request workflow (`New`, `Registered`, `Assigned`, `In Progress`, `Closed`, `Completed`, `Service request completed`).
+- The `resolved` column is a CID-managed field and is the only source used for **currently resolved** counts in the dashboard.
+- For the initial seed only, existing rows can be marked resolved when `request_status` is an end state (`Closed`, `Completed`, or `Service request completed`).
 
 ## `incidents` sheet format
 

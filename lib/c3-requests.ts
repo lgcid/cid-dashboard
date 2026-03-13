@@ -9,7 +9,7 @@ import type {
 const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const FINAL_STATUSES = new Set(["closed", "service request completed"]);
+const FINAL_STATUSES = new Set(["closed", "completed", "service request completed"]);
 
 const CATEGORY_ORDER = [
   "Roads & Infrastructure",
@@ -139,8 +139,12 @@ function diffUtcDays(later: Date, earlier: Date): number {
   return Math.floor((later.getTime() - earlier.getTime()) / DAY_MS);
 }
 
-export function isResolvedC3Status(status: string | null): boolean {
+export function isFinalC3Status(status: string | null): boolean {
   return FINAL_STATUSES.has(normalizeLookup(status ?? ""));
+}
+
+export function isResolvedC3Request(row: Pick<C3RequestRow, "request_status" | "resolved">): boolean {
+  return row.resolved === true;
 }
 
 function incrementWeekCategoryCount(
@@ -226,6 +230,7 @@ export function normalizeC3RequestRows(rows: C3RequestRow[]): C3RequestRow[] {
       reference_number: referenceNumber || null,
       date_logged: normalizeC3RequestDate(row.date_logged),
       request_status: requestStatus || null,
+      resolved: row.resolved ?? null,
       issue_description: normalizeWhitespace(row.issue_description),
       service: normalizeWhitespace(row.service),
       address: normalizeWhitespace(row.address)
@@ -325,7 +330,7 @@ export function buildC3RequestInsights(
     incrementWeekCategoryCount(loggedByWeekCategory, weekStart, category);
     loggedTotalsByCategory[category] = (loggedTotalsByCategory[category] ?? 0) + 1;
 
-    if (!isResolvedC3Status(row.request_status)) {
+    if (!isResolvedC3Request(row)) {
       continue;
     }
 

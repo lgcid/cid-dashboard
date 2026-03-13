@@ -79,6 +79,7 @@ export interface C3RequestRow {
   reference_number: string | null;
   date_logged: string | null;
   request_status: string | null;
+  resolved: boolean | null;
   issue_description: string;
   service: string;
   address: string;

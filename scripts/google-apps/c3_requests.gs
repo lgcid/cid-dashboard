@@ -5,11 +5,12 @@ var C3_REQUESTS_CONFIG = {
   headerRow: 1,
   referenceHeader: "reference_number",
   requestStatusHeader: "request_status",
+  resolvedHeader: "resolved",
   serviceHeader: "service",
   addressHeader: "address",
   delayMs: 1500,
   retries: 2,
-  finalStatuses: ["closed", "service request completed"],
+  finalStatuses: ["closed", "completed", "service request completed"],
   progressToastSeconds: 10,
   summaryToastSeconds: 8,
   highlightColor: "#d9ead3"
@@ -383,6 +384,7 @@ function buildRowStateFromValues_(rowNumber, rowValues, columns) {
     rowNumber: rowNumber,
     reference: reference,
     currentStatus: normalizeText_(rowValues[columns.requestStatus]),
+    currentResolved: rowValues[columns.resolved],
     currentService: normalizeText_(rowValues[columns.service]),
     currentAddress: normalizeText_(rowValues[columns.address])
   };
@@ -431,8 +433,9 @@ function resolveColumns_(headerMap) {
       C3_REQUESTS_CONFIG.requestStatusHeader,
       3
     ),
-    service: getColumnIndex_(headerMap, C3_REQUESTS_CONFIG.serviceHeader, 5),
-    address: getColumnIndex_(headerMap, C3_REQUESTS_CONFIG.addressHeader, 6)
+    resolved: getColumnIndex_(headerMap, C3_REQUESTS_CONFIG.resolvedHeader, 4),
+    service: getColumnIndex_(headerMap, C3_REQUESTS_CONFIG.serviceHeader, 6),
+    address: getColumnIndex_(headerMap, C3_REQUESTS_CONFIG.addressHeader, 7)
   };
 }
 
