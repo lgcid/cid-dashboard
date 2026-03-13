@@ -417,20 +417,29 @@ function TrendLegend({
 }
 
 function IncidentCategoryTag({ category, compact = false }: { category: string; compact?: boolean }) {
-  const label = category.trim();
-  if (!label) {
+  const labels = category
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (!labels.length) {
     return null;
   }
 
   return (
-    <span
-      className={clsx(
-        "inline-flex max-w-full items-center rounded-full border border-black bg-brand-safety px-2 py-0.5 font-semibold normal-case tracking-normal text-black",
-        compact ? "text-[9px]" : "text-[10px]"
-      )}
-    >
-      {label}
-    </span>
+    <>
+      {labels.map((label, index) => (
+        <span
+          key={`${label}-${index}`}
+          className={clsx(
+            "inline-flex max-w-full items-center rounded-full border border-black bg-brand-safety px-2 py-0.5 font-semibold normal-case tracking-normal text-black",
+            compact ? "text-[9px]" : "text-[10px]"
+          )}
+        >
+          {label}
+        </span>
+      ))}
+    </>
   );
 }
 

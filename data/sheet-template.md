@@ -101,7 +101,7 @@ Columns (in order):
 2. `incident_date` (`YYYY-MM-DD` or empty)
 3. `place` (text)
 4. `summary` (text)
-5. `category` (text)
+5. `category` (text; use commas to render multiple tags in the UI)
 
 ## Local CSV file layout
 
