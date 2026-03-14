@@ -3,7 +3,6 @@
 import { useCallback, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
 import Image from "next/image";
 import clsx from "clsx";
-import domtoimage from "dom-to-image";
 import { format, parseISO } from "date-fns";
 import {
   Bar,
@@ -22,6 +21,7 @@ import type { NameType, ValueType } from "recharts/types/component/DefaultToolti
 import type { TooltipProps } from "recharts/types/component/Tooltip";
 import { compareC3Categories, isResolvedC3Request } from "@/lib/c3-requests";
 import { BRAND, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
+import { exportDashboardPng } from "@/lib/dashboard-export";
 import type {
   C3RequestRow,
   C3TrackerBreakdownRow,
@@ -123,7 +123,6 @@ const C3_LOGGED_TREND_COLOR = BRAND.colors.black;
 const SUMMARY_PUBLIC_SAFETY_COLOR = BRAND.colors.safety;
 const SUMMARY_LAW_ENFORCEMENT_COLOR = BRAND.colors.black;
 const SUMMARY_CLEANING_COLOR = BRAND.colors.cleaning;
-const SCREENSHOT_EXPORT_SCALE = 2;
 
 const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
   { id: "summary", label: "Summary" },
@@ -1602,42 +1601,16 @@ export default function DashboardClient({ initialData }: Props) {
 
     setIsPrinting(true);
     try {
-      exportNode.classList.add("dashboard-export-mode");
-      exportNode.classList.add("summary-export-mode");
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      });
-
-      if (typeof document !== "undefined" && "fonts" in document) {
-        await document.fonts.ready;
-      }
-
-      const exportWidth = Math.ceil(exportNode.scrollWidth);
-      const exportHeight = Math.ceil(exportNode.scrollHeight);
-      const pngDataUrl = await domtoimage.toPng(exportNode, {
-        bgcolor: BRAND.colors.white,
-        cacheBust: true,
-        width: exportWidth * SCREENSHOT_EXPORT_SCALE,
-        height: exportHeight * SCREENSHOT_EXPORT_SCALE,
-        style: {
-          transform: `scale(${SCREENSHOT_EXPORT_SCALE})`,
-          transformOrigin: "top left",
-          width: `${exportWidth}px`,
-          height: `${exportHeight}px`
-        }
-      });
       const weekToken = currentWeek
         ? `${currentWeek.week_start}_to_${currentWeek.week_end}`
         : selectedWeekStart;
-      const tabToken = activeTab === "main" ? "current-week" : activeTab;
-      const downloadName = `lgcid-${tabToken}-${weekToken}.png`;
-      const link = document.createElement("a");
-      link.href = pngDataUrl;
-      link.download = downloadName;
-      link.click();
+
+      await exportDashboardPng({
+        exportNode,
+        tab: activeTab,
+        weekToken
+      });
     } finally {
-      exportNode.classList.remove("dashboard-export-mode");
-      exportNode.classList.remove("summary-export-mode");
       setIsPrinting(false);
     }
   }
@@ -1714,8 +1687,9 @@ export default function DashboardClient({ initialData }: Props) {
         {activeTab === "main" || activeTab === "summary" ? (
         <div className="mb-4 grid max-w-[520px] gap-3 sm:grid-cols-[130px_minmax(0,1fr)]">
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.14em]">Year</label>
+            <label htmlFor="dashboard-year" className="block text-[11px] font-semibold uppercase tracking-[0.14em]">Year</label>
             <select
+              id="dashboard-year"
               value={selectedWeekYear}
               onChange={(event) => {
                 const nextYear = event.target.value;
@@ -1734,8 +1708,9 @@ export default function DashboardClient({ initialData }: Props) {
             </select>
           </div>
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.14em]">Reporting week</label>
+            <label htmlFor="dashboard-reporting-week" className="block text-[11px] font-semibold uppercase tracking-[0.14em]">Reporting week</label>
             <select
+              id="dashboard-reporting-week"
               value={selectedWeekStart}
               onChange={(event) => setSelectedWeekStart(event.target.value)}
               className="mt-1 h-11 w-full border-2 border-black bg-white px-3 text-sm text-black"
@@ -1753,8 +1728,9 @@ export default function DashboardClient({ initialData }: Props) {
         {activeTab === "trends" ? (
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <div className="w-full min-w-0 sm:w-[220px]">
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">From</label>
+            <label htmlFor="trends-from-date" className="block text-[11px] font-semibold uppercase tracking-[0.12em]">From</label>
             <input
+              id="trends-from-date"
               type="date"
               value={trendFromDate}
               min={trendDateBoundsConfig.from}
@@ -1774,8 +1750,9 @@ export default function DashboardClient({ initialData }: Props) {
             />
           </div>
           <div className="w-full min-w-0 sm:w-[220px]">
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">To</label>
+            <label htmlFor="trends-to-date" className="block text-[11px] font-semibold uppercase tracking-[0.12em]">To</label>
             <input
+              id="trends-to-date"
               type="date"
               value={trendToDate}
               min={trendFromDate}
@@ -1819,8 +1796,9 @@ export default function DashboardClient({ initialData }: Props) {
         {activeTab === "c3" ? (
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <div className="w-full min-w-0 sm:w-[220px]">
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">From</label>
+            <label htmlFor="c3-from-date" className="block text-[11px] font-semibold uppercase tracking-[0.12em]">From</label>
             <input
+              id="c3-from-date"
               type="date"
               value={c3FromDate}
               min={c3DateBoundsConfig.from}
@@ -1840,8 +1818,9 @@ export default function DashboardClient({ initialData }: Props) {
             />
           </div>
           <div className="w-full min-w-0 sm:w-[220px]">
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">To</label>
+            <label htmlFor="c3-to-date" className="block text-[11px] font-semibold uppercase tracking-[0.12em]">To</label>
             <input
+              id="c3-to-date"
               type="date"
               value={c3ToDate}
               min={c3FromDate}
