@@ -1,13 +1,44 @@
-@tailwind base;
+@import 'tailwindcss';
+
+@theme {
+  --color-brand-black: #000000;
+  --color-brand-white: #ffffff;
+  --color-brand-safety: #fff300;
+  --color-brand-cleaning: #c6ff2e;
+  --color-brand-social: #ff3087;
+  --color-brand-parks: #44d62c;
+
+  --shadow-card-hard: 0 10px 28px rgba(0, 0, 0, 0.14);
+  --shadow-card-soft: 0 6px 20px rgba(0, 0, 0, 0.08);
+
+  --background-image-grid-overlay:
+    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 @layer base {
   img {
     @apply inline-block;
   }
 }
-
-@tailwind components;
-@tailwind utilities;
 
 @font-face {
   font-family: "Montserrat";

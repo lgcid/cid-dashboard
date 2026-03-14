@@ -373,7 +373,7 @@ function TrendTooltip({
               />
               <span className="text-[16px] leading-none text-black">{label}</span>
               <span
-                className="ml-auto inline-flex min-w-[2rem] items-center justify-center rounded-md px-2 py-1 text-[16px] font-semibold leading-none"
+                className="ml-auto inline-flex min-w-8 items-center justify-center rounded-md px-2 py-1 text-[16px] font-semibold leading-none"
                 style={{
                   backgroundColor: seriesColor,
                   color: valueColor
@@ -1105,7 +1105,7 @@ function SummaryMetricCard({
         {showDelta ? (
           <span
             className={clsx(
-              "inline-grid h-7 min-w-[2.5rem] place-items-center rounded-full border px-2.5 text-xs font-semibold tabular-nums",
+              "inline-grid h-7 min-w-10 place-items-center rounded-full border px-2.5 text-xs font-semibold tabular-nums",
               deltaPillClass(delta.tone)
             )}
           >
@@ -1137,7 +1137,7 @@ function PillarMetricRow({
       <div className="shrink-0">
         <span
           className={clsx(
-            "inline-grid h-7 min-w-[2.5rem] place-items-center rounded-full border px-2.5 text-xs font-semibold tabular-nums",
+            "inline-grid h-7 min-w-10 place-items-center rounded-full border px-2.5 text-xs font-semibold tabular-nums",
             deltaPillClass(delta.tone)
           )}
         >
