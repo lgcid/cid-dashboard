@@ -1588,7 +1588,7 @@ export default function DashboardClient({ initialData }: Props) {
       return;
     }
 
-    const exportRefByTab: Record<DashboardTab, RefObject<HTMLDivElement>> = {
+    const exportRefByTab: Record<DashboardTab, RefObject<HTMLDivElement | null>> = {
       main: mainPrintableRef,
       summary: summaryPrintableRef,
       trends: trendsPrintableRef,
