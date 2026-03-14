@@ -38,6 +38,14 @@
   img {
     @apply inline-block;
   }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
 }
 
 @font-face {

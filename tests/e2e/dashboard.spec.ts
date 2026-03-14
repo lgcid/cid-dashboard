@@ -100,3 +100,16 @@ test("summary export downloads and chart surfaces render SVG output", async ({ p
   await expect(c3Svgs.first()).toBeVisible();
   expect(await c3Bars.count()).toBeGreaterThan(0);
 });
+
+test("interactive dashboard buttons expose the pointer cursor", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByRole("button", { name: "Current Week" })).toHaveCSS("cursor", "pointer");
+  await expect(page.getByRole("button", { name: "Print" })).toHaveCSS("cursor", "pointer");
+
+  await page.getByRole("button", { name: "Trends" }).click();
+
+  await expect(page.getByRole("button", { name: "Week", exact: true })).toHaveCSS("cursor", "pointer");
+  await expect(page.getByRole("button", { name: "Month", exact: true })).toHaveCSS("cursor", "pointer");
+  await expect(page.getByRole("button", { name: "Year", exact: true })).toHaveCSS("cursor", "pointer");
+});
