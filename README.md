@@ -105,6 +105,21 @@ Notes:
 - If the token expires, rerun `npx vercel env pull .env.local`.
 - If `vercel env pull` writes `DATA_SOURCE=local_csv`, change it back to `DATA_SOURCE=google_sheets` in `.env.local`.
 
+### Troubleshooting
+
+If you see this runtime error on localhost:
+
+```text
+Error code invalid_grant: ID Token issued at ... is stale to sign-in.
+```
+
+your local `VERCEL_OIDC_TOKEN` in `.env.local` is stale. The fix is to refresh the Vercel-managed local env file and restart the app:
+
+```bash
+npx vercel link
+npx vercel env pull .env.local
+```
+
 ## Data Flow
 
 1. Dashboard data is maintained in CSV files:
