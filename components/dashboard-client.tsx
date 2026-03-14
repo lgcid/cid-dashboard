@@ -8,17 +8,18 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  type DefaultLegendContentProps,
   LabelList,
   Legend,
   Line,
   LineChart,
   ResponsiveContainer,
   Tooltip,
+  type TooltipContentProps,
+  type TooltipValueType,
   XAxis,
   YAxis
 } from "recharts";
-import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
-import type { TooltipProps } from "recharts/types/component/Tooltip";
 import { compareC3Categories, isResolvedC3Request } from "@/lib/c3-requests";
 import { BRAND, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
 import { exportDashboardPng } from "@/lib/dashboard-export";
@@ -318,7 +319,9 @@ function tooltipTextColorForBackground(color: string): string {
   return luminance > 150 ? BRAND.colors.black : BRAND.colors.white;
 }
 
-function formatTrendTooltipValue(value: ValueType | undefined): string {
+type TooltipNameType = string | number;
+
+function formatTrendTooltipValue(value: TooltipValueType | undefined): string {
   if (typeof value === "number") {
     if (Number.isInteger(value)) {
       return value.toLocaleString();
@@ -337,7 +340,7 @@ function formatTrendTooltipValue(value: ValueType | undefined): string {
 function TrendTooltip({
   active,
   payload
-}: TooltipProps<ValueType, NameType>) {
+}: TooltipContentProps<TooltipValueType, TooltipNameType>) {
   if (!active || !payload?.length) {
     return null;
   }
@@ -388,9 +391,7 @@ function TrendTooltip({
 
 function TrendLegend({
   payload
-}: {
-  payload?: Array<{ value?: string; color?: string; dataKey?: string | number }>;
-}) {
+}: DefaultLegendContentProps) {
   if (!payload?.length) {
     return null;
   }
@@ -1231,7 +1232,7 @@ function CurrentWeekBreakdownChart({
                 position="right"
                 fill="#000000"
                 fontSize={10}
-                formatter={(value: number) => value.toLocaleString()}
+                formatter={(value) => typeof value === "number" ? value.toLocaleString() : String(value ?? NO_DATA_LABEL)}
               />
             </Bar>
           </BarChart>
@@ -2047,8 +2048,8 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={<TrendTooltip />} />
-                      <Legend content={<TrendLegend />} />
+                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
+                      <Legend content={(props) => <TrendLegend {...props} />} />
                       <Line
                         type="monotone"
                         dataKey="criminal_incidents"
@@ -2077,8 +2078,8 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={<TrendTooltip />} />
-                      <Legend content={<TrendLegend />} />
+                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
+                      <Legend content={(props) => <TrendLegend {...props} />} />
                       <Line
                         type="monotone"
                         dataKey="cleaning_bags_collected"
@@ -2107,8 +2108,8 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={<TrendTooltip />} />
-                      <Legend content={<TrendLegend />} />
+                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
+                      <Legend content={(props) => <TrendLegend {...props} />} />
                       <Line
                         type="monotone"
                         dataKey="social_touch_points"
@@ -2137,8 +2138,8 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={<TrendTooltip />} />
-                      <Legend content={<TrendLegend />} />
+                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
+                      <Legend content={(props) => <TrendLegend {...props} />} />
                       <Line
                         type="monotone"
                         dataKey="parks_total_bags"
@@ -2167,8 +2168,8 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={<TrendTooltip />} />
-                      <Legend content={<TrendLegend />} />
+                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
+                      <Legend content={(props) => <TrendLegend {...props} />} />
                       <Line
                         type="monotone"
                         dataKey="fines_total"
@@ -2197,8 +2198,8 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={<TrendTooltip />} />
-                      <Legend content={<TrendLegend />} />
+                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
+                      <Legend content={(props) => <TrendLegend {...props} />} />
                       <Line
                         type="monotone"
                         dataKey="urban_total"
@@ -2227,8 +2228,8 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={<TrendTooltip />} />
-                      <Legend content={<TrendLegend />} />
+                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
+                      <Legend content={(props) => <TrendLegend {...props} />} />
                       <Line
                         type="monotone"
                         dataKey="contacts_total"
@@ -2257,8 +2258,8 @@ export default function DashboardClient({ initialData }: Props) {
                       <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                       <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={<TrendTooltip />} />
-                      <Legend content={<TrendLegend />} />
+                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
+                      <Legend content={(props) => <TrendLegend {...props} />} />
                       <Line
                         type="monotone"
                         dataKey="c3_logged_total"
