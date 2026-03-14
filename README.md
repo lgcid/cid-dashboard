@@ -39,6 +39,35 @@ DATA_SOURCE=local_csv
 npm run dev
 ```
 
+## Testing
+
+Use the local CSV dataset for repeatable upgrade validation:
+
+```bash
+DATA_SOURCE=local_csv npm test
+```
+
+`npm test` runs:
+- a production build
+- low-mock Vitest integration tests for the dashboard data pipeline
+- Playwright end-to-end checks against the real local app
+
+Useful test commands:
+
+```bash
+npm run test:integration
+npm run test:e2e
+npm run test:e2e:headed
+```
+
+If Playwright browsers are not installed yet, run:
+
+```bash
+npx playwright install chromium
+```
+
+The automated tests force `local_csv` mode where needed so they stay stable even if your `.env.local` is configured for Google Sheets.
+
 ## Localhost Google Sheets
 
 Use this when you want `localhost` to read from the live Google Sheet through the same Vercel OIDC flow as the deployed app.
@@ -159,3 +188,4 @@ Returns:
 - Missing weeks render `NO_DATA_REPORTED`.
 - Sheet URL/credentials are not exposed to client.
 - Screenshot Mode exports current-week board PNG.
+- `npm test` passes locally before upgrades are merged.
