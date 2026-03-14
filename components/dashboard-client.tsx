@@ -320,6 +320,50 @@ function tooltipTextColorForBackground(color: string): string {
 }
 
 type TooltipNameType = string | number;
+type TooltipSwatchStyle = "solid" | "dashed" | "hatched" | "block";
+type TooltipPayloadEntry = NonNullable<TooltipContentProps<TooltipValueType, TooltipNameType>["payload"]>[number];
+type TooltipSeriesConfig = {
+  label?: string;
+  color?: string;
+  swatchStyle?: TooltipSwatchStyle;
+  valueBackgroundColor?: string;
+  valueBorderColor?: string;
+  valueTextColor?: string;
+};
+type TooltipRowDefinition = {
+  key: string;
+  label: string;
+  value: TooltipValueType | undefined;
+  color: string;
+  swatchStyle: TooltipSwatchStyle;
+  valueBackgroundColor: string;
+  valueBorderColor?: string;
+  valueTextColor: string;
+};
+
+const C3_TOOLTIP_SERIES_CONFIG: Record<string, TooltipSeriesConfig> = {
+  logged: {
+    label: "Logged",
+    color: BRAND.colors.black,
+    swatchStyle: "block"
+  },
+  resolved: {
+    label: "Resolved",
+    color: C3_RESOLVED_GREY,
+    swatchStyle: "hatched",
+    valueBackgroundColor: BRAND.colors.white,
+    valueBorderColor: C3_RESOLVED_GREY,
+    valueTextColor: BRAND.colors.black
+  }
+};
+
+const C3_BACKLOG_TOOLTIP_SERIES_CONFIG: Record<string, TooltipSeriesConfig> = {
+  backlog: {
+    label: "Open backlog",
+    color: BRAND.colors.black,
+    swatchStyle: "block"
+  }
+};
 
 function formatTrendTooltipValue(value: TooltipValueType | undefined): string {
   if (typeof value === "number") {
@@ -337,6 +381,150 @@ function formatTrendTooltipValue(value: TooltipValueType | undefined): string {
   return NO_DATA_LABEL;
 }
 
+function resolveTooltipEntryColor(entry: TooltipPayloadEntry, configuredColor?: string): string {
+  if (configuredColor) {
+    return configuredColor;
+  }
+
+  const rawColorCandidates = [
+    entry.color,
+    (entry as { stroke?: string }).stroke,
+    (entry as { fill?: string }).fill
+  ];
+  const rawColor = rawColorCandidates.find(
+    (candidate): candidate is string => typeof candidate === "string" && !candidate.startsWith("url(")
+  );
+
+  return rawColor ?? BRAND.colors.black;
+}
+
+function buildTooltipRows(
+  payload: readonly TooltipPayloadEntry[],
+  seriesConfig?: Record<string, TooltipSeriesConfig>
+): TooltipRowDefinition[] {
+  return payload.map((entry, index) => {
+    const dataKey = String(entry.dataKey ?? entry.name ?? index);
+    const config = seriesConfig?.[dataKey] ?? {};
+    const color = resolveTooltipEntryColor(entry, config.color);
+    const swatchStyle = config.swatchStyle ?? (typeof entry.dataKey === "string" && entry.dataKey.endsWith("_ma4") ? "dashed" : "solid");
+    const valueBackgroundColor = config.valueBackgroundColor ?? color;
+    const valueTextColor = config.valueTextColor ?? tooltipTextColorForBackground(valueBackgroundColor);
+
+    return {
+      key: dataKey,
+      label: config.label ?? String(entry.name ?? "Value"),
+      value: entry.value,
+      color,
+      swatchStyle,
+      valueBackgroundColor,
+      valueBorderColor: config.valueBorderColor,
+      valueTextColor
+    };
+  });
+}
+
+function TooltipSwatch({
+  color,
+  style
+}: {
+  color: string;
+  style: TooltipSwatchStyle;
+}) {
+  if (style === "hatched") {
+    return (
+      <span
+        className="inline-block h-3 w-5 rounded-[4px] border"
+        style={{
+          borderColor: color,
+          backgroundColor: BRAND.colors.white,
+          backgroundImage: `repeating-linear-gradient(135deg, ${color} 0 2px, transparent 2px 5px)`
+        }}
+      />
+    );
+  }
+
+  if (style === "block") {
+    return (
+      <span
+        className="inline-block h-3 w-5 rounded-[4px] border"
+        style={{
+          borderColor: color,
+          backgroundColor: color
+        }}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="inline-block w-5 border-t-[3px]"
+      style={{
+        borderTopColor: color,
+        borderTopStyle: style === "dashed" ? "dashed" : "solid"
+      }}
+    />
+  );
+}
+
+function ChartTooltipCard({
+  title,
+  rows
+}: {
+  title: string;
+  rows: TooltipRowDefinition[];
+}) {
+  return (
+    <div className="rounded-lg border border-black/15 bg-white px-5 py-4 shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
+      <p className="text-lg font-semibold leading-none" style={{ fontFamily: "var(--font-heading)" }}>
+        {title || NO_DATA_LABEL}
+      </p>
+
+      <div className="mt-5 space-y-3">
+        {rows.map((row) => (
+          <div key={row.key} className="flex items-center gap-2.5">
+            <TooltipSwatch color={row.color} style={row.swatchStyle} />
+            <span className="text-[16px] leading-none text-black">{row.label}:</span>
+            <span
+              className="ml-auto inline-flex min-w-8 items-center justify-center rounded-md border px-2 py-1 text-[16px] font-semibold leading-none"
+              style={{
+                backgroundColor: row.valueBackgroundColor,
+                borderColor: row.valueBorderColor ?? "transparent",
+                color: row.valueTextColor
+              }}
+            >
+              {formatTrendTooltipValue(row.value)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CategoricalTooltip({
+  active,
+  payload,
+  label,
+  labelKey,
+  seriesConfig
+}: TooltipContentProps<TooltipValueType, TooltipNameType> & {
+  labelKey: string;
+  seriesConfig?: Record<string, TooltipSeriesConfig>;
+}) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const chartPoint = payload[0]?.payload as Record<string, string | number> | undefined;
+  const title = typeof label === "string" || typeof label === "number"
+    ? String(label)
+    : chartPoint && chartPoint[labelKey] !== undefined
+      ? String(chartPoint[labelKey])
+      : "";
+
+  return <ChartTooltipCard title={title} rows={buildTooltipRows(payload, seriesConfig)} />;
+}
+
 function TrendTooltip({
   active,
   payload
@@ -348,45 +536,7 @@ function TrendTooltip({
   const chartPoint = payload[0]?.payload as TrendChartPoint | undefined;
   const dateLabel = chartPoint?.period_start ? formatWeekDate(chartPoint.period_start) : "";
 
-  return (
-    <div className="rounded-lg border border-black/15 bg-white px-5 py-4 shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
-      <p className="text-lg font-semibold leading-none" style={{ fontFamily: "var(--font-heading)" }}>
-        {dateLabel || NO_DATA_LABEL}
-      </p>
-
-      <div className="mt-5 space-y-3">
-        {payload.map((entry, index) => {
-          const key = `${entry.dataKey ?? entry.name ?? index}`;
-          const seriesColor = entry.color ?? BRAND.colors.black;
-          const valueColor = tooltipTextColorForBackground(seriesColor);
-          const isMovingAverage = typeof entry.dataKey === "string" && entry.dataKey.endsWith("_ma4");
-          const label = `${String(entry.name ?? "Value")}:`;
-
-          return (
-            <div key={key} className="flex items-center gap-2.5">
-              <span
-                className="inline-block w-5 border-t-[3px]"
-                style={{
-                  borderTopColor: seriesColor,
-                  borderTopStyle: isMovingAverage ? "dashed" : "solid"
-                }}
-              />
-              <span className="text-[16px] leading-none text-black">{label}</span>
-              <span
-                className="ml-auto inline-flex min-w-8 items-center justify-center rounded-md px-2 py-1 text-[16px] font-semibold leading-none"
-                style={{
-                  backgroundColor: seriesColor,
-                  color: valueColor
-                }}
-              >
-                {formatTrendTooltipValue(entry.value)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  return <ChartTooltipCard title={dateLabel} rows={buildTooltipRows(payload)} />;
 }
 
 function TrendLegend({
@@ -1201,13 +1351,15 @@ function CurrentWeekBreakdownChart({
   subtitle,
   data,
   color,
-  railClass
+  railClass,
+  valueLabel = "Total"
 }: {
   title: string;
   subtitle?: string;
   data: Array<{ category: string; value: number }>;
   color: string;
   railClass?: string;
+  valueLabel?: string;
 }) {
   return (
     <article className={clsx("rounded-2xl border border-black bg-white p-4", railClass && "rail-card", railClass)}>
@@ -1225,8 +1377,29 @@ function CurrentWeekBreakdownChart({
               tick={{ fontSize: 10 }}
               interval={0}
             />
-            <Tooltip />
-            <Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]}>
+            <Tooltip
+              cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
+              content={(props) => (
+                <CategoricalTooltip
+                  {...props}
+                  labelKey="category"
+                  seriesConfig={{
+                    value: {
+                      label: valueLabel,
+                      color,
+                      swatchStyle: "block"
+                    }
+                  }}
+                />
+              )}
+            />
+            <Bar
+              dataKey="value"
+              fill={color}
+              radius={[0, 4, 4, 0]}
+              name={valueLabel}
+              activeBar={{ fill: color, opacity: 0.9, stroke: BRAND.colors.black, strokeWidth: 1 }}
+            >
               <LabelList
                 dataKey="value"
                 position="right"
@@ -2326,12 +2499,33 @@ export default function DashboardClient({ initialData }: Props) {
                 <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
                 <XAxis dataKey="department" tick={{ fontSize: 9 }} interval={0} angle={-24} textAnchor="end" height={74} />
                 <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip />
+                <Tooltip
+                  cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
+                  content={(props) => (
+                    <CategoricalTooltip
+                      {...props}
+                      labelKey="department"
+                      seriesConfig={C3_TOOLTIP_SERIES_CONFIG}
+                    />
+                  )}
+                />
                 <Legend formatter={legendLabelFormatter} />
-                <Bar dataKey="logged" fill={BRAND.colors.black} name="Logged">
+                <Bar
+                  dataKey="logged"
+                  fill={BRAND.colors.black}
+                  name="Logged"
+                  activeBar={{ fill: BRAND.colors.black, opacity: 0.92, stroke: BRAND.colors.black, strokeWidth: 1 }}
+                >
                   <LabelList dataKey="logged" position="top" fill="#000000" fontSize={9} />
                 </Bar>
-                <Bar dataKey="resolved" fill="url(#resolvedHatch)" stroke={C3_RESOLVED_GREY} strokeWidth={1} name="Resolved">
+                <Bar
+                  dataKey="resolved"
+                  fill="url(#resolvedHatch)"
+                  stroke={C3_RESOLVED_GREY}
+                  strokeWidth={1}
+                  name="Resolved"
+                  activeBar={{ fill: "url(#resolvedHatch)", stroke: BRAND.colors.black, strokeWidth: 1.2 }}
+                >
                   <LabelList dataKey="resolved" position="top" fill="#000000" fontSize={9} />
                 </Bar>
               </BarChart>
@@ -2346,8 +2540,22 @@ export default function DashboardClient({ initialData }: Props) {
                   <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.2} />
                   <XAxis type="number" tick={{ fontSize: 10 }} />
                   <YAxis type="category" dataKey="department" width={150} tick={{ fontSize: 9 }} interval={0} />
-                  <Tooltip />
-                  <Bar dataKey="backlog" fill={BRAND.colors.black} name="Open backlog">
+                  <Tooltip
+                    cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
+                    content={(props) => (
+                      <CategoricalTooltip
+                        {...props}
+                        labelKey="department"
+                        seriesConfig={C3_BACKLOG_TOOLTIP_SERIES_CONFIG}
+                      />
+                    )}
+                  />
+                  <Bar
+                    dataKey="backlog"
+                    fill={BRAND.colors.black}
+                    name="Open backlog"
+                    activeBar={{ fill: BRAND.colors.black, opacity: 0.9, stroke: BRAND.colors.black, strokeWidth: 1 }}
+                  >
                     <LabelList dataKey="backlog" position="right" fill="#000000" fontSize={9} />
                   </Bar>
                 </BarChart>
