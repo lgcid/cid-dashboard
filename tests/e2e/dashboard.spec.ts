@@ -72,3 +72,31 @@ test("c3 tracker reflects a fixed date range and expected totals", async ({ page
   await expect(page.locator("article", { hasText: "Open Backlog" })).toContainText("8");
   await expect(page.locator("article", { hasText: "Resolution Rate" })).toContainText("20%");
 });
+
+test("summary export downloads and chart surfaces render SVG output", async ({ page }) => {
+  await page.goto("/");
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Print" }).click();
+  const download = await downloadPromise;
+
+  expect(download.suggestedFilename()).toMatch(/^lgcid-summary-.*\.png$/);
+
+  await page.getByRole("button", { name: "Trends" }).click();
+  await page.getByLabel("From").fill("2026-02-23");
+  await page.getByLabel("To").fill("2026-03-02");
+
+  const trendSvgs = page.locator("#trends .recharts-responsive-container svg");
+  const trendCurves = page.locator("#trends .recharts-line-curve");
+
+  await expect(trendSvgs.first()).toBeVisible();
+  expect(await trendCurves.count()).toBeGreaterThan(0);
+
+  await page.getByRole("button", { name: "C3 Tracker" }).click();
+
+  const c3Svgs = page.locator("#c3 .recharts-responsive-container svg");
+  const c3Bars = page.locator("#c3 .recharts-bar-rectangle");
+
+  await expect(c3Svgs.first()).toBeVisible();
+  expect(await c3Bars.count()).toBeGreaterThan(0);
+});
