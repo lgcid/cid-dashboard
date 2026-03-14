@@ -8,6 +8,7 @@ import {
 import { parseCsv } from "@/lib/csv";
 import { fetchSheetRows, readGoogleSheetsEnv } from "@/lib/google-sheets";
 import { c3RequestRowsSchema, incidentRowsSchema } from "@/lib/schemas";
+import { validateDerivedMetricSections } from "@/lib/metric-labels";
 import { parseSectionMatrix } from "@/lib/section-matrix";
 import {
   MATRIX_SECTION_KEYS,
@@ -99,6 +100,7 @@ async function readSectionsFromSheets(): Promise<{
     })
   );
   const baseSections = matrixSectionEntriesToMap(sectionEntries);
+  validateDerivedMetricSections(baseSections);
   const c3Rows = await readC3RequestsFromSheets();
 
   return attachC3Section(baseSections, c3Rows);
@@ -116,6 +118,7 @@ async function readSectionsFromLocalCsv(): Promise<{
     })
   );
   const baseSections = matrixSectionEntriesToMap(sectionEntries);
+  validateDerivedMetricSections(baseSections);
   const c3Rows = await readC3RequestsFromLocalCsv();
 
   return attachC3Section(baseSections, c3Rows);

@@ -54,7 +54,7 @@ Example (`urban_management`):
 ### `social_services`
 
 - `Incidents`
-- `Client Follow ups`
+- `Client Follow Ups`
 - `Individual Engagements`
 - `Support Sessions`
 - `ID Applications`
@@ -70,7 +70,7 @@ Example (`urban_management`):
 
 ### `parks`
 
-- `Pruned Trees` (optional, shown on Summary + Current Week)
+- `Trees Pruned` (optional, shown on Summary + Current Week)
 
 ## `c3_requests` sheet format
 

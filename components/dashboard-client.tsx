@@ -628,15 +628,6 @@ function toMetricNumber(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function normalizeCategoryLabel(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ");
-}
-
 function weekChartDataFromSection(section: SectionData, weekStart: string | null): Array<{ category: string; value: number }> {
   if (!weekStart) {
     return section.categories.map((row) => ({ category: row.category, value: 0 }));
@@ -1443,17 +1434,6 @@ function ExportImageFooter() {
   );
 }
 
-function parksMetricLabel(label: string): string {
-  const normalized = normalizeCategoryLabel(label);
-  if (normalized === "pruned trees" || normalized === "pruned tree") {
-    return "Trees Pruned";
-  }
-  if (normalized.includes("bag")) {
-    return label;
-  }
-  return `${label} Bags`;
-}
-
 function c3DateBounds(rows: C3RequestRow[], fallbackDate: string): { from: string; to: string } {
   const dates = rows
     .map((row) => row.date_logged)
@@ -1747,10 +1727,7 @@ export default function DashboardClient({ initialData }: Props) {
       theme: "parks" as const,
       iconPath: "/icons/pillar-parks.webp",
       summary: "Maintaining and improving green spaces and recreational facilities.",
-      metrics: toPillarMetrics(initialData.sections.parks).map((metric) => ({
-        ...metric,
-        label: parksMetricLabel(metric.label)
-      }))
+      metrics: toPillarMetrics(initialData.sections.parks)
     }),
     [initialData.sections.parks, toPillarMetrics]
   );

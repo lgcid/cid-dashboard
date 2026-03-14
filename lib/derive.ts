@@ -3,6 +3,14 @@ import type { C3RequestInsights } from "@/lib/c3-requests";
 import { WEEK_START_BASELINE } from "@/lib/section-matrix";
 import { safeDate, weekEndFromStart } from "@/lib/date-utils";
 import { rankHotspots } from "@/lib/hotspots";
+import {
+  CLEANING_LABELS,
+  CONTROL_ROOM_ENGAGEMENT_LABELS,
+  LAW_ENFORCEMENT_LABELS,
+  PARKS_LABELS,
+  PUBLIC_SAFETY_LABELS,
+  SOCIAL_TOUCH_POINT_EXCLUDED_LABELS
+} from "@/lib/metric-labels";
 import { MATRIX_SECTION_KEYS } from "@/types/dashboard";
 import type {
   C3BreakdownRow,
@@ -20,52 +28,8 @@ import type {
 
 const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-const PUBLIC_SAFETY_LABELS = {
-  criminal_incidents: ["Criminal Incidents"],
-  arrests_made: ["Arrests Made"],
-  proactive_actions: ["Stop and Search", "Stop & Search", "Pro-active Actions", "Proactive Actions"],
-  public_space_interventions: ["Public Space Interventions"]
-} as const;
-
-const LAW_ENFORCEMENT_LABELS = {
-  section56_notices: ["Section 56 Notices"],
-  section341_notices: ["Section 341 Notices"]
-} as const;
-
-const CLEANING_LABELS = {
-  cleaning_bags_collected: ["Bags Filled and Collected"],
-  cleaning_servitudes_cleaned: ["Servitudes Cleaned"],
-  cleaning_stormwater_drains_cleaned: ["Stormwater Drains Cleaned"],
-  cleaning_stormwater_bags_filled: ["Stormwater Bags Filled"]
-} as const;
-
-const CONTROL_ROOM_ENGAGEMENT_LABELS = {
-  calls_received: ["Calls Received", "Calls"],
-  whatsapps_received: ["WhatsApps Received", "WhatsApp Received", "WhatsApp Messages Received", "WhatsApps"]
-} as const;
-
-const PARKS_LABELS = {
-  pruned_trees: ["Pruned Trees", "Pruned trees"]
-} as const;
-
-const SOCIAL_TOUCH_POINT_EXCLUDED_LABELS = [
-  "Work Readiness Bags Collected",
-  "Work Readiness Bag Collected",
-  "Successful ID Applications",
-  "Successful ID Application"
-] as const;
-
 function isIsoDay(value: string): boolean {
   return ISO_DAY_PATTERN.test(value);
-}
-
-function normalizeLabel(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ");
 }
 
 function toNumber(value: NullableNumber): number | null {
@@ -82,10 +46,9 @@ function sumNullable(values: Array<NullableNumber | undefined>): number | null {
   return numeric.reduce((sum, value) => sum + value, 0);
 }
 
-function findCategoryValue(section: SectionData, weekStart: string, candidates: readonly string[]): number | null {
-  const normalizedCandidates = new Set(candidates.map(normalizeLabel));
+function findCategoryValue(section: SectionData, weekStart: string, category: string): number | null {
   for (const row of section.categories) {
-    if (!normalizedCandidates.has(normalizeLabel(row.category))) {
+    if (row.category !== category) {
       continue;
     }
     return toNumber(row.values[weekStart] ?? null);
@@ -98,17 +61,16 @@ function sumSectionForWeek(section: SectionData, weekStart: string): number | nu
 }
 
 function sumSectionForWeekExcluding(section: SectionData, weekStart: string, excludedCategories: readonly string[]): number | null {
-  const excluded = new Set(excludedCategories.map(normalizeLabel));
+  const excluded = new Set(excludedCategories);
   return sumNullable(
     section.categories
-      .filter((row) => !excluded.has(normalizeLabel(row.category)))
+      .filter((row) => !excluded.has(row.category))
       .map((row) => row.values[weekStart] ?? null)
   );
 }
 
 function sectionCategoryValue(section: SectionData, category: string, weekStart: string): number | null {
-  const normalizedTarget = normalizeLabel(category);
-  const matched = section.categories.find((row) => normalizeLabel(row.category) === normalizedTarget);
+  const matched = section.categories.find((row) => row.category === category);
   if (!matched) {
     return null;
   }
@@ -233,7 +195,7 @@ export function buildWeeklyRows(
         cleaning_stormwater_drains_cleaned: cleaningStormwaterDrains,
         cleaning_stormwater_bags_filled: cleaningStormwaterBags,
         social_touch_points: sumSectionForWeekExcluding(sections.social_services, weekStart, SOCIAL_TOUCH_POINT_EXCLUDED_LABELS),
-        parks_total_bags: sumSectionForWeekExcluding(sections.parks, weekStart, PARKS_LABELS.pruned_trees),
+        parks_total_bags: sumSectionForWeekExcluding(sections.parks, weekStart, [PARKS_LABELS.pruned_trees]),
         parks_pruned_trees: parksPrunedTrees,
         c3_logged_total: c3LoggedTotal,
         c3_resolved_total: c3ResolvedTotalForWeek(c3Insights, weekStart, c3LoggedTotal),
