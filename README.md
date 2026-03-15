@@ -2,13 +2,21 @@
 
 Mobile-first, brand-compliant Next.js dashboard for Lower Gardens CID weekly operations reporting.
 
+## Documentation
+
+User documentation is currently maintained in Google Docs:
+
+- [User documentation](https://docs.google.com/document/d/17u0St-kbnLR7vrfqwDU9ECiKeU0BfElC-7XDF9piBm8)
+- [Definitions](https://docs.google.com/document/d/13nKN0lO5W-CP1Ab7iB0tsDX5xaWo_zZOQ3sVTO0TqAU)
+- [Sheet / CSV template specification](data/sheet-template.md)
+
 ## Features
 
 - React/Next.js App Router + Tailwind CSS dashboard
 - Secure server-side Google Sheets proxy (`/api/dashboard`)
 - CSV-backed dashboard data (local files or Google Sheets)
 - Weekly trend charts with 4-week moving averages
-- C3 tracker based on current request status + backlog by category
+- C3 tracker based on logged requests, CID-managed resolved flags, and backlog by category
 - Social value KPI module (shelter referrals + work readiness)
 - Public safety wins + hotspot street ranking
 - WhatsApp link sharing + PNG screenshot mode (`dom-to-image`)
@@ -133,10 +141,11 @@ npx vercel env pull .env.local
 - `data/csv/sections/c3_requests.csv`
 - `data/csv/incidents.csv`
 2. CSV section files mirror spreadsheet sheets:
-- one sheet per section with `week_start` in column A, week rows, and category/stat columns in row 1
-- `c3_requests` is the exception: it is row-level request data, and the dashboard derives weekly logged counts plus tracker status totals from it
+- category sheets use the documented matrix in [data/sheet-template.md](data/sheet-template.md): row `1` from column `B` onward contains `week_start` dates, and column `A` from row `2` onward contains category/stat labels
+- `c3_requests` and `incidents` remain row-based as documented in [data/sheet-template.md](data/sheet-template.md)
+- the dashboard derives weekly logged counts plus tracker status totals from the row-level `c3_requests` data
 - `c3_requests.request_status` tracks the City of Cape Town workflow, while `c3_requests.resolved` is the CID-managed field used for resolved/backlog reporting
-3. Week list always starts at `2025-08-01` and is derived from the weekly matrix sheets' `week_start` rows in column A (`c3_requests` does not create reporting weeks).
+3. Week list always starts at `2025-08-01` and is derived from the weekly matrix sheet date headers in row `1` (`c3_requests` does not create reporting weeks).
 4. Dashboard reads local CSV exports by default.
 5. Optional: switch to Google Sheets later by setting:
 

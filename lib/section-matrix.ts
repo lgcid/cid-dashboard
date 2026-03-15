@@ -17,8 +17,7 @@ function parseNullableNumber(value: unknown): number | null {
 
 export function parseSectionMatrix(rows: string[][], key: SectionKey): SectionData {
   const header = rows[0] ?? [];
-  const heading = String(header[0] ?? "").trim() || "week_start";
-  const firstDataCellWeekStart = normalizeSheetDay(rows[1]?.[0]);
+  const heading = String(header[0] ?? "").trim() || "Categories";
 
   const dateColumns: Array<{ columnIndex: number; weekStart: string }> = [];
   for (let columnIndex = 1; columnIndex < header.length; columnIndex += 1) {
@@ -32,61 +31,23 @@ export function parseSectionMatrix(rows: string[][], key: SectionKey): SectionDa
     dateColumns.push({ columnIndex, weekStart });
   }
 
-  const isTransposedMatrix = dateColumns.length > 0 && !firstDataCellWeekStart;
-  if (isTransposedMatrix) {
-    const categories = rows.slice(1).flatMap((row) => {
-      const category = String(row[0] ?? "").trim();
-      if (!category) {
-        return [];
-      }
-
-      const values: Record<string, number | null> = {};
-      for (const { columnIndex, weekStart } of dateColumns) {
-        values[weekStart] = parseNullableNumber(row[columnIndex]);
-      }
-
-      return [
-        {
-          category,
-          values
-        }
-      ];
-    });
-
-    return {
-      key,
-      heading,
-      categories
-    };
+  if (dateColumns.length === 0) {
+    throw new Error(
+      `Section "${key}" must use week headers in row 1 (B1 onward) and category labels in column A (A2 downward).`
+    );
   }
 
-  const categoryColumns: Array<{ columnIndex: number; category: string }> = [];
-  for (let columnIndex = 1; columnIndex < header.length; columnIndex += 1) {
-    const category = String(header[columnIndex] ?? "").trim();
+  const categories = rows.slice(1).flatMap((row) => {
+    const category = String(row[0] ?? "").trim();
     if (!category) {
-      continue;
+      return [];
     }
-    categoryColumns.push({ columnIndex, category });
-  }
 
-  const weekRows: Array<{ row: string[]; weekStart: string }> = [];
-  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
-    const row = rows[rowIndex] ?? [];
-    const weekStart = normalizeSheetDay(row[0]);
-    if (!weekStart) {
-      continue;
-    }
-    if (weekStart < MIN_WEEK_START) {
-      continue;
-    }
-    weekRows.push({ row, weekStart });
-  }
-
-  const categories = categoryColumns.map(({ columnIndex, category }) => {
     const values: Record<string, number | null> = {};
-    for (const { row, weekStart } of weekRows) {
+    for (const { columnIndex, weekStart } of dateColumns) {
       values[weekStart] = parseNullableNumber(row[columnIndex]);
     }
+
     return {
       category,
       values

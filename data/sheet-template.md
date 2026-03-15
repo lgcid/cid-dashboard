@@ -1,6 +1,6 @@
 # Google Sheet Template Specification
 
-This dashboard now reads **one spreadsheet sheet per section**.
+This dashboard reads **one spreadsheet sheet/tab per section**.
 
 ## Required sheets
 
@@ -16,20 +16,22 @@ This dashboard now reads **one spreadsheet sheet per section**.
 
 ## Section sheet format (all sheets except `c3_requests` and `incidents`)
 
-- Cell `A1`: `week_start`
-- Row `1`, columns `B...`: category / stat names
-- Column `A`, rows `2...`: week start dates (`YYYY-MM-DD`)
+- Row `1`, columns `B...`: week start dates (`YYYY-MM-DD`)
+- Column `A`, rows `2...`: category / stat names
+- Cell `A1` is ignored
 - Data cells: numbers or blank
 
 Example (`urban_management`):
 
-| A          | B                        | C                               | D                 | E                 |
-|------------|--------------------------|---------------------------------|-------------------|-------------------|
-| week_start | Motor Vehicle Accidents  | Emergency, Medical and Assistance | Pro-active Actions | By-law management |
-| 2025-08-01 | 2                        | 0                               | 0                 | 1                 |
-| 2025-08-08 | 1                        | 1                               | 2                 | 0                 |
+| A                           | B          | C          |
+|-----------------------------|------------|------------|
+|                             | 2025-08-01 | 2025-08-08 |
+| Motor Vehicle Accidents     | 2          | 1          |
+| Emergency, Medical and Assistance | 0    | 1          |
+| Pro-active Actions          | 0          | 2          |
+| By-law management           | 1          | 0          |
 
-## Required column names for hardcoded Summary/Trends
+## Required row labels for hardcoded Summary/Trends
 
 ### `public_safety`
 
@@ -91,7 +93,6 @@ Notes:
 - Summary, Current Week, and Trends derive weekly **logged** counts from `date_logged`.
 - `request_status` tracks the City of Cape Town request workflow (`New`, `Registered`, `Assigned`, `In Progress`, `Closed`, `Completed`, `Service request completed`).
 - The `resolved` column is a CID-managed field and is the only source used for **currently resolved** counts in the dashboard.
-- For the initial seed only, existing rows can be marked resolved when `request_status` is an end state (`Closed`, `Completed`, or `Service request completed`).
 
 ## `incidents` sheet format
 
@@ -105,7 +106,7 @@ Columns (in order):
 
 ## Local CSV file layout
 
-The local CSV mode mirrors spreadsheet sheets:
+The local CSV mode mirrors spreadsheet tabs. Category section CSVs use the same layout described above.
 
 - `data/csv/sections/urban_management.csv`
 - `data/csv/sections/public_safety.csv`
@@ -120,14 +121,14 @@ The local CSV mode mirrors spreadsheet sheets:
 ## Week logic
 
 - Week list always starts at `2025-08-01`
-- Weeks are discovered from the weekly matrix sheet rows in column `A` (`>= 2025-08-01`); `c3_requests` does not create reporting weeks
+- Weeks are discovered from the weekly matrix sheet date headers in row `1` (`>= 2025-08-01`); `c3_requests` does not create reporting weeks
 - `record_status` is `REPORTED` if any weekly matrix section has a numeric value for that week
 - Otherwise `record_status` is `NO_DATA_REPORTED`
 
 ## Extending data
 
-- Add a new stat by adding a new column (new header in row `1`); it will be read automatically and shown in section-based views such as the `Current Week` tab.
-- Add a new reporting week by adding a new row with `week_start` in column `A`; it will automatically be included in week selection, trends, and dashboard calculations.
+- Add a new stat by adding a new row with the label in column `A`; it will be read automatically and shown in section-based views such as the `Current Week` tab.
+- Add a new reporting week by adding a new column with the `week_start` date in row `1`; it will automatically be included in week selection, trends, and dashboard calculations.
 
 ## Security notes
 
