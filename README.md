@@ -182,7 +182,6 @@ Returns:
 - hardcoded summary/trend weekly metrics derived from sections
 - selected/current week
 - trend series with MA(4)
-- C3 totals and breakdown
 - hotspot ranking
 - incident list
 

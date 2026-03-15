@@ -55,7 +55,6 @@ export interface HardcodedWeeklyMetrics {
   parks_total_bags: NullableNumber;
   parks_pruned_trees: NullableNumber;
   c3_logged_total: NullableNumber;
-  c3_resolved_total: NullableNumber;
   calls_received: NullableNumber;
   whatsapps_received: NullableNumber;
 }
@@ -103,18 +102,6 @@ export interface HotspotRow {
   incident_count: number;
 }
 
-export interface C3Totals {
-  logged: NullableNumber;
-  resolved: NullableNumber;
-  resolution_ratio: NullableNumber;
-}
-
-export interface C3BreakdownRow {
-  department: string;
-  logged: NullableNumber;
-  resolved: NullableNumber;
-}
-
 export interface C3TrackerTotals {
   logged: number;
   resolved: number;
@@ -147,8 +134,6 @@ export interface DashboardResponse {
   weekly: WeeklyMetricRow[];
   current_week: WeeklyMetricRow | null;
   trends: DerivedTrendPoint[];
-  c3_totals: C3Totals;
-  c3_breakdown: C3BreakdownRow[];
   c3_tracker_totals: C3TrackerTotals;
   c3_tracker_breakdown: C3TrackerBreakdownRow[];
   c3_request_rows: C3RequestRow[];

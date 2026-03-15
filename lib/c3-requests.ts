@@ -46,8 +46,6 @@ type WeeklyCategoryCounts = Record<string, Record<string, number>>;
 
 export interface C3RequestInsights {
   loggedSection: SectionData;
-  weeklyResolvedTotals: Record<string, number>;
-  weeklyResolvedByCategory: WeeklyCategoryCounts;
   trackerTotals: C3TrackerTotals;
   trackerBreakdown: C3TrackerBreakdownRow[];
 }
@@ -300,17 +298,9 @@ export function buildC3RequestInsights(
   }
 
   const trackerBreakdown = buildTrackerBreakdown(loggedTotalsByCategory, resolvedTotalsByCategory);
-  const weeklyResolvedTotals = Object.fromEntries(
-    Object.entries(resolvedByWeekCategory).map(([weekStart, countsByCategory]) => [
-      weekStart,
-      Object.values(countsByCategory).reduce((sum, value) => sum + value, 0)
-    ])
-  );
 
   return {
     loggedSection: buildLoggedSection(loggedByWeekCategory),
-    weeklyResolvedTotals,
-    weeklyResolvedByCategory: resolvedByWeekCategory,
     trackerTotals: buildTrackerTotals(trackerBreakdown),
     trackerBreakdown
   };

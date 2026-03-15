@@ -1,5 +1,4 @@
 import { format } from "date-fns";
-import type { C3RequestInsights } from "@/lib/c3-requests";
 import { WEEK_START_BASELINE } from "@/lib/section-matrix";
 import { safeDate, weekEndFromStart } from "@/lib/date-utils";
 import { rankHotspots } from "@/lib/hotspots";
@@ -13,8 +12,6 @@ import {
 } from "@/lib/metric-labels";
 import { MATRIX_SECTION_KEYS } from "@/types/dashboard";
 import type {
-  C3BreakdownRow,
-  C3Totals,
   DashboardQuery,
   DerivedTrendPoint,
   HotspotRow,
@@ -77,31 +74,6 @@ function sectionCategoryValue(section: SectionData, category: string, weekStart:
   return toNumber(matched.values[weekStart] ?? null);
 }
 
-function c3ResolvedTotalForWeek(
-  c3Insights: C3RequestInsights,
-  weekStart: string,
-  loggedTotal: number | null
-): number | null {
-  const resolved = c3Insights.weeklyResolvedTotals[weekStart];
-  if (resolved !== undefined) {
-    return resolved;
-  }
-  return loggedTotal !== null ? 0 : null;
-}
-
-function c3ResolvedValueForCategory(
-  c3Insights: C3RequestInsights,
-  weekStart: string,
-  category: string,
-  loggedValue: number | null
-): number | null {
-  const resolved = c3Insights.weeklyResolvedByCategory[weekStart]?.[category];
-  if (resolved !== undefined) {
-    return resolved;
-  }
-  return loggedValue !== null ? 0 : null;
-}
-
 function matrixSections(sections: SectionMap): SectionData[] {
   return MATRIX_SECTION_KEYS.map((key) => sections[key]);
 }
@@ -152,8 +124,7 @@ export function deriveWeeks(sections: SectionMap): WeekRecord[] {
 
 export function buildWeeklyRows(
   weeks: WeekRecord[],
-  sections: SectionMap,
-  c3Insights: C3RequestInsights
+  sections: SectionMap
 ): WeeklyMetricRow[] {
   return weeks.map((week) => {
     const weekStart = week.week_start;
@@ -198,7 +169,6 @@ export function buildWeeklyRows(
         parks_total_bags: sumSectionForWeekExcluding(sections.parks, weekStart, [PARKS_LABELS.pruned_trees]),
         parks_pruned_trees: parksPrunedTrees,
         c3_logged_total: c3LoggedTotal,
-        c3_resolved_total: c3ResolvedTotalForWeek(c3Insights, weekStart, c3LoggedTotal),
         calls_received: callsReceived,
         whatsapps_received: whatsappsReceived
       }
@@ -267,42 +237,6 @@ export function buildTrendSeries(rows: WeeklyMetricRow[]): DerivedTrendPoint[] {
       contacts_total_ma4: movingAverage(contacts, index, 4)
     };
   });
-}
-
-export function deriveC3Totals(currentWeek: WeeklyMetricRow | null): C3Totals {
-  const logged = currentWeek?.metrics.c3_logged_total ?? null;
-  const resolved = currentWeek?.metrics.c3_resolved_total ?? null;
-  let ratio: number | null = null;
-  if (logged !== null && resolved !== null) {
-    ratio = logged === 0 ? 0 : Number((resolved / logged).toFixed(2));
-  }
-  return {
-    logged,
-    resolved,
-    resolution_ratio: ratio
-  };
-}
-
-export function deriveC3Breakdown(
-  currentWeek: WeeklyMetricRow | null,
-  sections: SectionMap,
-  c3Insights: C3RequestInsights
-): C3BreakdownRow[] {
-  const weekStart = currentWeek?.week_start ?? null;
-  const categories = sections.c3_requests.categories.map((row) => row.category);
-
-  return categories.map((category) => ({
-    department: category,
-    logged: weekStart ? sectionCategoryValue(sections.c3_requests, category, weekStart) : null,
-    resolved: weekStart
-      ? c3ResolvedValueForCategory(
-          c3Insights,
-          weekStart,
-          category,
-          sectionCategoryValue(sections.c3_requests, category, weekStart)
-        )
-      : null
-  }));
 }
 
 export function pickCurrentWeek(rows: WeeklyMetricRow[], query: DashboardQuery): WeeklyMetricRow | null {
