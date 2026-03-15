@@ -24,7 +24,7 @@ async function waitForNextPaint(targetDocument: Document): Promise<void> {
   });
 }
 
-export function buildDashboardExportFilename(tab: DashboardExportTab, weekToken: string): string {
+function buildDashboardExportFilename(tab: DashboardExportTab, weekToken: string): string {
   return `lgcid-${buildTabToken(tab)}-${weekToken}.png`;
 }
 

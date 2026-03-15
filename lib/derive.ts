@@ -66,14 +66,6 @@ function sumSectionForWeekExcluding(section: SectionData, weekStart: string, exc
   );
 }
 
-function sectionCategoryValue(section: SectionData, category: string, weekStart: string): number | null {
-  const matched = section.categories.find((row) => row.category === category);
-  if (!matched) {
-    return null;
-  }
-  return toNumber(matched.values[weekStart] ?? null);
-}
-
 function matrixSections(sections: SectionMap): SectionData[] {
   return MATRIX_SECTION_KEYS.map((key) => sections[key]);
 }

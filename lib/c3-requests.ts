@@ -9,8 +9,6 @@ import type {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const FINAL_STATUSES = new Set(["closed", "completed", "service request completed"]);
-
 const CATEGORY_ORDER = [
   "Roads & Infrastructure",
   "Water & Sanitation",
@@ -96,10 +94,6 @@ function addUtcDays(date: Date, days: number): Date {
 
 function diffUtcDays(later: Date, earlier: Date): number {
   return Math.floor((later.getTime() - earlier.getTime()) / DAY_MS);
-}
-
-export function isFinalC3Status(status: string | null): boolean {
-  return FINAL_STATUSES.has(normalizeLookup(status ?? ""));
 }
 
 export function isResolvedC3Request(row: Pick<C3RequestRow, "request_status" | "resolved">): boolean {
