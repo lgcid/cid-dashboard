@@ -58,6 +58,7 @@ describe("dashboard data pipeline", () => {
     expect(data.sections.public_safety.categories.length).toBeGreaterThan(0);
     expect(data.incidents.length).toBeGreaterThan(0);
     expect(data.c3Requests.length).toBeGreaterThan(0);
+    expect(data.publishedWeeks.length).toBeGreaterThan(0);
   });
 
   it("returns fixed historical metrics for the 2026-02-23 reporting week", async () => {
@@ -84,5 +85,32 @@ describe("dashboard data pipeline", () => {
 
     expect(invalidWeekData.meta.selected_week_start).toBe(defaultData.meta.selected_week_start);
     expect(invalidWeekData.current_week?.week_start).toBe(defaultData.current_week?.week_start);
+  });
+
+  it("derives the visible reporting window from published weeks", async () => {
+    const data = await getDashboardData();
+
+    expect(data.meta.reporting_window_start).toBe("2025-08-01");
+    expect(data.meta.reporting_window_end).toBe("2026-03-08");
+    expect(data.weeks[0]?.week_start).toBe("2025-08-01");
+    expect(data.weeks.at(-1)?.week_start).toBe("2026-03-02");
+  });
+
+  it("only exposes explicitly published weeks in weekly views", async () => {
+    const [response, loaded] = await Promise.all([getDashboardData(), loadData()]);
+
+    expect(response.meta.available_weeks).toEqual(loaded.publishedWeeks);
+    expect(response.weekly.map((row) => row.week_start)).toEqual(loaded.publishedWeeks);
+  });
+
+  it("limits row-based incidents and c3 requests to the published date window", async () => {
+    const data = await getDashboardData();
+
+    expect(data.incidents.every((incident) => incident.week_start >= "2025-08-01" && incident.week_start <= "2026-03-08")).toBe(true);
+    expect(
+      data.c3_request_rows.every(
+        (row) => row.date_logged !== null && row.date_logged >= "2025-08-01" && row.date_logged <= "2026-03-08"
+      )
+    ).toBe(true);
   });
 });

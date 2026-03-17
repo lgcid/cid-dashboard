@@ -13,6 +13,7 @@ This dashboard reads **one spreadsheet sheet/tab per section**.
 7. `control_room_engagement`
 8. `c3_requests`
 9. `incidents`
+10. `published_weeks`
 
 ## Section sheet format (all sheets except `c3_requests` and `incidents`)
 
@@ -104,6 +105,19 @@ Columns (in order):
 4. `summary` (text)
 5. `category` (text; use commas to render multiple tags in the UI)
 
+## `published_weeks` sheet format
+
+Columns (in order):
+
+1. `week_start` (`YYYY-MM-DD`)
+
+Notes:
+
+- Each row represents a week that is published on the dashboard.
+- Summary, Current Week, Trends, and week selection only use the explicitly listed weeks.
+- `incidents` and `c3_requests` rows are included from the first published date through the end of the week containing the last published date.
+- This sheet is required.
+
 ## Local CSV file layout
 
 The local CSV mode mirrors spreadsheet tabs. Category section CSVs use the same layout described above.
@@ -117,11 +131,14 @@ The local CSV mode mirrors spreadsheet tabs. Category section CSVs use the same 
 - `data/csv/sections/control_room_engagement.csv`
 - `data/csv/sections/c3_requests.csv`
 - `data/csv/incidents.csv`
+- `data/csv/published_weeks.csv`
 
 ## Week logic
 
 - Week list always starts at `2025-08-01`
 - Weeks are discovered from the weekly matrix sheet date headers in row `1` (`>= 2025-08-01`); `c3_requests` does not create reporting weeks
+- Weekly dashboard views only use `published_weeks.week_start` values that are explicitly listed
+- `incidents` and `c3_requests` rows are included between the first `published_weeks.week_start` value and the end of the week containing the last `published_weeks.week_start` value
 - `record_status` is `REPORTED` if any weekly matrix section has a numeric value for that week
 - Otherwise `record_status` is `NO_DATA_REPORTED`
 

@@ -1434,19 +1434,10 @@ function ExportImageFooter() {
   );
 }
 
-function c3DateBounds(rows: C3RequestRow[], fallbackDate: string): { from: string; to: string } {
-  const dates = rows
-    .map((row) => row.date_logged)
-    .filter((value): value is string => Boolean(value))
-    .sort((a, b) => a.localeCompare(b));
-
-  if (!dates.length) {
-    return { from: fallbackDate, to: fallbackDate };
-  }
-
+function c3DateBounds(reportingWindowStart: string, reportingWindowEnd: string): { from: string; to: string } {
   return {
-    from: dates[0],
-    to: dates[dates.length - 1]
+    from: reportingWindowStart,
+    to: reportingWindowEnd
   };
 }
 
@@ -1503,8 +1494,8 @@ export default function DashboardClient({ initialData }: Props) {
   const weekly = initialData.weekly;
   const defaultTrendBounds = trendDateBounds(weekly, initialData.meta.selected_week_start);
   const defaultC3Bounds = c3DateBounds(
-    initialData.c3_request_rows,
-    initialData.meta.selected_week_start
+    initialData.meta.reporting_window_start,
+    initialData.meta.reporting_window_end
   );
 
   const [selectedWeekStart, setSelectedWeekStart] = useState(initialData.meta.selected_week_start);

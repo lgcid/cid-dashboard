@@ -66,11 +66,11 @@ test("c3 tracker reflects a fixed date range and expected totals", async ({ page
   await page.getByLabel("From").fill("2026-03-07");
   await page.getByLabel("To").fill("2026-03-10");
 
-  await expect(page.getByText("07 Mar 2026 to 10 Mar 2026")).toBeVisible();
-  await expect(page.locator("article", { hasText: "Total Logged" })).toContainText("10");
+  await expect(page.getByText("07 Mar 2026 to 08 Mar 2026")).toBeVisible();
+  await expect(page.locator("article", { hasText: "Total Logged" })).toContainText("9");
   await expect(page.locator("article", { hasText: "Resolved" })).toContainText("2");
-  await expect(page.locator("article", { hasText: "Open Backlog" })).toContainText("8");
-  await expect(page.locator("article", { hasText: "Resolution Rate" })).toContainText("20%");
+  await expect(page.locator("article", { hasText: "Open Backlog" })).toContainText("7");
+  await expect(page.locator("article", { hasText: "Resolution Rate" })).toContainText("22%");
 });
 
 test("summary export downloads and chart surfaces render SVG output", async ({ page }) => {

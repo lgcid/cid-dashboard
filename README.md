@@ -140,14 +140,17 @@ npx vercel env pull .env.local
 - `data/csv/sections/control_room_engagement.csv`
 - `data/csv/sections/c3_requests.csv`
 - `data/csv/incidents.csv`
+- `data/csv/published_weeks.csv`
 2. CSV section files mirror spreadsheet sheets:
 - category sheets use the documented matrix in [data/sheet-template.md](data/sheet-template.md): row `1` from column `B` onward contains `week_start` dates, and column `A` from row `2` onward contains category/stat labels
 - `c3_requests` and `incidents` remain row-based as documented in [data/sheet-template.md](data/sheet-template.md)
 - the dashboard derives weekly logged counts plus tracker status totals from the row-level `c3_requests` data
 - `c3_requests.request_status` tracks the City of Cape Town workflow, while `c3_requests.resolved` is the CID-managed field used for resolved/backlog reporting
 3. Week list always starts at `2025-08-01` and is derived from the weekly matrix sheet date headers in row `1` (`c3_requests` does not create reporting weeks).
-4. Dashboard reads local CSV exports by default.
-5. Optional: switch to Google Sheets later by setting:
+4. Weekly dashboard views are controlled by `published_weeks`: only listed weeks appear in selectors, summary/current-week data, and trends.
+5. Row-based datasets use the published window: `incidents` and `c3_requests` are included from the first published date through the end of the week containing the last published date.
+6. Dashboard reads local CSV exports by default.
+7. Optional: switch to Google Sheets later by setting:
 
 ```bash
 DATA_SOURCE=google_sheets

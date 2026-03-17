@@ -68,3 +68,15 @@ export const c3RequestRowSchema = z.object({
 });
 
 export const c3RequestRowsSchema = z.array(c3RequestRowSchema);
+
+export const publishedWeekRowSchema = z.object({
+  week_start: z.preprocess((value) => {
+    const normalized = normalizeSheetDay(value);
+    if (normalized) {
+      return normalized;
+    }
+    return String(value ?? "").trim();
+  }, z.string())
+});
+
+export const publishedWeekRowsSchema = z.array(publishedWeekRowSchema);

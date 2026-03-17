@@ -8,16 +8,12 @@ import {
   sortWeekly
 } from "@/lib/derive";
 import { loadData } from "@/lib/data-source";
-import type { DashboardQuery, DashboardResponse, IncidentRow, WeekRecord, WeeklyMetricRow } from "@/types/dashboard";
+import type { DashboardQuery, DashboardResponse, IncidentRow, WeeklyMetricRow } from "@/types/dashboard";
 
 const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function isIsoDay(value: string): boolean {
   return ISO_DAY_PATTERN.test(value);
-}
-
-function todayUtcIso(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function minIso(values: string[]): string {
@@ -28,26 +24,14 @@ function maxIso(values: string[]): string {
   return values.reduce((max, value) => (value > max ? value : max));
 }
 
-function deriveReportingWindow(weeks: WeekRecord[], incidents: IncidentRow[]): { start: string; end: string } {
-  const weeklyStarts = weeks.map((row) => row.week_start).filter(isIsoDay);
-  const weeklyEnds = weeks.map((row) => row.week_end).filter(isIsoDay);
-
-  if (weeklyStarts.length && weeklyEnds.length) {
-    return {
-      start: minIso(weeklyStarts),
-      end: maxIso(weeklyEnds)
-    };
-  }
-
-  const incidentStarts = incidents.map((incident) => incident.week_start).filter(isIsoDay);
-  if (incidentStarts.length) {
-    const start = minIso(incidentStarts);
-    const end = weekEndFromStart(maxIso(incidentStarts));
+function deriveReportingWindow(publishedWeeks: string[]): { start: string; end: string } {
+  const publishedWeekStarts = publishedWeeks.filter(isIsoDay);
+  if (publishedWeekStarts.length) {
+    const start = minIso(publishedWeekStarts);
+    const end = weekEndFromStart(maxIso(publishedWeekStarts));
     return { start, end };
   }
-
-  const today = todayUtcIso();
-  return { start: today, end: today };
+  throw new Error('Missing published weeks. Add at least one row to the "published_weeks" sheet/tab/csv.');
 }
 
 function deriveDataUpdatedAt(weeklyRows: WeeklyMetricRow[], reportingWindowEnd: string): string {
@@ -70,25 +54,22 @@ function inWindow(weekStart: string, start: string, end: string): boolean {
   return weekStart >= start && weekStart <= end;
 }
 
-function filterByWindow(rows: WeeklyMetricRow[], start: string, end: string): WeeklyMetricRow[] {
-  return rows.filter((row) => inWindow(row.week_start, start, end));
-}
-
-function filterWeeksByWindow(weeks: WeekRecord[], start: string, end: string): WeekRecord[] {
-  return weeks.filter((week) => inWindow(week.week_start, start, end));
-}
-
 function filterIncidentsByWindow(incidents: IncidentRow[], start: string, end: string): IncidentRow[] {
   return incidents.filter((incident) => inWindow(incident.week_start, start, end));
 }
 
+function filterToPublishedWeeks<T extends { week_start: string }>(rows: T[], publishedWeeks: string[]): T[] {
+  const publishedWeekSet = new Set(publishedWeeks);
+  return rows.filter((row) => publishedWeekSet.has(row.week_start));
+}
+
 export async function getDashboardData(query: DashboardQuery = {}): Promise<DashboardResponse> {
-  const { sections, incidents, c3Insights, c3Requests, source } = await loadData();
+  const { sections, incidents, c3Insights, c3Requests, publishedWeeks, source } = await loadData();
   const weeks = deriveWeeks(sections);
   const weekly = buildWeeklyRows(weeks, sections);
-  const reportingWindow = deriveReportingWindow(weeks, incidents);
-  const weeklyWindowed = sortWeekly(filterByWindow(weekly, reportingWindow.start, reportingWindow.end));
-  const weeksWindowed = filterWeeksByWindow(weeks, reportingWindow.start, reportingWindow.end);
+  const reportingWindow = deriveReportingWindow(publishedWeeks);
+  const weeklyWindowed = sortWeekly(filterToPublishedWeeks(weekly, publishedWeeks));
+  const weeksWindowed = filterToPublishedWeeks(weeks, publishedWeeks);
   const incidentsWindowed = filterIncidentsByWindow(incidents, reportingWindow.start, reportingWindow.end);
   const dataUpdatedAt = deriveDataUpdatedAt(weeklyWindowed, reportingWindow.end);
 
