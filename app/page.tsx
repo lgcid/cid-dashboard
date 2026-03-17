@@ -7,6 +7,7 @@ type PageProps = {
   searchParams: Promise<{
     weekStart?: string;
     windowWeeks?: string;
+    preview?: string;
   }>;
 };
 
@@ -14,9 +15,11 @@ export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const weekStart = params?.weekStart;
   const windowWeeks = params?.windowWeeks ? Number(params.windowWeeks) : undefined;
+  const preview = params?.preview;
   const initialData = await getDashboardData({
     weekStart,
-    windowWeeks: Number.isFinite(windowWeeks) ? windowWeeks : undefined
+    windowWeeks: Number.isFinite(windowWeeks) ? windowWeeks : undefined,
+    preview
   });
 
   return <DashboardClient initialData={initialData} />;

@@ -144,4 +144,5 @@ export interface DashboardResponse {
 export interface DashboardQuery {
   weekStart?: string;
   windowWeeks?: number;
+  preview?: string;
 }

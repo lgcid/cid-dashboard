@@ -7,10 +7,12 @@ export async function GET(request: NextRequest) {
     const weekStart = searchParams.get("weekStart") ?? undefined;
     const windowWeeksParam = searchParams.get("windowWeeks");
     const windowWeeks = windowWeeksParam ? Number(windowWeeksParam) : undefined;
+    const preview = searchParams.get("preview") ?? undefined;
 
     const payload = await getDashboardData({
       weekStart,
-      windowWeeks: Number.isFinite(windowWeeks) ? windowWeeks : undefined
+      windowWeeks: Number.isFinite(windowWeeks) ? windowWeeks : undefined,
+      preview
     });
 
     return NextResponse.json(payload, {

@@ -176,9 +176,10 @@ At a high level, the Google Cloud side is:
 
 ## API
 
-### `GET /api/dashboard?weekStart=YYYY-MM-DD&windowWeeks=number`
+### `GET /api/dashboard?weekStart=YYYY-MM-DD&windowWeeks=number&preview=YYYY-MM-DD`
 
 `windowWeeks` is optional. When omitted, hotspot intelligence is cumulative across all loaded incident data.
+`preview` is optional. When provided, the dashboard includes the week containing that date even if it is not yet listed in `published_weeks`.
 
 Returns:
 - week metadata (`weeks`) + section datasets (`sections`)

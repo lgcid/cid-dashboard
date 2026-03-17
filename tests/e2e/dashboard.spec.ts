@@ -18,6 +18,19 @@ test("dashboard API serves fixed local CSV data for a historical week", async ({
   ).toHaveLength(5);
 });
 
+test("preview query exposes one unpublished week in the API response", async ({ request }) => {
+  const response = await request.get("/api/dashboard?preview=2026-03-10");
+  expect(response.ok()).toBeTruthy();
+
+  const payload = await response.json();
+
+  expect(payload.meta.available_weeks.at(-1)).toBe("2026-03-09");
+  expect(payload.meta.reporting_window_end).toBe("2026-03-15");
+  expect(payload.current_week.week_start).toBe("2026-03-09");
+  expect(payload.current_week.metrics.criminal_incidents).toBe(6);
+  expect(payload.current_week.metrics.c3_logged_total).toBe(1);
+});
+
 test("dashboard renders and tab navigation works without client errors", async ({ page }) => {
   await page.goto("/");
 
@@ -44,6 +57,18 @@ test("current week view updates when a historical reporting week is selected", a
   await expect(incidentsSection.getByText("Roeland Street", { exact: true })).toBeVisible();
   await expect(incidentsSection.getByText("Buitenkant Street", { exact: true })).toBeVisible();
   await expect(incidentsSection.getByText("Scott Street", { exact: true })).toBeVisible();
+});
+
+test("preview query makes the unpublished latest week visible in the dashboard", async ({ page }) => {
+  await page.goto("/?preview=2026-03-10");
+  await page.getByRole("button", { name: "Current Week" }).click();
+
+  await expect(page.getByLabel("Reporting week")).toHaveValue("2026-03-09");
+
+  const incidentsSection = page.locator("#incidents");
+
+  await expect(incidentsSection.getByText("Hope Street", { exact: true })).toBeVisible();
+  await expect(incidentsSection).toContainText("09 Mar 2026 to 15 Mar 2026");
 });
 
 test("trends view reflects a fixed range and monthly granularity", async ({ page }) => {

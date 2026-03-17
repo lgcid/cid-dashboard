@@ -6,10 +6,11 @@ import {
   type C3RequestInsights
 } from "@/lib/c3-requests";
 import { parseCsv } from "@/lib/csv";
-import { isIsoDay, weekEndFromStart } from "@/lib/date-utils";
+import { isIsoDay, normalizeSheetDay, weekEndFromStart } from "@/lib/date-utils";
 import { fetchSheetRows, readGoogleSheetsEnv } from "@/lib/google-sheets";
 import { c3RequestRowsSchema, incidentRowsSchema, publishedWeekRowsSchema } from "@/lib/schemas";
 import { validateDerivedMetricSections } from "@/lib/metric-labels";
+import { WEEK_START_BASELINE } from "@/lib/section-matrix";
 import { parseSectionMatrix } from "@/lib/section-matrix";
 import {
   MATRIX_SECTION_KEYS,
@@ -22,6 +23,9 @@ import {
 
 const ROOT = process.cwd();
 type DataSourceMode = "local_csv" | "google_sheets";
+interface LoadDataOptions {
+  preview?: string;
+}
 
 function getDataSourceMode(): DataSourceMode {
   const raw = process.env.DATA_SOURCE?.trim().toLowerCase();
@@ -97,6 +101,50 @@ function normalizePublishedWeeks(rows: Array<{ week_start: string }>): string[] 
   return publishedWeeks;
 }
 
+function collectMatrixWeekStarts(baseSections: Record<MatrixSectionKey, SectionData>): string[] {
+  const weekStarts = new Set<string>([WEEK_START_BASELINE]);
+
+  for (const section of Object.values(baseSections)) {
+    for (const row of section.categories) {
+      for (const weekStart of Object.keys(row.values)) {
+        if (!isIsoDay(weekStart)) {
+          continue;
+        }
+        if (weekStart < WEEK_START_BASELINE) {
+          continue;
+        }
+        weekStarts.add(weekStart);
+      }
+    }
+  }
+
+  return [...weekStarts].sort((a, b) => a.localeCompare(b));
+}
+
+function resolvePreviewWeek(preview: string | undefined, matrixWeekStarts: string[]): string | null {
+  const previewDay = normalizeSheetDay(preview);
+  if (!previewDay) {
+    return null;
+  }
+
+  for (const weekStart of matrixWeekStarts) {
+    const weekEnd = weekEndFromStart(weekStart);
+    if (previewDay >= weekStart && previewDay <= weekEnd) {
+      return weekStart;
+    }
+  }
+
+  return null;
+}
+
+function buildVisibleWeeks(publishedWeeks: string[], previewWeek: string | null): string[] {
+  const visibleWeeks = new Set(publishedWeeks);
+  if (previewWeek) {
+    visibleWeeks.add(previewWeek);
+  }
+  return [...visibleWeeks].sort((a, b) => a.localeCompare(b));
+}
+
 async function readPublishedWeeksFromSheets(): Promise<string[]> {
   const rows = await fetchSheetRows("published_weeks!A1:A5000");
   return normalizePublishedWeeks(publishedWeekRowsSchema.parse(rowsToObjects(rows)));
@@ -161,7 +209,7 @@ async function readMatrixSectionsFromLocalCsv(): Promise<Record<MatrixSectionKey
   return baseSections;
 }
 
-async function readFromSheets(): Promise<{
+async function readFromSheets(options: LoadDataOptions = {}): Promise<{
   sections: SectionMap;
   incidents: IncidentRow[];
   c3Insights: C3RequestInsights;
@@ -174,7 +222,9 @@ async function readFromSheets(): Promise<{
     fetchSheetRows("incidents!A1:AZ5000"),
     readC3RequestsFromSheets()
   ]);
-  const publishedWindow = derivePublishedWindow(publishedWeeks);
+  const previewWeek = resolvePreviewWeek(options.preview, collectMatrixWeekStarts(baseSections));
+  const visibleWeeks = buildVisibleWeeks(publishedWeeks, previewWeek);
+  const publishedWindow = derivePublishedWindow(visibleWeeks);
   const { sections, c3Insights, c3Requests } = attachC3Section(
     baseSections,
     filterC3RequestsByPublishedWindow(c3Rows, publishedWindow)
@@ -186,11 +236,11 @@ async function readFromSheets(): Promise<{
     incidents: filterIncidentsByPublishedWindow(incidentRowsSchema.parse(incidentObjects), publishedWindow),
     c3Insights,
     c3Requests,
-    publishedWeeks
+    publishedWeeks: visibleWeeks
   };
 }
 
-async function readFromLocalCsv(): Promise<{
+async function readFromLocalCsv(options: LoadDataOptions = {}): Promise<{
   sections: SectionMap;
   incidents: IncidentRow[];
   c3Insights: C3RequestInsights;
@@ -203,7 +253,9 @@ async function readFromLocalCsv(): Promise<{
     readLocalCsv("data/csv/incidents.csv"),
     readC3RequestsFromLocalCsv()
   ]);
-  const publishedWindow = derivePublishedWindow(publishedWeeks);
+  const previewWeek = resolvePreviewWeek(options.preview, collectMatrixWeekStarts(baseSections));
+  const visibleWeeks = buildVisibleWeeks(publishedWeeks, previewWeek);
+  const publishedWindow = derivePublishedWindow(visibleWeeks);
   const { sections, c3Insights, c3Requests } = attachC3Section(
     baseSections,
     filterC3RequestsByPublishedWindow(c3Rows, publishedWindow)
@@ -214,11 +266,11 @@ async function readFromLocalCsv(): Promise<{
     incidents: filterIncidentsByPublishedWindow(incidentRowsSchema.parse(incidentObjects), publishedWindow),
     c3Insights,
     c3Requests,
-    publishedWeeks
+    publishedWeeks: visibleWeeks
   };
 }
 
-export async function loadData(): Promise<{
+export async function loadData(options: LoadDataOptions = {}): Promise<{
   sections: SectionMap;
   incidents: IncidentRow[];
   c3Insights: C3RequestInsights;
@@ -236,14 +288,14 @@ export async function loadData(): Promise<{
       );
     }
 
-    const fromSheets = await readFromSheets();
+    const fromSheets = await readFromSheets(options);
     return {
       ...fromSheets,
       source: "google_sheets"
     };
   }
 
-  const fromLocal = await readFromLocalCsv();
+  const fromLocal = await readFromLocalCsv(options);
   return {
     ...fromLocal,
     source: "local_csv"

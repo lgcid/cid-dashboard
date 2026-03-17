@@ -64,7 +64,9 @@ function filterToPublishedWeeks<T extends { week_start: string }>(rows: T[], pub
 }
 
 export async function getDashboardData(query: DashboardQuery = {}): Promise<DashboardResponse> {
-  const { sections, incidents, c3Insights, c3Requests, publishedWeeks, source } = await loadData();
+  const { sections, incidents, c3Insights, c3Requests, publishedWeeks, source } = await loadData({
+    preview: query.preview
+  });
   const weeks = deriveWeeks(sections);
   const weekly = buildWeeklyRows(weeks, sections);
   const reportingWindow = deriveReportingWindow(publishedWeeks);

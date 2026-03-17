@@ -113,4 +113,18 @@ describe("dashboard data pipeline", () => {
       )
     ).toBe(true);
   });
+
+  it("adds a preview week to weekly views and extends row-based data through that week", async () => {
+    const data = await getDashboardData({ preview: "2026-03-10" });
+
+    expect(data.meta.available_weeks.at(-1)).toBe("2026-03-09");
+    expect(data.meta.reporting_window_end).toBe("2026-03-15");
+    expect(data.current_week?.week_start).toBe("2026-03-09");
+    expect(data.current_week?.metrics.criminal_incidents).toBe(6);
+    expect(data.current_week?.metrics.section56_notices).toBe(12);
+    expect(data.current_week?.metrics.section341_notices).toBe(44);
+    expect(data.current_week?.metrics.c3_logged_total).toBe(1);
+    expect(data.incidents.some((incident) => incident.week_start === "2026-03-09" && incident.place === "Hope Street")).toBe(true);
+    expect(data.c3_request_rows.some((row) => row.date_logged === "2026-03-10")).toBe(true);
+  });
 });
