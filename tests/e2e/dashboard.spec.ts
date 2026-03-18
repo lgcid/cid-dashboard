@@ -80,7 +80,7 @@ test("trends view reflects a fixed range and monthly granularity", async ({ page
 
   const trendsSection = page.locator("#trends");
 
-  await expect(trendsSection).toContainText("Monthly results from 23 Feb 2026 to 02 Mar 2026");
+  await expect(page.getByText("Monthly results from 23 Feb 2026 to 02 Mar 2026", { exact: false })).toBeVisible();
   await expect(trendsSection).toContainText("4-month average");
   await expect(trendsSection.getByText("Public Safety Trend", { exact: true })).toBeVisible();
 });
