@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState, type CSSProperties, type RefObj
 import Image from "next/image";
 import clsx from "clsx";
 import { format, parseISO } from "date-fns";
+import { ChevronDown, ClipboardCheck, ClipboardList, FileText, Printer, TrendingUp, type LucideIcon } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -582,7 +583,7 @@ function IncidentCategoryTag({ category, compact = false }: { category: string; 
         <span
           key={`${label}-${index}`}
           className={clsx(
-            "inline-flex max-w-full items-center rounded-full border border-black bg-brand-safety px-2 py-0.5 font-semibold normal-case tracking-normal text-black",
+            "inline-flex items-center rounded-full border border-black bg-brand-safety px-2 py-0.5 font-semibold normal-case tracking-normal text-black",
             compact ? "text-[9px]" : "text-[10px]"
           )}
         >
@@ -954,6 +955,127 @@ function SectionHeading({
       </div>
       {description ? <p className="mt-1 pl-12 text-sm md:text-base">{description}</p> : null}
     </div>
+  );
+}
+
+function SelectField({
+  id,
+  label,
+  value,
+  onChange,
+  children
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: React.ChangeEventHandler<HTMLSelectElement>;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="block font-[var(--font-heading)] text-[0.92rem] font-medium tracking-[-0.01em] text-black/80">
+        {label}
+      </label>
+      <div className="relative mt-2">
+        <select
+          id={id}
+          value={value}
+          onChange={onChange}
+          className="w-full appearance-none rounded-[6px] border border-black/15 bg-white px-4 py-2 font-[var(--font-body)] text-[1rem] text-black shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none"
+        >
+          {children}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/70" aria-hidden />
+      </div>
+    </div>
+  );
+}
+
+function DateField({
+  id,
+  label,
+  value,
+  min,
+  max,
+  onChange
+}: {
+  id: string;
+  label: string;
+  value: string;
+  min: string;
+  max: string;
+  onChange: React.ChangeEventHandler<HTMLInputElement>;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="block font-[var(--font-heading)] text-[0.92rem] font-medium tracking-[-0.01em] text-black/80">
+        {label}
+      </label>
+      <input
+        id={id}
+        type="date"
+        value={value}
+        min={min}
+        max={max}
+        onChange={onChange}
+        className="mt-2 w-full rounded-[6px] border border-black/15 bg-white px-4 py-2 font-[var(--font-body)] text-[1rem] text-black shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none"
+      />
+    </div>
+  );
+}
+
+function DashboardTopPanel({
+  title,
+  description,
+  icon: Icon,
+  controls
+}: {
+  title: string;
+  description: React.ReactNode;
+  icon: LucideIcon;
+  controls?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-[24px] border border-black/12 bg-white px-6 py-6 shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-4">
+            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white">
+              <Icon className="h-6 w-6" strokeWidth={2.1} aria-hidden />
+            </span>
+            <h2 className="font-[var(--font-heading)] text-[1.6rem] font-bold leading-none tracking-[-0.03em] text-black md:text-[1.8rem]">
+              {title}
+            </h2>
+          </div>
+          <div className="mt-2 text-[1.1rem] text-[#5c6b82]">{description}</div>
+        </div>
+        {controls ? <div className="w-full lg:w-[46%] lg:min-w-[420px]">{controls}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+function DashboardTabButton({
+  active,
+  label,
+  onClick
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={clsx(
+        "rounded-[12px] border-[1.5px] px-7 py-3 font-[var(--font-body)] text-[1rem] font-semibold transition-colors",
+        active ? "border-black bg-black text-white" : "border-black bg-white text-black hover:border-black"
+      )}
+      aria-pressed={active}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -1634,6 +1756,7 @@ export default function DashboardClient({ initialData }: Props) {
   const c3OverallBreakdown = c3TrackerSummary.breakdown;
   const c3OverallTotals = c3TrackerSummary.totals;
   const c3OverallResolutionRatio = c3TrackerSummary.totals.resolution_ratio;
+  const activeTabLabel = DASHBOARD_TABS.find((tab) => tab.id === activeTab)?.label ?? "Summary";
   const c3BacklogTop3 = useMemo(
     () =>
       [...c3OverallBreakdown]
@@ -1758,9 +1881,9 @@ export default function DashboardClient({ initialData }: Props) {
   }
 
   return (
-    <main className="dashboard-shell min-h-screen bg-white text-black">
+    <main className="dashboard-shell min-h-screen bg-[#f9fafb] text-black">
       <header className="header">
-        <div className="mx-auto w-full max-w-[1140px] px-4">
+        <div className="dashboard-container">
           <div className="flex min-h-[78px] items-center justify-between gap-4">
             <Image src={BRAND.logoPath} alt="Lower Gardens CID" width={240} height={44} className="h-auto w-[190px] md:w-[230px]" priority />
 
@@ -1777,223 +1900,230 @@ export default function DashboardClient({ initialData }: Props) {
       </header>
 
       <section className="border-b-2 border-black bg-black text-white">
-        <div className="mx-auto w-full max-w-6xl px-4 py-7 md:py-9">
-          <div className="text-left">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em]">Lower Gardens City Improvement District</p>
-            <h1 className="mt-3 max-w-4xl text-3xl font-bold leading-tight md:text-5xl">Weekly Operations Dashboard</h1>
-            <p className="mt-3 max-w-3xl text-sm md:text-base">
-              Weekly and historical operational performance for stakeholders, covering safety, cleaning, social upliftment, and urban management.
-            </p>
-
-            <div className="mt-5 flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold uppercase tracking-[0.08em]">
+        <div className="dashboard-container py-9 md:py-10">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 flex-1 text-left">
+              <p className="font-[var(--font-heading)] text-[0.85rem] font-semibold uppercase tracking-[0.12em] text-white/92">
+                Lower Gardens City Improvement District
+              </p>
+              <h1 className="mt-5 font-[var(--font-heading)] text-[2.5rem] font-bold leading-[0.96] tracking-[-0.05em] text-white md:text-[3.3rem]">
+                Weekly Operations Dashboard
+              </h1>
+              <p className="mt-7 font-[var(--font-body)] text-[1.25rem] leading-[1.6] text-white/78 md:text-[1.2rem]">
+                Weekly and historical operational performance for stakeholders, covering safety, cleaning, social upliftment, and urban management.
+              </p>
+              <p className="mt-9 font-[var(--font-heading)] text-[0.83rem] font-semibold uppercase tracking-[0.08em] text-white/92">
                 Last Update <strong>{formatDataUpdate(initialData.meta.data_updated_at)}</strong>
               </p>
+            </div>
+            <div className="flex justify-start lg:justify-end">
               <button
                 type="button"
                 onClick={handlePrintScreenshot}
                 disabled={isPrinting}
-                className="hidden items-center rounded-md border border-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60 md:inline-flex"
+                className="inline-flex items-center gap-3 rounded-[14px] border-1 border-white px-6 py-2 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isPrinting ? "Preparing..." : "Print"}
+                <Printer className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+                <span>{isPrinting ? "Preparing..." : "Print"}</span>
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="border-b border-black/20 bg-white">
-        <div className="mx-auto w-full max-w-6xl px-4 py-3">
-          <div className="flex flex-wrap gap-2">
+      <section className="bg-[#f9fafb]">
+        <div className="dashboard-container flex flex-col gap-6 py-7 md:py-8">
+          <div className="flex flex-wrap gap-4">
             {DASHBOARD_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={clsx(
-                  "rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors",
-                  activeTab === tab.id
-                    ? "border-black bg-black text-white"
-                    : "border-black/25 bg-white text-black hover:border-black"
-                )}
-                aria-pressed={activeTab === tab.id}
-              >
-                {tab.label}
-              </button>
+              <DashboardTabButton key={tab.id} active={activeTab === tab.id} label={tab.label} onClick={() => setActiveTab(tab.id)} />
             ))}
           </div>
         </div>
       </section>
 
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 md:py-8">
-        {activeTab === "main" || activeTab === "summary" ? (
-        <div className="mb-4 grid max-w-[520px] gap-3 sm:grid-cols-[130px_minmax(0,1fr)]">
-          <div>
-            <label htmlFor="dashboard-year" className="block text-[11px] font-semibold uppercase tracking-[0.14em]">Year</label>
-            <select
-              id="dashboard-year"
-              value={selectedWeekYear}
-              onChange={(event) => {
-                const nextYear = event.target.value;
-                const nextWeek = [...weekOptions].reverse().find((option) => option.year === nextYear);
-                if (nextWeek) {
-                  setSelectedWeekStart(nextWeek.weekStart);
-                }
-              }}
-              className="mt-1 h-11 w-full border-2 border-black bg-white px-3 text-sm text-black"
-            >
-              {weekYears.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="dashboard-reporting-week" className="block text-[11px] font-semibold uppercase tracking-[0.14em]">Reporting week</label>
-            <select
-              id="dashboard-reporting-week"
-              value={selectedWeekStart}
-              onChange={(event) => setSelectedWeekStart(event.target.value)}
-              className="mt-1 h-11 w-full border-2 border-black bg-white px-3 text-sm text-black"
-            >
-              {visibleWeekOptions.map((option) => (
-                <option key={option.weekStart} value={option.weekStart}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        ) : null}
+      <section className="sticky top-0 z-30 bg-[#f9fafb]">
+        <div className="dashboard-container py-1 md:py-2">
+          {activeTab === "main" || activeTab === "summary" ? (
+            <DashboardTopPanel
+              title={activeTabLabel}
+              icon={activeTab === "summary" ? FileText : ClipboardList}
+              description={
+                <>
+                  <div>{activeTab === "summary" ? "Activity report showing the key metrics for:" : "Detailed operational results across each CID focus area for:"}</div>
+                  <div className="mt-1 font-semibold text-[#4d5d74]">{selectedWeekRange}.</div>
+                </>
+              }
+              controls={
+                <div className="grid gap-4 md:grid-cols-[160px_minmax(0,1fr)]">
+                  <SelectField
+                    id="dashboard-year"
+                    label="Year"
+                    value={selectedWeekYear}
+                    onChange={(event) => {
+                      const nextYear = event.target.value;
+                      const nextWeek = [...weekOptions].reverse().find((option) => option.year === nextYear);
+                      if (nextWeek) {
+                        setSelectedWeekStart(nextWeek.weekStart);
+                      }
+                    }}
+                  >
+                    {weekYears.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </SelectField>
+                  <SelectField
+                    id="dashboard-reporting-week"
+                    label="Reporting Week"
+                    value={selectedWeekStart}
+                    onChange={(event) => setSelectedWeekStart(event.target.value)}
+                  >
+                    {visibleWeekOptions.map((option) => (
+                      <option key={option.weekStart} value={option.weekStart}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </SelectField>
+                </div>
+              }
+            />
+          ) : null}
 
-        {activeTab === "trends" ? (
-        <div className="mb-4 flex flex-wrap items-end gap-3">
-          <div className="w-full min-w-0 sm:w-[220px]">
-            <label htmlFor="trends-from-date" className="block text-[11px] font-semibold uppercase tracking-[0.12em]">From</label>
-            <input
-              id="trends-from-date"
-              type="date"
-              value={trendFromDate}
-              min={trendDateBoundsConfig.from}
-              max={trendToDate}
-              onChange={(event) => {
-                const nextFrom = event.target.value;
-                if (!nextFrom) {
-                  return;
-                }
-                const boundedFrom = nextFrom < trendDateBoundsConfig.from ? trendDateBoundsConfig.from : nextFrom;
-                setTrendFromDate(boundedFrom);
-                if (boundedFrom > trendToDate) {
-                  setTrendToDate(boundedFrom);
-                }
-              }}
-              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-0 py-2 text-sm text-black sm:px-3"
+          {activeTab === "trends" ? (
+            <DashboardTopPanel
+              title="Trends"
+              icon={TrendingUp}
+              description={
+                <>
+                  <div>
+                    {trendPeriodLabel} results from <span className="font-semibold text-[#4d5d74]">{trendRangeLabel}</span>, compared with a {trendAverageLabel} to show underlying direction over time.
+                  </div>
+                </>
+              }
+              controls={
+                <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                  <DateField
+                    id="trends-from-date"
+                    label="From"
+                    value={trendFromDate}
+                    min={trendDateBoundsConfig.from}
+                    max={trendToDate}
+                    onChange={(event) => {
+                      const nextFrom = event.target.value;
+                      if (!nextFrom) {
+                        return;
+                      }
+                      const boundedFrom = nextFrom < trendDateBoundsConfig.from ? trendDateBoundsConfig.from : nextFrom;
+                      setTrendFromDate(boundedFrom);
+                      if (boundedFrom > trendToDate) {
+                        setTrendToDate(boundedFrom);
+                      }
+                    }}
+                  />
+                  <DateField
+                    id="trends-to-date"
+                    label="To"
+                    value={trendToDate}
+                    min={trendFromDate}
+                    max={trendDateBoundsConfig.to}
+                    onChange={(event) => {
+                      const nextTo = event.target.value;
+                      if (!nextTo) {
+                        return;
+                      }
+                      const boundedTo = nextTo > trendDateBoundsConfig.to ? trendDateBoundsConfig.to : nextTo;
+                      setTrendToDate(boundedTo);
+                      if (boundedTo < trendFromDate) {
+                        setTrendFromDate(boundedTo);
+                      }
+                    }}
+                  />
+                  <div>
+                    <label className="block font-[var(--font-heading)] text-[0.92rem] font-semibold tracking-[-0.01em] text-black/80">View By</label>
+                    <div className="mt-2 inline-flex gap-2">
+                      {TREND_GRANULARITY_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setTrendGranularity(option.id)}
+                          className={clsx(
+                            "min-h-[48px] rounded-[8px] px-6 py-3 font-[var(--font-body)] text-[1rem] font-semibold transition-colors",
+                            trendGranularity === option.id ? "bg-black text-white" : "bg-black/6 text-black hover:bg-black/10"
+                          )}
+                          aria-pressed={trendGranularity === option.id}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              }
             />
-          </div>
-          <div className="w-full min-w-0 sm:w-[220px]">
-            <label htmlFor="trends-to-date" className="block text-[11px] font-semibold uppercase tracking-[0.12em]">To</label>
-            <input
-              id="trends-to-date"
-              type="date"
-              value={trendToDate}
-              min={trendFromDate}
-              max={trendDateBoundsConfig.to}
-              onChange={(event) => {
-                const nextTo = event.target.value;
-                if (!nextTo) {
-                  return;
-                }
-                const boundedTo = nextTo > trendDateBoundsConfig.to ? trendDateBoundsConfig.to : nextTo;
-                setTrendToDate(boundedTo);
-                if (boundedTo < trendFromDate) {
-                  setTrendFromDate(boundedTo);
-                }
-              }}
-              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-0 py-2 text-sm text-black sm:px-3"
-            />
-          </div>
-          <div className="w-full sm:w-auto">
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em]">View by</label>
-            <div className="mt-1 inline-flex w-full overflow-hidden rounded-md border border-black sm:w-auto">
-              {TREND_GRANULARITY_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setTrendGranularity(option.id)}
-                  className={clsx(
-                    "flex-1 border-r border-black px-3 py-2 text-xs font-semibold uppercase tracking-[0.09em] last:border-r-0 sm:flex-none",
-                    trendGranularity === option.id ? "bg-black text-white" : "bg-white text-black hover:bg-black/5"
-                  )}
-                  aria-pressed={trendGranularity === option.id}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        ) : null}
+          ) : null}
 
-        {activeTab === "c3" ? (
-        <div className="mb-4 flex flex-wrap items-end gap-3">
-          <div className="w-full min-w-0 sm:w-[220px]">
-            <label htmlFor="c3-from-date" className="block text-[11px] font-semibold uppercase tracking-[0.12em]">From</label>
-            <input
-              id="c3-from-date"
-              type="date"
-              value={c3FromDate}
-              min={c3DateBoundsConfig.from}
-              max={c3ToDate}
-              onChange={(event) => {
-                const nextFrom = event.target.value;
-                if (!nextFrom) {
-                  return;
-                }
-                const boundedFrom = nextFrom < c3DateBoundsConfig.from ? c3DateBoundsConfig.from : nextFrom;
-                setC3FromDate(boundedFrom);
-                if (boundedFrom > c3ToDate) {
-                  setC3ToDate(boundedFrom);
-                }
-              }}
-              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-0 py-2 text-sm text-black sm:px-3"
+          {activeTab === "c3" ? (
+            <DashboardTopPanel
+              title="C3 Tracker"
+              icon={ClipboardCheck}
+              description={
+                <>
+                  <div>City service requests logged vs resolved by category for:</div>
+                  <div className="mt-1 font-semibold text-[#4d5d74]">{c3RangeLabel}.</div>
+                </>
+              }
+              controls={
+                <div className="grid gap-4 md:grid-cols-2">
+                  <DateField
+                    id="c3-from-date"
+                    label="From"
+                    value={c3FromDate}
+                    min={c3DateBoundsConfig.from}
+                    max={c3ToDate}
+                    onChange={(event) => {
+                      const nextFrom = event.target.value;
+                      if (!nextFrom) {
+                        return;
+                      }
+                      const boundedFrom = nextFrom < c3DateBoundsConfig.from ? c3DateBoundsConfig.from : nextFrom;
+                      setC3FromDate(boundedFrom);
+                      if (boundedFrom > c3ToDate) {
+                        setC3ToDate(boundedFrom);
+                      }
+                    }}
+                  />
+                  <DateField
+                    id="c3-to-date"
+                    label="To"
+                    value={c3ToDate}
+                    min={c3FromDate}
+                    max={c3DateBoundsConfig.to}
+                    onChange={(event) => {
+                      const nextTo = event.target.value;
+                      if (!nextTo) {
+                        return;
+                      }
+                      const boundedTo = nextTo > c3DateBoundsConfig.to ? c3DateBoundsConfig.to : nextTo;
+                      setC3ToDate(boundedTo);
+                      if (boundedTo < c3FromDate) {
+                        setC3FromDate(boundedTo);
+                      }
+                    }}
+                  />
+                </div>
+              }
             />
-          </div>
-          <div className="w-full min-w-0 sm:w-[220px]">
-            <label htmlFor="c3-to-date" className="block text-[11px] font-semibold uppercase tracking-[0.12em]">To</label>
-            <input
-              id="c3-to-date"
-              type="date"
-              value={c3ToDate}
-              min={c3FromDate}
-              max={c3DateBoundsConfig.to}
-              onChange={(event) => {
-                const nextTo = event.target.value;
-                if (!nextTo) {
-                  return;
-                }
-                const boundedTo = nextTo > c3DateBoundsConfig.to ? c3DateBoundsConfig.to : nextTo;
-                setC3ToDate(boundedTo);
-                if (boundedTo < c3FromDate) {
-                  setC3FromDate(boundedTo);
-                }
-              }}
-              className="mt-1 block w-full min-w-0 max-w-full border-2 border-black bg-white px-0 py-2 text-sm text-black sm:px-3"
-            />
-          </div>
+          ) : null}
         </div>
-        ) : null}
+      </section>
+
+      <div className="dashboard-container bg-[#f9fafb] py-1 md:py-2">
 
         {activeTab === "main" ? (
         <div ref={mainPrintableRef} className="space-y-6">
           <ExportImageHeader />
-          <section id="current-week" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
-          <SectionHeading
-            title="Current Week"
-            description={`Detailed operational results across each CID focus area for ${selectedWeekRange}.`}
-            icon="currentWeek"
-          />
-
+          <section id="current-week" className="card-frame rounded-[24px] border border-black/12 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.08)] md:p-8">
           {currentWeek?.record_status === "NO_DATA_REPORTED" ? (
             <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
           ) : (
@@ -2138,15 +2268,7 @@ export default function DashboardClient({ initialData }: Props) {
         {activeTab === "summary" ? (
           <div ref={summaryPrintableRef}>
             <ExportImageHeader />
-            <section id="summary-infographic" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
-              <SectionHeading
-                title="Summary"
-                description={`Activity report showing the key metrics for ${selectedWeekRange}.`}
-                icon="summary"
-                iconColor={BRAND.colors.black}
-                iconBackground="transparent"
-              />
-
+            <section id="summary-infographic" className="card-frame rounded-[24px] border border-black/12 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.08)] md:p-8">
               {currentWeek?.record_status === "NO_DATA_REPORTED" ? (
                 <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
               ) : (
@@ -2173,13 +2295,7 @@ export default function DashboardClient({ initialData }: Props) {
         {activeTab === "trends" ? (
           <div ref={trendsPrintableRef}>
             <ExportImageHeader />
-            <section id="trends" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
-            <SectionHeading
-              title="Trends"
-              description={`${trendPeriodLabel} results from ${trendRangeLabel}, compared with a ${trendAverageLabel} to show underlying direction over time.`}
-              icon="trends"
-            />
-
+            <section id="trends" className="card-frame rounded-[24px] border border-black/12 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.08)] md:p-8">
             {trendSeries.length ? (
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="h-[300px] rounded-xl border border-black p-3">
@@ -2435,13 +2551,7 @@ export default function DashboardClient({ initialData }: Props) {
         {activeTab === "c3" ? (
           <div ref={c3PrintableRef}>
             <ExportImageHeader />
-            <section id="c3" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
-            <SectionHeading
-              title="C3 Tracker"
-              description={`City service requests logged vs resolved by category for ${c3RangeLabel}.`}
-              icon="c3"
-            />
-
+            <section id="c3" className="card-frame rounded-[24px] border border-black/12 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.08)] md:p-8">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <SummaryMetricCard label="Total Logged" current={c3OverallTotals.logged} previous={null} showDelta={false} />
             <SummaryMetricCard label="Resolved" current={c3OverallTotals.resolved} previous={null} showDelta={false} />
@@ -2581,7 +2691,7 @@ export default function DashboardClient({ initialData }: Props) {
       </div>
 
       <footer className="bg-black text-white">
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 md:grid-cols-12">
+        <div className="dashboard-container grid gap-8 py-10 md:grid-cols-12">
           <div className="md:col-span-5">
             <Image src={BRAND.logoPathWhite} alt="Lower Gardens CID" width={300} height={54} className="h-auto w-[240px] md:w-[300px]" />
             <p className="mt-4 text-base leading-relaxed text-white/90">
@@ -2636,7 +2746,7 @@ export default function DashboardClient({ initialData }: Props) {
         </div>
 
         <div className="border-t border-white/15">
-          <div className="mx-auto w-full max-w-6xl px-4 py-5 text-sm text-white/70">
+          <div className="dashboard-container py-5 text-sm text-white/70">
             Copyright © 2025 - Lower Gardens City Improvement District.
           </div>
         </div>

@@ -64,17 +64,62 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Roboto Condensed";
+  src: url("/fonts/RobotoCondensed-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto Condensed";
+  src: url("/fonts/RobotoCondensed-Italic-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto";
+  src: url("/fonts/Roboto-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto";
+  src: url("/fonts/Roboto-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto";
+  src: url("/fonts/Roboto-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --lg-black: #000000;
   --lg-white: #ffffff;
+  --lg-page-background: #f9fafb;
   --lg-safety: #fff300;
   --lg-cleaning: #c6ff2e;
   --lg-social: #ff3087;
   --lg-parks: #44d62c;
-  --font-heading: "Montserrat", "Helvetica Neue", sans-serif;
+  --font-heading: "Roboto", "Helvetica Neue", sans-serif;
   --font-body: "Roboto", "Helvetica Neue", sans-serif;
+  --font-body-regular: "Roboto", "Helvetica Neue", sans-serif;
+  --font-body-condensed: "Roboto Condensed", "Helvetica Neue", sans-serif;
   --lg-border-subtle: rgba(0, 0, 0, 0.12);
   --lg-neutral-muted: rgba(0, 0, 0, 0.42);
+  --dashboard-max-width: 1140px;
+  --dashboard-gutter: 1rem;
 }
 
 * {
@@ -89,7 +134,7 @@ body {
 }
 
 body {
-  background: var(--lg-white);
+  background: var(--lg-page-background);
   color: var(--lg-black);
   font-family: var(--font-body);
   line-height: 1.45;
@@ -107,7 +152,14 @@ h6 {
 }
 
 .dashboard-shell {
-  background: var(--lg-white);
+  background: var(--lg-page-background);
+}
+
+.dashboard-container {
+  width: 100%;
+  max-width: var(--dashboard-max-width);
+  margin-inline: auto;
+  padding-inline: var(--dashboard-gutter);
 }
 
 .card-frame {
