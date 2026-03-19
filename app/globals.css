@@ -120,6 +120,26 @@
   --lg-neutral-muted: rgba(0, 0, 0, 0.42);
   --dashboard-max-width: 1140px;
   --dashboard-gutter: 1rem;
+  --dashboard-heading-color: var(--lg-black);
+  --dashboard-heading-1-size: 2.5rem;
+  --dashboard-heading-1-weight: 700;
+  --dashboard-heading-1-line-height: 0.96;
+  --dashboard-heading-1-tracking: -0.05em;
+  --dashboard-heading-2-size: 1.6rem;
+  --dashboard-heading-2-weight: 700;
+  --dashboard-heading-2-line-height: 1;
+  --dashboard-heading-2-tracking: -0.03em;
+  --dashboard-heading-3-size: 1.625rem;
+  --dashboard-heading-3-weight: 700;
+  --dashboard-heading-3-line-height: 1.05;
+  --dashboard-heading-3-tracking: -0.03em;
+  --dashboard-heading-4-size: 1.125rem;
+  --dashboard-heading-4-weight: 700;
+  --dashboard-heading-4-line-height: 1.15;
+  --dashboard-heading-4-tracking: -0.03em;
+  --dashboard-heading-3-compact-size: 1.25rem;
+  --dashboard-heading-3-compact-line-height: 1;
+  --dashboard-heading-3-compact-tracking: -0.025em;
 }
 
 * {
@@ -153,6 +173,49 @@ h6 {
 
 .dashboard-shell {
   background: var(--lg-page-background);
+}
+
+.dashboard-heading-1,
+.dashboard-heading-2,
+.dashboard-heading-3,
+.dashboard-heading-4 {
+  margin: 0;
+  color: var(--dashboard-heading-color);
+  font-family: var(--font-heading), "Helvetica Neue", sans-serif;
+}
+
+.dashboard-heading-1 {
+  font-size: var(--dashboard-heading-1-size);
+  font-weight: var(--dashboard-heading-1-weight);
+  line-height: var(--dashboard-heading-1-line-height);
+  letter-spacing: var(--dashboard-heading-1-tracking);
+}
+
+.dashboard-heading-2 {
+  font-size: var(--dashboard-heading-2-size);
+  font-weight: var(--dashboard-heading-2-weight);
+  line-height: var(--dashboard-heading-2-line-height);
+  letter-spacing: var(--dashboard-heading-2-tracking);
+}
+
+.dashboard-heading-3 {
+  font-size: var(--dashboard-heading-3-size);
+  font-weight: var(--dashboard-heading-3-weight);
+  line-height: var(--dashboard-heading-3-line-height);
+  letter-spacing: var(--dashboard-heading-3-tracking);
+}
+
+.dashboard-heading-4 {
+  font-size: var(--dashboard-heading-4-size);
+  font-weight: var(--dashboard-heading-4-weight);
+  line-height: var(--dashboard-heading-4-line-height);
+  letter-spacing: var(--dashboard-heading-4-tracking);
+}
+
+.dashboard-heading-3--compact {
+  font-size: var(--dashboard-heading-3-compact-size);
+  line-height: var(--dashboard-heading-3-compact-line-height);
+  letter-spacing: var(--dashboard-heading-3-compact-tracking);
 }
 
 .dashboard-container {
@@ -223,6 +286,13 @@ h6 {
   .summary-infographic-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: start;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --dashboard-heading-1-size: 3.3rem;
+    --dashboard-heading-2-size: 1.8rem;
   }
 }
 
@@ -379,7 +449,7 @@ h6 {
   margin: 0.45rem 0 0;
   font-size: 0.82rem;
   line-height: 1.35;
-  color: rgba(255, 255, 255, 0.9);
+  color: color-mix(in srgb, var(--lg-white) 90%, transparent);
 }
 
 .summary-ribbon-list {

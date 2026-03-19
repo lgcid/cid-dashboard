@@ -20,6 +20,7 @@ import {
   SUMMARY_EXPORT_MODE_CLASS,
   exportDashboardPng
 } from "@/lib/dashboard-export";
+import { BRAND } from "@/lib/config";
 
 function ExportHarness() {
   const exportRef = useRef<HTMLDivElement>(null);
@@ -73,7 +74,7 @@ describe("dashboard screenshot export", () => {
       expect(node.classList.contains(DASHBOARD_EXPORT_MODE_CLASS)).toBe(true);
       expect(node.classList.contains(SUMMARY_EXPORT_MODE_CLASS)).toBe(true);
       expect(options).toMatchObject({
-        bgcolor: "#FFFFFF",
+        bgcolor: BRAND.colors.white,
         cacheBust: true,
         width: 1280,
         height: 720,

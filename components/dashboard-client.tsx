@@ -4,7 +4,31 @@ import { useCallback, useMemo, useRef, useState, type CSSProperties, type RefObj
 import Image from "next/image";
 import clsx from "clsx";
 import { format, parseISO } from "date-fns";
-import { AlertCircle, ChevronDown, ClipboardCheck, ClipboardList, FileText, Printer, TrendingUp, type LucideIcon } from "lucide-react";
+import {
+  AlertCircle,
+  Building2,
+  ChevronDown,
+  ClipboardCheck,
+  ClipboardList,
+  File,
+  FileText,
+  House,
+  Leaf,
+  OctagonAlert,
+  OctagonX,
+  PersonStanding,
+  Phone,
+  PhoneCall,
+  Printer,
+  Scale,
+  Shield,
+  SquareUserRound,
+  Trees,
+  TrendingUp,
+  Trash2,
+  type LucideIcon,
+  Waves
+} from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -53,7 +77,8 @@ type SummaryInfographicGroupId =
   | "control_room_engagement"
   | "parks";
 type SummaryInfographicIconKind =
-  | "urban"
+  | "publicSpace"
+  | "urbanManagement"
   | "crime"
   | "arrests"
   | "proactive"
@@ -61,9 +86,12 @@ type SummaryInfographicIconKind =
   | "drain"
   | "shelter"
   | "tree"
-  | "bags"
+  | "cleaningBags"
+  | "parksBags"
   | "logged"
-  | "calls";
+  | "file"
+  | "calls"
+  | "touchPoints";
 
 type SummaryInfographicGroup = {
   id: SummaryInfographicGroupId;
@@ -113,21 +141,50 @@ type TrendChartPoint = {
   c3_logged_total_ma4: number | null;
 };
 
-const C3_RESOLVED_GREY = "rgba(0, 0, 0, 0.35)";
-const CRIME_TREND_COLOR = BRAND.colors.safety;
-const CLEANING_TREND_COLOR = BRAND.colors.cleaning;
-const TREND_AVERAGE_COLOR = "#d2d5da";
-const TREND_GRID_COLOR = "#e8ecf2";
-const TREND_AXIS_TEXT_COLOR = "#2f3743";
-const URBAN_TREND_COLOR = BRAND.colors.black;
-const LAW_ENFORCEMENT_TREND_COLOR = BRAND.colors.black;
-const SOCIAL_TREND_COLOR = BRAND.colors.social;
-const PARKS_TREND_COLOR = BRAND.colors.parks;
-const CONTACTS_TREND_COLOR = BRAND.colors.black;
-const C3_LOGGED_TREND_COLOR = BRAND.colors.black;
-const SUMMARY_PUBLIC_SAFETY_COLOR = BRAND.colors.safety;
-const SUMMARY_LAW_ENFORCEMENT_COLOR = BRAND.colors.black;
-const SUMMARY_CLEANING_COLOR = BRAND.colors.cleaning;
+const CURRENT_WEEK_THEME = {
+  safety: {
+    accent: BRAND.colors.safety,
+    headerBackground: BRAND.colors.safetyBackground,
+    iconBackground: BRAND.colors.safety,
+    iconColor: BRAND.colors.black
+  },
+  cleaning: {
+    accent: BRAND.colors.cleaning,
+    headerBackground: BRAND.colors.cleaningBackground,
+    iconBackground: BRAND.colors.cleaning,
+    iconColor: BRAND.colors.black
+  },
+  social: {
+    accent: BRAND.colors.social,
+    headerBackground: BRAND.colors.socialBackground,
+    iconBackground: BRAND.colors.social,
+    iconColor: BRAND.colors.white
+  },
+  parks: {
+    accent: BRAND.colors.parks,
+    headerBackground: BRAND.colors.parksBackground,
+    iconBackground: BRAND.colors.parks,
+    iconColor: BRAND.colors.white
+  },
+  law: {
+    accent: BRAND.colors.lawEnforcement,
+    headerBackground: BRAND.colors.lawEnforcementBackground,
+    iconBackground: BRAND.colors.lawEnforcement,
+    iconColor: BRAND.colors.white
+  },
+  urban: {
+    accent: BRAND.colors.urbanManagement,
+    headerBackground: BRAND.colors.urbanManagementBackground,
+    iconBackground: BRAND.colors.urbanManagement,
+    iconColor: BRAND.colors.white
+  },
+  neutral: {
+    accent: BRAND.colors.neutralStrong,
+    headerBackground: BRAND.colors.neutralBackground,
+    iconBackground: BRAND.colors.neutralStrong,
+    iconColor: BRAND.colors.white
+  }
+} as const;
 
 const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
   { id: "summary", label: "Summary" },
@@ -146,13 +203,13 @@ const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
     id: "safety_response",
     title: "Public Safety",
     description: "Crime and crime prevention activities",
-    accent: SUMMARY_PUBLIC_SAFETY_COLOR
+    accent: BRAND.colors.safety
   },
   {
     id: "law_enforcement",
     title: "Law Enforcement",
     description: "Total fines issued (Section 56 + Section 341)",
-    accent: SUMMARY_LAW_ENFORCEMENT_COLOR,
+    accent: BRAND.colors.black,
     headingAccent: BRAND.colors.white
   },
   {
@@ -166,7 +223,7 @@ const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
     id: "cleaning_urban",
     title: "Cleaning & Maintenance",
     description: "Street and public area cleaning and maintenance",
-    accent: SUMMARY_CLEANING_COLOR
+    accent: BRAND.colors.cleaning
   },
   {
     id: "social_services",
@@ -212,16 +269,16 @@ const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
   {
     id: "public_space_interventions",
     label: "Public space interventions",
-    icon: "urban",
+    icon: "publicSpace",
     groupId: "safety_response",
     key: "public_space_interventions"
   },
-  { id: "fines_issued", label: "Fines issued", icon: "logged", groupId: "law_enforcement", derived: "fines_issued" },
-  { id: "urban_total", label: "Total incidents", icon: "urban", groupId: "urban_management", key: "urban_total" },
+  { id: "fines_issued", label: "Fines issued", icon: "file", groupId: "law_enforcement", derived: "fines_issued" },
+  { id: "urban_total", label: "Total incidents", icon: "urbanManagement", groupId: "urban_management", key: "urban_total" },
   {
     id: "cleaning_total_bags",
     label: "Cleaning bags collected",
-    icon: "bags",
+    icon: "cleaningBags",
     groupId: "cleaning_urban",
     derived: "cleaning_total_bags"
   },
@@ -236,7 +293,7 @@ const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
   {
     id: "social_touch_points",
     label: "Touch points",
-    icon: "calls",
+    icon: "touchPoints",
     groupId: "social_services",
     key: "social_touch_points"
   },
@@ -245,7 +302,7 @@ const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
   {
     id: "parks_total_bags",
     label: "Bags",
-    icon: "bags",
+    icon: "parksBags",
     groupId: "parks",
     key: "parks_total_bags"
   },
@@ -353,10 +410,10 @@ const C3_TOOLTIP_SERIES_CONFIG: Record<string, TooltipSeriesConfig> = {
   },
   resolved: {
     label: "Resolved",
-    color: C3_RESOLVED_GREY,
+    color: BRAND.colors.c3Resolved,
     swatchStyle: "hatched",
     valueBackgroundColor: BRAND.colors.white,
-    valueBorderColor: C3_RESOLVED_GREY,
+    valueBorderColor: BRAND.colors.c3Resolved,
     valueTextColor: BRAND.colors.black
   }
 };
@@ -491,7 +548,10 @@ function ChartTooltipCard({
   rows: TooltipRowDefinition[];
 }) {
   return (
-    <div className="rounded-lg border border-black/15 bg-white px-5 py-4 shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
+    <div
+      className="rounded-lg border bg-white px-5 py-4"
+      style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 12px 28px ${BRAND.colors.shadowStrong}` }}
+    >
       <p className="text-lg font-semibold leading-none" style={{ fontFamily: "var(--font-heading)" }}>
         {title || NO_DATA_LABEL}
       </p>
@@ -647,25 +707,25 @@ function TrendLineCard({
   granularity
 }: TrendCardProps) {
   return (
-    <div className="rounded-[28px] border border-[#d7dde5] bg-white px-4 pb-4 pt-5 shadow-[0_2px_10px_rgba(15,23,42,0.06)] md:px-5 md:pb-5">
-      <p className="mb-3 text-[20px] leading-none font-bold tracking-[-0.025em] text-[#1a1e23] md:text-[21px]">{title}</p>
-      <div className="h-[280px] md:h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
+    <div className="rounded-[28px] border bg-white px-4 pb-4 pt-5 md:px-5 md:pb-5" style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 2px 10px ${BRAND.colors.shadowSoft}` }}>
+      <h3 className="dashboard-heading-3 dashboard-heading-3--compact mb-3 pb-4" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>{title}</h3>
+      <div className="min-h-0 min-w-0 h-[280px] md:h-[300px]">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <LineChart data={data} margin={{ top: 4, right: 20, left: -6, bottom: 8 }}>
-            <CartesianGrid vertical={false} stroke={TREND_GRID_COLOR} strokeDasharray="3 6" />
+            <CartesianGrid vertical={false} stroke={BRAND.colors.gridSubtle} strokeDasharray="3 6" />
             <XAxis
               dataKey="period_label"
               axisLine={false}
               tickLine={false}
               interval={getTrendXAxisInterval(data.length, granularity)}
               minTickGap={28}
-              tick={{ fontSize: 12, fill: TREND_AXIS_TEXT_COLOR }}
+              tick={{ fontSize: 12, fill: BRAND.colors.trendAxis }}
               tickMargin={8}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: TREND_AXIS_TEXT_COLOR }}
+              tick={{ fontSize: 12, fill: BRAND.colors.trendAxis }}
               tickMargin={4}
               width={40}
             />
@@ -685,12 +745,12 @@ function TrendLineCard({
             <Line
               type="monotone"
               dataKey={averageKey}
-              stroke={TREND_AVERAGE_COLOR}
+              stroke={BRAND.colors.trendAverage}
               strokeWidth={3.25}
               strokeLinecap="round"
               strokeLinejoin="round"
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: TREND_AVERAGE_COLOR, fill: BRAND.colors.white }}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: BRAND.colors.trendAverage, fill: BRAND.colors.white }}
               name={averageName}
             />
           </LineChart>
@@ -716,14 +776,71 @@ function IncidentCategoryTag({ category, compact = false }: { category: string; 
         <span
           key={`${label}-${index}`}
           className={clsx(
-            "inline-flex items-center rounded-full border border-black bg-brand-safety px-2 py-0.5 font-semibold normal-case tracking-normal text-black",
+            "inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold normal-case tracking-normal",
             compact ? "text-[9px]" : "text-[10px]"
           )}
+          style={{ borderColor: BRAND.colors.safety, backgroundColor: BRAND.colors.safety, color: BRAND.colors.black }}
         >
           {label}
         </span>
       ))}
     </>
+  );
+}
+
+function wrapChartLabel(label: string, maxLineLength = 16): string[] {
+  const words = label.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word;
+    if (nextLine.length > maxLineLength && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = nextLine;
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines.slice(0, 3);
+}
+
+function ChartCategoryTick({
+  x,
+  y,
+  payload
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value?: string };
+}) {
+  const label = payload?.value ?? "";
+  const lines = wrapChartLabel(label);
+  const lineHeight = 12;
+  const startOffset = -((lines.length - 1) * lineHeight) / 2;
+
+  return (
+    <g transform={`translate(${x ?? 0},${y ?? 0})`}>
+      <text
+        x={0}
+        y={0}
+        textAnchor="end"
+        fill={BRAND.colors.trendAxis}
+        fontSize="11"
+        dominantBaseline="middle"
+      >
+        {lines.map((line, index) => (
+          <tspan key={`${label}-${index}`} x={0} dy={index === 0 ? startOffset : lineHeight}>
+            {line}
+          </tspan>
+        ))}
+      </text>
+    </g>
   );
 }
 
@@ -748,6 +865,10 @@ function formatDataUpdate(value: string): string {
 
 function formatWeekRange(weekStart: string, weekEnd: string): string {
   return `${formatWeekDate(weekStart)} to ${formatWeekDate(weekEnd)}`;
+}
+
+function formatCompactWeekRange(weekStart: string, weekEnd: string): string {
+  return `${formatIsoWithPattern(weekStart, "dd MMM")} - ${formatIsoWithPattern(weekEnd, "dd MMM")}`;
 }
 
 function formatIsoWithPattern(iso: string, pattern: string): string {
@@ -1012,47 +1133,22 @@ function incidentsForWeek(incidents: IncidentRow[], weekStart: string): Incident
 
 function SectionIcon({ kind, className }: { kind: SectionIconKind; className?: string }) {
   if (kind === "summary") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
-        <rect x="4" y="4" width="16" height="16" rx="2" />
-        <path d="M7 15h2M11 12h2M15 9h2" />
-      </svg>
-    );
+    return <FileText className={className} strokeWidth={1.8} aria-hidden />;
   }
 
   if (kind === "currentWeek") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
-        <rect x="3" y="4" width="18" height="17" rx="2" />
-        <path d="M8 2v4M16 2v4M3 9h18M7 13h4M7 17h6" />
-      </svg>
-    );
+    return <FileText className={className} strokeWidth={1.8} aria-hidden />;
   }
 
   if (kind === "incidents") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
-        <path d="M12 3 19 6v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3Z" />
-        <path d="M12 8v5M12 16h.01" />
-      </svg>
-    );
+    return <OctagonAlert className={className} strokeWidth={1.8} aria-hidden />;
   }
 
   if (kind === "trends") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
-        <path d="M4 18h16M5 16l4-4 3 2 6-6" />
-        <path d="M16 8h2v2" />
-      </svg>
-    );
+    return <TrendingUp className={className} strokeWidth={1.8} aria-hidden />;
   }
 
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
-      <rect x="4" y="4" width="16" height="16" rx="2" />
-      <path d="M8 8h8M8 12h5M8 16h6" />
-    </svg>
-  );
+  return <ClipboardList className={className} strokeWidth={1.8} aria-hidden />;
 }
 
 function SectionHeading({
@@ -1065,7 +1161,7 @@ function SectionHeading({
   iconBackground
 }: {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   icon: SectionIconKind;
   accent?: boolean;
   iconColor?: string;
@@ -1076,17 +1172,18 @@ function SectionHeading({
     <div className="mb-4">
       <div className="flex min-h-10 items-center gap-3">
         <span
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-black"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border"
           style={{
+            borderColor: iconBackground ?? BRAND.colors.textStrong,
             backgroundColor: iconBackground ?? (accent ? (accentColor ?? BRAND.colors.safety) : BRAND.colors.white),
             color: iconColor ?? BRAND.colors.black
           }}
         >
           <SectionIcon kind={icon} className="h-5 w-5" />
         </span>
-        <h2 className="text-2xl font-bold leading-none md:text-3xl">{title}</h2>
+        <h3 className="dashboard-heading-3" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>{title}</h3>
       </div>
-      {description ? <p className="mt-1 pl-12 text-sm md:text-base">{description}</p> : null}
+      {description ? <p className="mt-3 text-[1.06rem]" style={{ color: BRAND.colors.textMuted }}>{description}</p> : null}
     </div>
   );
 }
@@ -1096,28 +1193,69 @@ function SelectField({
   label,
   value,
   onChange,
-  children
+  children,
+  mobileChildren,
+  inlineLabelOnMobile = false
 }: {
   id: string;
   label: string;
   value: string;
   onChange: React.ChangeEventHandler<HTMLSelectElement>;
   children: React.ReactNode;
+  mobileChildren?: React.ReactNode;
+  inlineLabelOnMobile?: boolean;
 }) {
+  const labelId = `${id}-label`;
+  const selectClassName = "w-full min-w-0 appearance-none rounded-[6px] border bg-white px-4 py-2 pr-10 font-[var(--font-body)] text-[1rem] text-black outline-none";
+
   return (
-    <div>
-      <label htmlFor={id} className="block font-[var(--font-heading)] text-[0.92rem] font-medium tracking-[-0.01em] text-black/80">
+    <div className={clsx(inlineLabelOnMobile && "grid grid-cols-[6.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 md:block")}>
+      <label
+        id={labelId}
+        htmlFor={id}
+        className={clsx(
+          "font-[var(--font-heading)] text-[0.92rem] font-medium tracking-[-0.01em] text-black/80",
+          inlineLabelOnMobile ? "max-w-[6.25rem] leading-[1.15] md:block md:max-w-none md:leading-normal" : "block"
+        )}
+      >
         {label}
       </label>
-      <div className="relative mt-2">
-        <select
-          id={id}
-          value={value}
-          onChange={onChange}
-          className="w-full appearance-none rounded-[6px] border border-black/15 bg-white px-4 py-2 font-[var(--font-body)] text-[1rem] text-black shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none"
-        >
-          {children}
-        </select>
+      <div className={clsx("relative min-w-0", inlineLabelOnMobile ? "md:mt-2" : "mt-2")}>
+        {mobileChildren ? (
+          <>
+            <select
+              id={`${id}-mobile`}
+              aria-labelledby={labelId}
+              value={value}
+              onChange={onChange}
+              className={clsx(selectClassName, "md:hidden")}
+              style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
+            >
+              {mobileChildren}
+            </select>
+            <select
+              id={id}
+              aria-labelledby={labelId}
+              value={value}
+              onChange={onChange}
+              className={clsx(selectClassName, "hidden md:block")}
+              style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
+            >
+              {children}
+            </select>
+          </>
+        ) : (
+          <select
+            id={id}
+            aria-labelledby={labelId}
+            value={value}
+            onChange={onChange}
+            className={selectClassName}
+            style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
+          >
+            {children}
+          </select>
+        )}
         <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/70" aria-hidden />
       </div>
     </div>
@@ -1130,7 +1268,8 @@ function DateField({
   value,
   min,
   max,
-  onChange
+  onChange,
+  inlineLabelOnMobile = false
 }: {
   id: string;
   label: string;
@@ -1138,10 +1277,17 @@ function DateField({
   min: string;
   max: string;
   onChange: React.ChangeEventHandler<HTMLInputElement>;
+  inlineLabelOnMobile?: boolean;
 }) {
   return (
-    <div>
-      <label htmlFor={id} className="block font-[var(--font-heading)] text-[0.92rem] font-medium tracking-[-0.01em] text-black/80">
+    <div className={clsx(inlineLabelOnMobile && "grid grid-cols-[6.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 md:block")}>
+      <label
+        htmlFor={id}
+        className={clsx(
+          "font-[var(--font-heading)] text-[0.92rem] font-medium tracking-[-0.01em] text-black/80",
+          inlineLabelOnMobile ? "max-w-[6.25rem] leading-[1.15] md:block md:max-w-none md:leading-normal" : "block"
+        )}
+      >
         {label}
       </label>
       <input
@@ -1151,7 +1297,11 @@ function DateField({
         min={min}
         max={max}
         onChange={onChange}
-        className="mt-2 w-full rounded-[6px] border border-black/15 bg-white px-4 py-2 font-[var(--font-body)] text-[1rem] text-black shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none"
+        className={clsx(
+          "w-full rounded-[6px] border bg-white px-4 py-2 font-[var(--font-body)] text-[1rem] text-black outline-none",
+          inlineLabelOnMobile ? "md:mt-2" : "mt-2"
+        )}
+        style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
       />
     </div>
   );
@@ -1169,18 +1319,21 @@ function DashboardTopPanel({
   controls?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[24px] border border-black/12 bg-white px-6 py-6 shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+    <div
+      className="rounded-[24px] border bg-white px-6 py-6"
+      style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 2px 8px ${BRAND.colors.shadowMedium}` }}
+    >
       <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-4">
             <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white">
               <Icon className="h-6 w-6" strokeWidth={2.1} aria-hidden />
             </span>
-            <h2 className="font-[var(--font-heading)] text-[1.6rem] font-bold leading-none tracking-[-0.03em] text-black md:text-[1.8rem]">
+            <h2 className="dashboard-heading-2">
               {title}
             </h2>
           </div>
-          <div className="mt-2 text-[1.1rem] text-[#5c6b82]">{description}</div>
+          <div className="mt-2 text-[1.1rem]" style={{ color: BRAND.colors.textMuted }}>{description}</div>
         </div>
         {controls ? <div className="w-full lg:w-[46%] lg:min-w-[420px]">{controls}</div> : null}
       </div>
@@ -1298,106 +1451,63 @@ function summaryMetricValue(
 }
 
 function SummaryInfographicIcon({ kind, className }: { kind: SummaryInfographicIconKind; className?: string }) {
-  if (kind === "urban") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
-        <path d="M4 20h16M7 20V9l5-3 5 3v11M9 12h2M13 12h2M9 16h2M13 16h2" />
-      </svg>
-    );
+  if (kind === "publicSpace") {
+    return <SquareUserRound className={className} strokeWidth={1} aria-hidden />;
+  }
+
+  if (kind === "urbanManagement") {
+    return <Building2 className={className} strokeWidth={1} aria-hidden />;
   }
 
   if (kind === "crime") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
-        <path d="M12 3 19 6v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3Z" />
-        <path d="M12 8v4M12 15h.01" />
-      </svg>
-    );
+    return <Shield className={className} strokeWidth={1} aria-hidden />;
   }
 
   if (kind === "arrests") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
-        <circle cx="7.5" cy="12" r="3.4" />
-        <circle cx="16.5" cy="12" r="3.4" />
-        <path d="M10.8 12h2.4" />
-      </svg>
-    );
+    return <Scale className={className} strokeWidth={1} aria-hidden />;
   }
 
   if (kind === "proactive") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
-        <path d="M8 18h8" />
-        <path d="M9 18v-6a3 3 0 0 1 6 0v6" />
-        <path d="M12 4v2M6 8l1.4 1.4M18 8l-1.4 1.4M4 13h2M18 13h2" />
-      </svg>
-    );
+    return <OctagonX className={className} strokeWidth={1} aria-hidden />;
   }
 
   if (kind === "cleaning") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
-        <path d="M7 19h10M9 19v-6M15 19v-6M8 13h8l-1.2-7h-5.6L8 13Z" />
-      </svg>
-    );
+    return <Trash2 className={className} strokeWidth={1} aria-hidden />;
   }
 
   if (kind === "drain") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
-        <circle cx="12" cy="12" r="8" />
-        <path d="M8 9h8M7 12h10M8 15h8" />
-        <path d="M10 7.6v8.8M12 7.2v9.6M14 7.6v8.8" />
-      </svg>
-    );
+    return <Waves className={className} strokeWidth={1} aria-hidden />;
   }
 
   if (kind === "shelter") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
-        <path d="M4 12 12 5l8 7" />
-        <path d="M6 11.5V20h12v-8.5" />
-        <path d="M10 20v-4h4v4" />
-      </svg>
-    );
+    return <House className={className} strokeWidth={1} aria-hidden />;
   }
 
   if (kind === "tree") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
-        <path d="M12 20v-4" />
-        <path d="M8 20h8" />
-        <path d="m12 4 4 4h-2l3 3h-3l2 3H8l2-3H7l3-3H8l4-4Z" />
-      </svg>
-    );
+    return <Trees className={className} strokeWidth={1} aria-hidden />;
   }
 
-  if (kind === "bags") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
-        <path d="M11 3.8h2l.7 1.7h-3.4l.7-1.7Z" />
-        <path d="M9 6.4h6a2 2 0 0 1 2 2v1l1.2 8c.2 1.4-.8 2.6-2.3 2.6H8.1c-1.5 0-2.5-1.2-2.3-2.6l1.2-8v-1a2 2 0 0 1 2-2Z" />
-        <path d="M8.6 9.8c1.3.8 2.3 1.2 3.4 1.2 1.1 0 2.1-.4 3.4-1.2" />
-        <path d="M9.4 13.4h5.2M9.2 16.1h5.6" />
-      </svg>
-    );
+  if (kind === "cleaningBags") {
+    return <Trash2 className={className} strokeWidth={1} aria-hidden />;
+  }
+
+  if (kind === "parksBags") {
+    return <Leaf className={className} strokeWidth={1} aria-hidden />;
   }
 
   if (kind === "logged") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
-        <rect x="5" y="4" width="14" height="16" rx="2" />
-        <path d="M9 9h6M9 13h6M9 17h4" />
-      </svg>
-    );
+    return <ClipboardList className={className} strokeWidth={1} aria-hidden />;
   }
 
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className={className} aria-hidden>
-      <path d="M7.8 4h2.6l1.2 3.2-1.9 1.3a12.5 12.5 0 0 0 5.8 5.8l1.3-1.9L20 13.6v2.6a1.8 1.8 0 0 1-2 1.8A14.6 14.6 0 0 1 6 6a1.8 1.8 0 0 1 1.8-2Z" />
-    </svg>
-  );
+  if (kind === "file") {
+    return <File className={className} strokeWidth={1} aria-hidden />;
+  }
+
+  if (kind === "calls") {
+    return <Phone className={className} strokeWidth={1} aria-hidden />;
+  }
+
+  return <PersonStanding className={className} strokeWidth={1} aria-hidden />;
 }
 
 function SummaryInfographicRow({
@@ -1525,19 +1635,27 @@ function PillarMetricRow({
   const delta = deltaSigned(current, previous);
 
   return (
-    <li className="flex items-center justify-between gap-3 border-b border-black/15 py-2 last:border-b-0">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.08em]">{label}</p>
-        <p className="mt-1 text-xl font-bold">{metricValueText(current)}</p>
-      </div>
-      <div className="shrink-0">
-        <span
-          className={clsx(
-            "inline-grid h-7 min-w-10 place-items-center rounded-full border px-2.5 text-xs font-semibold tabular-nums",
-            deltaPillClass(delta.tone)
-          )}
-        >
-          <span className="block leading-none">{delta.text}</span>
+    <li
+      className="rounded-[10px] border bg-white px-3 py-2.5"
+      style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtleCool}` }}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p
+            className="text-[0.95rem] font-semibold tracking-[0.06em] leading-[1.2]"
+            style={{ color: BRAND.colors.textStrong }}
+          >
+            {label}
+          </p>
+          <span
+            className="inline-flex min-w-10 items-center justify-center rounded-full px-1 py-2 text-[0.55rem] font-semibold leading-none"
+            style={{ backgroundColor: BRAND.colors.neutralBackground, color: BRAND.colors.neutralMedium }}
+          >
+            {delta.text}
+          </span>
+        </div>
+        <span className="self-center text-[2rem] font-bold leading-none tracking-[-0.04em]" style={{ color: BRAND.colors.textStrong }}>
+          {metricValueText(current)}
         </span>
       </div>
     </li>
@@ -1547,12 +1665,14 @@ function PillarMetricRow({
 function PillarSection({
   title,
   iconPath,
+  iconScale = 1,
   theme,
   summary,
   metrics
 }: {
   title: string;
   iconPath: string;
+  iconScale?: number;
   theme: MetricTheme;
   summary: string;
   metrics: Array<{
@@ -1561,24 +1681,38 @@ function PillarSection({
     previous: number | null | undefined;
   }>;
 }) {
-  return (
-    <article className={clsx("rail-card rounded-2xl border border-black bg-white p-4", themeRailClass(theme))}>
-      <div className="flex items-center gap-3 border-b border-black/20 pb-3">
-        <Image
-          src={iconPath}
-          alt={title}
-          width={48}
-          height={48}
-          className="h-12 w-12 shrink-0 rounded-full object-contain"
-          unoptimized
-        />
-        <h3 className="text-2xl font-bold text-black">
-          {title}
-        </h3>
-      </div>
-      <p className="mt-3 text-sm leading-relaxed text-black/80">{summary}</p>
+  const headerTheme = CURRENT_WEEK_THEME[theme];
+  const iconSize = Math.round(58 * iconScale);
 
-      <ul className="mt-2">
+  return (
+    <article
+      className="rounded-[16px] border bg-white p-3.5"
+      style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 2px 8px ${BRAND.colors.shadowSoft}` }}
+    >
+      <div
+        className="relative flex items-center justify-between gap-4 overflow-hidden rounded-[10px] px-4 py-3"
+        style={{ background: headerTheme.headerBackground }}
+      >
+        <span className="absolute inset-y-0 left-0 w-2 rounded-full" style={{ backgroundColor: headerTheme.accent }} aria-hidden />
+        <h3 className="dashboard-heading-3" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>{title}</h3>
+        <span
+          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: headerTheme.iconBackground }}
+          aria-hidden
+        >
+          <Image
+            src={iconPath}
+            alt=""
+            width={iconSize}
+            height={iconSize}
+            className="object-contain"
+            style={{ width: `${iconSize}px`, height: `${iconSize}px` }}
+            unoptimized
+          />
+        </span>
+      </div>
+
+      <ul className="mt-2.5 space-y-1.5">
         {metrics.map((metric, index) => (
           <PillarMetricRow
             key={`${metric.label}-${index}`}
@@ -1598,7 +1732,9 @@ function CurrentWeekBreakdownChart({
   data,
   color,
   railClass,
-  valueLabel = "Total"
+  valueLabel = "Total",
+  theme = "neutral",
+  icon: Icon = ClipboardList
 }: {
   title: string;
   subtitle?: string;
@@ -1606,25 +1742,54 @@ function CurrentWeekBreakdownChart({
   color: string;
   railClass?: string;
   valueLabel?: string;
+  theme?: keyof typeof CURRENT_WEEK_THEME;
+  icon?: LucideIcon;
 }) {
+  const headerTheme = CURRENT_WEEK_THEME[theme];
+
   return (
-    <article className={clsx("rounded-2xl border border-black bg-white p-4", railClass && "rail-card", railClass)}>
-      <h3 className="text-lg font-bold">{title}</h3>
-      {subtitle ? <p className="mt-1 text-sm text-black/75">{subtitle}</p> : null}
-      <div className="mt-3 h-[290px] rounded-xl border border-black p-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ top: 6, right: 28, left: 0, bottom: 6 }}>
-            <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.2} />
-            <XAxis type="number" tick={{ fontSize: 10 }} />
+    <article
+      className={clsx("rounded-[16px] border bg-white p-3.5", railClass && "rail-card", railClass)}
+      style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 2px 8px ${BRAND.colors.shadowSoft}` }}
+    >
+      <div
+        className="relative flex items-center justify-between gap-4 overflow-hidden rounded-[10px] px-4 py-3"
+        style={{ background: headerTheme.headerBackground }}
+      >
+        <span className="absolute inset-y-0 left-0 w-2 rounded-full" style={{ backgroundColor: headerTheme.accent }} aria-hidden />
+        <div>
+          <h3 className="dashboard-heading-3" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>{title}</h3>
+          {subtitle ? <p className="mt-0.5 text-xs" style={{ color: BRAND.colors.textMuted }}>{subtitle}</p> : null}
+        </div>
+        <span
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: headerTheme.iconBackground, color: headerTheme.iconColor }}
+          aria-hidden
+        >
+          <Icon className="h-5 w-5" strokeWidth={2.1} />
+        </span>
+      </div>
+      <div className="mt-4 min-h-0 min-w-0 h-[268px] rounded-[10px] border bg-white px-2 py-2.5" style={{ borderColor: BRAND.colors.borderSubtle }}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <BarChart data={data} layout="vertical" margin={{ top: 10, right: 16, left: 12, bottom: 6 }} barCategoryGap="20%">
+            <CartesianGrid strokeDasharray="2 3" stroke={BRAND.colors.gridSubtle} vertical horizontal={false} />
+            <XAxis
+              type="number"
+              axisLine={{ stroke: BRAND.colors.axisSubtle }}
+              tickLine={{ stroke: BRAND.colors.axisSubtle }}
+              tick={{ fontSize: 11, fill: BRAND.colors.textMuted }}
+            />
             <YAxis
               type="category"
               dataKey="category"
-              width={100}
-              tick={{ fontSize: 10 }}
+              width={104}
+              tick={<ChartCategoryTick />}
+              axisLine={false}
+              tickLine={false}
               interval={0}
             />
             <Tooltip
-              cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
+              cursor={{ fill: BRAND.colors.overlaySubtle }}
               content={(props) => (
                 <CategoricalTooltip
                   {...props}
@@ -1642,15 +1807,17 @@ function CurrentWeekBreakdownChart({
             <Bar
               dataKey="value"
               fill={color}
-              radius={[0, 4, 4, 0]}
+              radius={[0, 6, 6, 0]}
+              barSize={32}
               name={valueLabel}
               activeBar={{ fill: color, opacity: 0.9, stroke: BRAND.colors.black, strokeWidth: 1 }}
             >
               <LabelList
                 dataKey="value"
                 position="right"
-                fill="#000000"
+                fill={BRAND.colors.black}
                 fontSize={10}
+                fontWeight={600}
                 formatter={(value) => typeof value === "number" ? value.toLocaleString() : String(value ?? NO_DATA_LABEL)}
               />
             </Bar>
@@ -1778,7 +1945,8 @@ export default function DashboardClient({ initialData }: Props) {
         return {
           weekStart,
           year: weekStart.slice(0, 4),
-          label: formatWeekRange(weekStart, weekEnd)
+          label: formatWeekRange(weekStart, weekEnd),
+          mobileLabel: formatCompactWeekRange(weekStart, weekEnd)
         };
       }),
     [initialData.meta.available_weeks, weeklyByStart]
@@ -1978,6 +2146,7 @@ export default function DashboardClient({ initialData }: Props) {
     }),
     [initialData.sections.parks, toPillarMetrics]
   );
+
   async function handlePrintScreenshot() {
     if (typeof window === "undefined") {
       return;
@@ -2014,7 +2183,7 @@ export default function DashboardClient({ initialData }: Props) {
   }
 
   return (
-    <main className="dashboard-shell min-h-screen bg-[#f9fafb] text-black">
+    <main className="dashboard-shell min-h-screen text-black" style={{ backgroundColor: BRAND.colors.pageBackground }}>
       <header className="header">
         <div className="dashboard-container">
           <div className="flex min-h-[78px] items-center justify-between gap-4">
@@ -2039,7 +2208,7 @@ export default function DashboardClient({ initialData }: Props) {
               <p className="font-[var(--font-heading)] text-[0.85rem] font-semibold uppercase tracking-[0.12em] text-white/92">
                 Lower Gardens City Improvement District
               </p>
-              <h1 className="mt-5 font-[var(--font-heading)] text-[2.5rem] font-bold leading-[0.96] tracking-[-0.05em] text-white md:text-[3.3rem]">
+              <h1 className="dashboard-heading-1 mt-5 text-white" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.white }}>
                 Weekly Operations Dashboard
               </h1>
               <p className="mt-7 font-[var(--font-body)] text-[1.25rem] leading-[1.6] text-white/78 md:text-[1.2rem]">
@@ -2064,7 +2233,7 @@ export default function DashboardClient({ initialData }: Props) {
         </div>
       </section>
 
-      <section className="bg-[#f9fafb]">
+      <section style={{ backgroundColor: BRAND.colors.pageBackground }}>
         <div className="dashboard-container flex flex-col gap-6 py-7 md:py-8">
           <div className="flex flex-wrap gap-4">
             {DASHBOARD_TABS.map((tab) => (
@@ -2074,16 +2243,16 @@ export default function DashboardClient({ initialData }: Props) {
         </div>
       </section>
 
-      <section className="sticky top-0 z-30 bg-[#f9fafb]">
+      <section className="md:sticky md:top-0 md:z-30" style={{ backgroundColor: BRAND.colors.pageBackground }}>
         <div className="dashboard-container py-1 md:py-2">
           {activeTab === "main" || activeTab === "summary" ? (
             <DashboardTopPanel
               title={activeTabLabel}
-              icon={activeTab === "summary" ? FileText : ClipboardList}
+              icon={FileText}
               description={
                 <>
-                  <div>{activeTab === "summary" ? "Activity report showing the key metrics for:" : "Detailed operational results across each CID focus area for:"}</div>
-                  <div className="mt-1 font-semibold text-[#4d5d74]">{selectedWeekRange}.</div>
+                  <div>{activeTab === "summary" ? "Activity report showing the key metrics from " : "Detailed operational results across each CID focus area from "}
+                  <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}>{selectedWeekRange}.</span></div>
                 </>
               }
               controls={
@@ -2092,6 +2261,7 @@ export default function DashboardClient({ initialData }: Props) {
                     id="dashboard-year"
                     label="Year"
                     value={selectedWeekYear}
+                    inlineLabelOnMobile
                     onChange={(event) => {
                       const nextYear = event.target.value;
                       const nextWeek = [...weekOptions].reverse().find((option) => option.year === nextYear);
@@ -2110,7 +2280,13 @@ export default function DashboardClient({ initialData }: Props) {
                     id="dashboard-reporting-week"
                     label="Reporting Week"
                     value={selectedWeekStart}
+                    inlineLabelOnMobile
                     onChange={(event) => setSelectedWeekStart(event.target.value)}
+                    mobileChildren={visibleWeekOptions.map((option) => (
+                      <option key={option.weekStart} value={option.weekStart}>
+                        {option.mobileLabel}
+                      </option>
+                    ))}
                   >
                     {visibleWeekOptions.map((option) => (
                       <option key={option.weekStart} value={option.weekStart}>
@@ -2130,7 +2306,7 @@ export default function DashboardClient({ initialData }: Props) {
               description={
                 <>
                   <div>
-                    {trendPeriodLabel} results from <span className="font-semibold text-[#4d5d74]">{trendRangeLabel}</span>, compared with a {trendAverageLabel} to show underlying direction over time.
+                    {trendPeriodLabel} results from <span className="font-semibold" style={{ color: BRAND.colors.textMuted }}>{trendRangeLabel}</span>, compared with a {trendAverageLabel} to show underlying direction over time.
                   </div>
                 </>
               }
@@ -2140,6 +2316,7 @@ export default function DashboardClient({ initialData }: Props) {
                     id="trends-from-date"
                     label="From"
                     value={trendFromDate}
+                    inlineLabelOnMobile
                     min={trendDateBoundsConfig.from}
                     max={trendToDate}
                     onChange={(event) => {
@@ -2158,6 +2335,7 @@ export default function DashboardClient({ initialData }: Props) {
                     id="trends-to-date"
                     label="To"
                     value={trendToDate}
+                    inlineLabelOnMobile
                     min={trendFromDate}
                     max={trendDateBoundsConfig.to}
                     onChange={(event) => {
@@ -2199,11 +2377,11 @@ export default function DashboardClient({ initialData }: Props) {
           {activeTab === "c3" ? (
             <DashboardTopPanel
               title="C3 Tracker"
-              icon={ClipboardCheck}
+              icon={ClipboardList}
               description={
                 <>
-                  <div>City service requests logged vs resolved by category for:</div>
-                  <div className="mt-1 font-semibold text-[#4d5d74]">{c3RangeLabel}.</div>
+                  <div>City service requests logged vs resolved by category from
+                  <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}> {c3RangeLabel}.</span></div>
                 </>
               }
               controls={
@@ -2212,6 +2390,7 @@ export default function DashboardClient({ initialData }: Props) {
                     id="c3-from-date"
                     label="From"
                     value={c3FromDate}
+                    inlineLabelOnMobile
                     min={c3DateBoundsConfig.from}
                     max={c3ToDate}
                     onChange={(event) => {
@@ -2230,6 +2409,7 @@ export default function DashboardClient({ initialData }: Props) {
                     id="c3-to-date"
                     label="To"
                     value={c3ToDate}
+                    inlineLabelOnMobile
                     min={c3FromDate}
                     max={c3DateBoundsConfig.to}
                     onChange={(event) => {
@@ -2251,12 +2431,12 @@ export default function DashboardClient({ initialData }: Props) {
         </div>
       </section>
 
-      <div className="dashboard-container bg-[#f9fafb] py-1 pb-10 md:py-2 md:pb-14">
+      <div className="dashboard-container py-1 pb-10 md:py-2 md:pb-14" style={{ backgroundColor: BRAND.colors.pageBackground }}>
 
         {activeTab === "main" ? (
         <div ref={mainPrintableRef} className="space-y-6">
           <ExportImageHeader />
-          <section id="current-week" className="card-frame rounded-[24px] border border-black/12 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.08)] md:p-8">
+          <section id="current-week" className="card-frame bg-transparent p-0">
           {currentWeek?.record_status === "NO_DATA_REPORTED" ? (
             <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
           ) : (
@@ -2266,6 +2446,7 @@ export default function DashboardClient({ initialData }: Props) {
                   key={publicSafetyPillar.id}
                   title={publicSafetyPillar.title}
                   iconPath={publicSafetyPillar.iconPath}
+                  iconScale={1.12}
                   theme={publicSafetyPillar.theme}
                   summary={publicSafetyPillar.summary}
                   metrics={publicSafetyPillar.metrics}
@@ -2275,6 +2456,7 @@ export default function DashboardClient({ initialData }: Props) {
                   key={cleaningPillar.id}
                   title={cleaningPillar.title}
                   iconPath={cleaningPillar.iconPath}
+                  iconScale={1.1}
                   theme={cleaningPillar.theme}
                   summary={cleaningPillar.summary}
                   metrics={cleaningPillar.metrics}
@@ -2303,15 +2485,19 @@ export default function DashboardClient({ initialData }: Props) {
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <CurrentWeekBreakdownChart
-                  title="Law Enforcement Fines Issued"
+                  title="Law Enforcement"
                   data={currentWeekLawEnforcementBreakdown}
-                  color={BRAND.colors.black}
+                  color={BRAND.colors.lawEnforcement}
+                  theme="law"
+                  icon={Scale}
                 />
 
                 <CurrentWeekBreakdownChart
                   title="Urban Management Incidents"
                   data={currentWeekUrbanBreakdown}
-                  color={BRAND.colors.black}
+                  color={BRAND.colors.urbanManagement}
+                  theme="urban"
+                  icon={Building2}
                 />
               </div>
 
@@ -2319,28 +2505,38 @@ export default function DashboardClient({ initialData }: Props) {
                 <CurrentWeekBreakdownChart
                   title="Control Room Engagement"
                   data={currentWeekControlRoomBreakdown}
-                  color={BRAND.colors.black}
+                  color={BRAND.colors.neutralStrong}
+                  theme="neutral"
+                  icon={PhoneCall}
                 />
                 <CurrentWeekBreakdownChart
-                  title="CoCT C3 Logged Requests"
+                  title="C3 Logged Requests"
                   data={currentWeekC3LoggedBreakdown}
-                  color={BRAND.colors.black}
+                  color={BRAND.colors.neutralStrong}
+                  theme="neutral"
+                  icon={ClipboardList}
                 />
               </div>
             </div>
           )}
           </section>
 
-          <section id="incidents" className="card-frame rounded-2xl border-2 border-black bg-white p-4 md:p-6">
+          <section
+            id="incidents"
+            className="card-frame rounded-[16px] border bg-white p-4 md:p-6"
+            style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 2px 8px ${BRAND.colors.shadowSoft}` }}
+          >
           <SectionHeading
-            title="Criminal Incidents"
-            description={`Details of reported incidents for the current week: ${selectedWeekRange}`}
+            title="Criminal Incidents by Location"
+            description={<>Details of reported incidents for the current week: <strong>{selectedWeekRange}</strong></>}
             icon="incidents"
+            iconBackground={BRAND.colors.textStrong}
+            iconColor={BRAND.colors.white}
           />
 
-          <div className="mb-4 rounded-xl border border-black bg-white p-4">
-            <h3 className="text-base font-bold">Your Eyes, Our Impact: See it, Share it.</h3>
-            <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed">
+          <div className="mb-5 rounded-[14px] border p-5" style={{ borderColor: BRAND.colors.safety, backgroundColor: BRAND.colors.safetyBackground }}>
+            <h4 className="dashboard-heading-4" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>Your Eyes, Our Impact: See it, Share it.</h4>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed" style={{ color: BRAND.colors.textBody }}>
               <li>
                 If you are a victim of crime, please report the incident to SAPS and obtain a case number.
                 Accurate reporting ensures our crime statistics reflect the true picture of the area.
@@ -2352,14 +2548,14 @@ export default function DashboardClient({ initialData }: Props) {
           </div>
 
           <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
-            <div className="rounded-xl border border-black p-3">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em]">Hotspot Intelligence (Top {HOTSPOT_LIMIT})</h3>
+            <div className="rounded-[12px] border p-3.5" style={{ borderColor: BRAND.colors.borderSubtle }}>
+              <h4 className="dashboard-heading-4" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>Hotspot Intelligence <span className="font-normal">(Top {HOTSPOT_LIMIT})</span></h4>
               <ol className="mt-3 space-y-2">
                 {initialData.hotspots.length ? (
                   initialData.hotspots.map((spot, index) => (
-                    <li key={spot.street} className="flex items-center justify-between rounded-lg border border-black bg-white px-3 py-2">
-                      <span className="text-sm font-semibold">{index + 1}. {spot.street}</span>
-                      <span className="inline-flex min-w-9 items-center justify-center rounded-full border border-black bg-brand-safety px-2 py-0.5 text-xs font-bold">
+                    <li key={spot.street} className="flex items-center justify-between rounded-[10px] border bg-white px-3 py-2.5" style={{ borderColor: BRAND.colors.borderSubtle }}>
+                      <span className="text-sm font-medium" style={{ color: BRAND.colors.textStrong }}>{index + 1}. {spot.street}</span>
+                      <span className="inline-flex min-w-9 items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium" style={{ borderColor: BRAND.colors.safety, backgroundColor: BRAND.colors.safety, color: BRAND.colors.black }}>
                         {spot.incident_count}
                       </span>
                     </li>
@@ -2370,21 +2566,20 @@ export default function DashboardClient({ initialData }: Props) {
               </ol>
             </div>
 
-            <div className="rounded-xl border border-black p-3">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em]">
-                Incident Log (Selected Week: {selectedWeekRange})
-              </h3>
-              <div className="mt-3 grid gap-2">
+            <div className="rounded-[12px] border p-3.5" style={{ borderColor: BRAND.colors.borderSubtle }}>
+              <h4 className="dashboard-heading-4" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>
+                Incident Log <span className="font-normal">(Selected Week: {selectedWeekRange})</span>
+              </h4>
+              <div className="mt-3 grid gap-3">
                 {currentIncidents.length ? (
                   currentIncidents.map((incident, index) => (
-                    <article key={`${incident.week_start}-${index}`} className="rounded-lg border border-black bg-white p-3">
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em]">
+                    <article key={`${incident.week_start}-${index}`} className="rounded-[12px] border p-4" style={{ borderColor: BRAND.colors.borderSubtle, backgroundColor: BRAND.colors.surfaceRaised }}>
+                      <div className="flex flex-wrap items-center gap-2 text-[0.9rem] font-semibold" style={{ color: BRAND.colors.textStrong }}>
                         <span>{incident.incident_date ?? "No date"}</span>
-                        <span>-</span>
-                        <span className="normal-case tracking-normal">{incident.place}</span>
+                        <span className="ml-4">{incident.place}</span>
                         <IncidentCategoryTag category={incident.category} />
                       </div>
-                      <p className="mt-2 text-sm leading-relaxed">{incident.summary}</p>
+                      <p className="mt-3 text-sm leading-[1.75]" style={{ color: BRAND.colors.textBody }}>{incident.summary}</p>
                     </article>
                   ))
                 ) : (
@@ -2401,7 +2596,11 @@ export default function DashboardClient({ initialData }: Props) {
         {activeTab === "summary" ? (
           <div ref={summaryPrintableRef}>
             <ExportImageHeader />
-            <section id="summary-infographic" className="card-frame rounded-[24px] border border-black/12 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.08)] md:p-8">
+            <section
+              id="summary-infographic"
+              className="card-frame rounded-[24px] border bg-white p-6 md:p-8"
+              style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 2px 8px ${BRAND.colors.shadowMedium}` }}
+            >
               {currentWeek?.record_status === "NO_DATA_REPORTED" ? (
                 <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
               ) : (
@@ -2437,7 +2636,7 @@ export default function DashboardClient({ initialData }: Props) {
                   granularity={trendGranularity}
                   dataKey="criminal_incidents"
                   averageKey="criminal_ma4"
-                  stroke={CRIME_TREND_COLOR}
+                  stroke={BRAND.colors.safety}
                   dataName={`${trendPeriodLabel} criminal incidents`}
                   averageName={trendAverageLabel}
                 />
@@ -2448,7 +2647,7 @@ export default function DashboardClient({ initialData }: Props) {
                   granularity={trendGranularity}
                   dataKey="cleaning_bags_collected"
                   averageKey="cleaning_ma4"
-                  stroke={CLEANING_TREND_COLOR}
+                  stroke={BRAND.colors.cleaning}
                   dataName={`${trendPeriodLabel} bags (total)`}
                   averageName={trendAverageLabel}
                 />
@@ -2459,7 +2658,7 @@ export default function DashboardClient({ initialData }: Props) {
                   granularity={trendGranularity}
                   dataKey="social_touch_points"
                   averageKey="social_touch_points_ma4"
-                  stroke={SOCIAL_TREND_COLOR}
+                  stroke={BRAND.colors.social}
                   dataName={`${trendPeriodLabel} touch points`}
                   averageName={trendAverageLabel}
                 />
@@ -2470,7 +2669,7 @@ export default function DashboardClient({ initialData }: Props) {
                   granularity={trendGranularity}
                   dataKey="parks_total_bags"
                   averageKey="parks_total_bags_ma4"
-                  stroke={PARKS_TREND_COLOR}
+                  stroke={BRAND.colors.parks}
                   dataName={`${trendPeriodLabel} bags (total)`}
                   averageName={trendAverageLabel}
                 />
@@ -2481,7 +2680,7 @@ export default function DashboardClient({ initialData }: Props) {
                   granularity={trendGranularity}
                   dataKey="fines_total"
                   averageKey="fines_total_ma4"
-                  stroke={LAW_ENFORCEMENT_TREND_COLOR}
+                  stroke={BRAND.colors.black}
                   dataName={`${trendPeriodLabel} fines (total)`}
                   averageName={trendAverageLabel}
                 />
@@ -2492,7 +2691,7 @@ export default function DashboardClient({ initialData }: Props) {
                   granularity={trendGranularity}
                   dataKey="urban_total"
                   averageKey="urban_ma4"
-                  stroke={URBAN_TREND_COLOR}
+                  stroke={BRAND.colors.black}
                   dataName={`${trendPeriodLabel} incidents`}
                   averageName={trendAverageLabel}
                 />
@@ -2503,7 +2702,7 @@ export default function DashboardClient({ initialData }: Props) {
                   granularity={trendGranularity}
                   dataKey="contacts_total"
                   averageKey="contacts_total_ma4"
-                  stroke={CONTACTS_TREND_COLOR}
+                  stroke={BRAND.colors.black}
                   dataName={`${trendPeriodLabel} calls + Whatsapps`}
                   averageName={trendAverageLabel}
                 />
@@ -2514,7 +2713,7 @@ export default function DashboardClient({ initialData }: Props) {
                   granularity={trendGranularity}
                   dataKey="c3_logged_total"
                   averageKey="c3_logged_total_ma4"
-                  stroke={C3_LOGGED_TREND_COLOR}
+                  stroke={BRAND.colors.black}
                   dataName={`${trendPeriodLabel} logged requests`}
                   averageName={trendAverageLabel}
                 />
@@ -2534,58 +2733,58 @@ export default function DashboardClient({ initialData }: Props) {
             <ExportImageHeader />
             <section id="c3" className="space-y-6 rounded-[24px] border-0 bg-transparent p-0 shadow-none">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5 shadow-[0_2px_10px_rgba(15,23,42,0.08)]">
-              <p className="text-[40px] leading-none font-black tracking-[-0.04em] text-[#1f1f1f]">{c3OverallTotals.logged.toLocaleString()}</p>
+            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5" style={{ boxShadow: `0 2px 10px ${BRAND.colors.shadowMediumCool}` }}>
+              <p className="text-[40px] leading-none font-black tracking-[-0.04em]" style={{ color: BRAND.colors.textStrong }}>{c3OverallTotals.logged.toLocaleString()}</p>
               <p className="mt-4 text-[17px] font-medium text-black/62">Total Logged</p>
             </article>
-            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5 shadow-[0_2px_10px_rgba(15,23,42,0.08)]">
-              <p className="text-[40px] leading-none font-black tracking-[-0.04em] text-[#1f1f1f]">{c3OverallTotals.resolved.toLocaleString()}</p>
+            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5" style={{ boxShadow: `0 2px 10px ${BRAND.colors.shadowMediumCool}` }}>
+              <p className="text-[40px] leading-none font-black tracking-[-0.04em]" style={{ color: BRAND.colors.textStrong }}>{c3OverallTotals.resolved.toLocaleString()}</p>
               <p className="mt-4 text-[17px] font-medium text-black/62">Resolved</p>
             </article>
-            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5 shadow-[0_2px_10px_rgba(15,23,42,0.08)]">
-              <p className="text-[40px] leading-none font-black tracking-[-0.04em] text-[#1f1f1f]">{c3OverallTotals.backlog.toLocaleString()}</p>
+            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5" style={{ boxShadow: `0 2px 10px ${BRAND.colors.shadowMediumCool}` }}>
+              <p className="text-[40px] leading-none font-black tracking-[-0.04em]" style={{ color: BRAND.colors.textStrong }}>{c3OverallTotals.backlog.toLocaleString()}</p>
               <p className="mt-4 text-[17px] font-medium text-black/62">Open Backlog</p>
             </article>
-            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5 shadow-[0_2px_10px_rgba(15,23,42,0.08)]">
-              <p className="text-[40px] leading-none font-black tracking-[-0.04em] text-[#1f1f1f]">
+            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5" style={{ boxShadow: `0 2px 10px ${BRAND.colors.shadowMediumCool}` }}>
+              <p className="text-[40px] leading-none font-black tracking-[-0.04em]" style={{ color: BRAND.colors.textStrong }}>
                 {c3OverallResolutionRatio === null ? NO_DATA_LABEL : `${Math.round(c3OverallResolutionRatio * 100)}%`}
               </p>
               <p className="mt-4 text-[17px] font-medium text-black/62">Resolution Rate</p>
             </article>
           </div>
 
-          <div className="rounded-[26px] border border-black/10 bg-white px-7 pt-8 shadow-[0_3px_12px_rgba(15,23,42,0.08)] md:px-8">
-            <h3 className="text-[26px] font-bold tracking-[-0.03em] text-[#1d1d1f]">Logged vs Resolved by Category</h3>
-            <p className="mt-2 text-[15px] text-[#667085]">Comparison of service requests logged and resolved across all categories</p>
+          <div className="rounded-[26px] border border-black/10 bg-white px-7 pt-8 md:px-8" style={{ boxShadow: `0 3px 12px ${BRAND.colors.shadowMediumCool}` }}>
+            <h3 className="dashboard-heading-3" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>Logged vs Resolved by Category</h3>
+            <p className="mt-2 text-[15px]" style={{ color: BRAND.colors.textMuted }}>Comparison of service requests logged and resolved across all categories</p>
 
-            <div className="mt-8 h-[560px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="mt-8 min-h-0 min-w-0 h-[560px]">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={c3OverallBreakdown} margin={{ top: 34, right: 12, left: 0, bottom: 34 }} barGap={2} barCategoryGap="18%" barSize={36}>
                   <defs>
                     <pattern id="resolvedHatch" patternUnits="userSpaceOnUse" width="8" height="8">
                       <rect width="8" height="8" fill={BRAND.colors.white} />
-                      <path d="M-2 2l4-4M0 8l8-8M6 10l4-4" stroke={C3_RESOLVED_GREY} strokeWidth="1.2" />
+                      <path d="M-2 2l4-4M0 8l8-8M6 10l4-4" stroke={BRAND.colors.c3Resolved} strokeWidth="1.2" />
                     </pattern>
                   </defs>
-                  <CartesianGrid strokeDasharray="4 4" stroke="#d6dde8" vertical={false} />
+                  <CartesianGrid strokeDasharray="4 4" stroke={BRAND.colors.gridSubtle} vertical={false} />
                   <XAxis
                     dataKey="department"
-                    tick={{ fontSize: 14, fill: "#343a40" }}
+                    tick={{ fontSize: 14, fill: BRAND.colors.textBody }}
                     interval={0}
                     angle={-46}
                     textAnchor="end"
                     height={110}
-                    axisLine={{ stroke: "#525866", strokeWidth: 1.5 }}
+                    axisLine={{ stroke: BRAND.colors.textMuted, strokeWidth: 1.5 }}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 14, fill: "#343a40" }}
-                    axisLine={{ stroke: "#525866", strokeWidth: 1.5 }}
-                    tickLine={{ stroke: "#525866" }}
+                    tick={{ fontSize: 14, fill: BRAND.colors.textBody }}
+                    axisLine={{ stroke: BRAND.colors.textMuted, strokeWidth: 1.5 }}
+                    tickLine={{ stroke: BRAND.colors.textMuted }}
                     domain={[0, "dataMax + 12"]}
                   />
                   <Tooltip
-                    cursor={{ fill: "rgba(15, 23, 42, 0.04)" }}
+                    cursor={{ fill: BRAND.colors.overlaySubtleCool }}
                     content={(props) => (
                       <CategoricalTooltip
                         {...props}
@@ -2603,23 +2802,23 @@ export default function DashboardClient({ initialData }: Props) {
                   />
                   <Bar
                     dataKey="logged"
-                    fill="#3b3b3b"
+                    fill={BRAND.colors.neutralStrong}
                     radius={[5, 5, 0, 0]}
                     name="Logged"
-                    activeBar={{ fill: "#3b3b3b", stroke: "#2c2c2c", strokeWidth: 1 }}
+                    activeBar={{ fill: BRAND.colors.neutralStrong, stroke: BRAND.colors.black, strokeWidth: 1 }}
                   >
-                    <LabelList dataKey="logged" position="top" fill="#303030" fontSize={13} />
+                    <LabelList dataKey="logged" position="top" fill={BRAND.colors.textBody} fontSize={13} />
                   </Bar>
                   <Bar
                     dataKey="resolved"
                     fill="url(#resolvedHatch)"
                     radius={[5, 5, 0, 0]}
-                    stroke={C3_RESOLVED_GREY}
+                    stroke={BRAND.colors.c3Resolved}
                     strokeWidth={1}
                     name="Resolved"
                     activeBar={{ fill: "url(#resolvedHatch)", stroke: BRAND.colors.black, strokeWidth: 1.2 }}
                   >
-                    <LabelList dataKey="resolved" position="top" fill="#303030" fontSize={13} />
+                    <LabelList dataKey="resolved" position="top" fill={BRAND.colors.textBody} fontSize={13} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -2627,31 +2826,31 @@ export default function DashboardClient({ initialData }: Props) {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-[1.7fr_0.95fr] xl:items-stretch">
-            <div className="h-full rounded-[26px] border border-black/10 bg-white px-8 py-7 shadow-[0_3px_12px_rgba(15,23,42,0.08)]">
-              <h3 className="text-[26px] font-bold tracking-[-0.03em] text-[#1d1d1f]">Open Backlog by Category</h3>
-              <p className="mt-2 text-[15px] text-[#667085]">Number of unresolved requests per category</p>
+            <div className="min-w-0 h-full rounded-[26px] border border-black/10 bg-white px-8 py-7" style={{ boxShadow: `0 3px 12px ${BRAND.colors.shadowMediumCool}` }}>
+              <h3 className="dashboard-heading-3" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>Open Backlog by Category</h3>
+              <p className="mt-2 text-[15px]" style={{ color: BRAND.colors.textMuted }}>Number of unresolved requests per category</p>
 
-              <div className="mt-8 h-[360px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="mt-8 min-h-0 min-w-0 h-[360px]">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={c3OverallBreakdown} layout="vertical" margin={{ top: 8, right: 32, left: 0, bottom: 18 }}>
-                    <CartesianGrid strokeDasharray="4 4" stroke="#d6dde8" horizontal={false} />
+                    <CartesianGrid strokeDasharray="4 4" stroke={BRAND.colors.gridSubtle} horizontal={false} />
                     <XAxis
                       type="number"
-                      tick={{ fontSize: 14, fill: "#343a40" }}
-                      axisLine={{ stroke: "#525866", strokeWidth: 1.5 }}
-                      tickLine={{ stroke: "#525866" }}
+                      tick={{ fontSize: 14, fill: BRAND.colors.textBody }}
+                      axisLine={{ stroke: BRAND.colors.textMuted, strokeWidth: 1.5 }}
+                      tickLine={{ stroke: BRAND.colors.textMuted }}
                     />
                     <YAxis
                       type="category"
                       dataKey="department"
                       width={150}
-                      tick={{ fontSize: 14, fill: "#343a40" }}
-                      axisLine={{ stroke: "#525866", strokeWidth: 1.5 }}
-                      tickLine={{ stroke: "#525866" }}
+                      tick={{ fontSize: 14, fill: BRAND.colors.textBody }}
+                      axisLine={{ stroke: BRAND.colors.textMuted, strokeWidth: 1.5 }}
+                      tickLine={{ stroke: BRAND.colors.textMuted }}
                       interval={0}
                     />
                     <Tooltip
-                      cursor={{ fill: "rgba(15, 23, 42, 0.04)" }}
+                      cursor={{ fill: BRAND.colors.overlaySubtleCool }}
                       content={(props) => (
                         <CategoricalTooltip
                           {...props}
@@ -2662,38 +2861,42 @@ export default function DashboardClient({ initialData }: Props) {
                     />
                     <Bar
                       dataKey="backlog"
-                      fill="#3b3b3b"
+                      fill={BRAND.colors.neutralStrong}
                       radius={[0, 10, 10, 0]}
                       name="Open backlog"
-                      activeBar={{ fill: "#3b3b3b", stroke: "#2f2f2f", strokeWidth: 1 }}
+                      activeBar={{ fill: BRAND.colors.neutralStrong, stroke: BRAND.colors.black, strokeWidth: 1 }}
                     >
-                      <LabelList dataKey="backlog" position="right" fill="#303030" fontSize={13} />
+                      <LabelList dataKey="backlog" position="right" fill={BRAND.colors.textBody} fontSize={13} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            <div className="h-full rounded-[26px] border border-black/10 bg-white px-8 py-7 shadow-[0_3px_12px_rgba(15,23,42,0.08)]">
+            <div className="h-full rounded-[26px] border border-black/10 bg-white px-8 py-7" style={{ boxShadow: `0 3px 12px ${BRAND.colors.shadowMediumCool}` }}>
               <div className="flex items-center gap-3">
-                <span className="inline-flex h-8 w-8 items-center justify-center text-[#ff3b30]">
+                <span className="inline-flex h-8 w-8 items-center justify-center" style={{ color: BRAND.colors.alertCritical }}>
                   <AlertCircle className="h-6 w-6" />
                 </span>
-                <h3 className="text-[26px] font-bold tracking-[-0.03em] text-[#1d1d1f]">Pressure Points</h3>
+                <h3 className="dashboard-heading-3" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>Pressure Points</h3>
               </div>
-              <p className="mt-2 text-[15px] text-[#667085]">Categories requiring immediate attention</p>
+              <p className="mt-2 text-[15px]" style={{ color: BRAND.colors.textMuted }}>Categories requiring immediate attention</p>
               {c3BacklogTop3.length ? (
                 <ol className="mt-5 space-y-4 text-[14px]">
                   {c3BacklogTop3.map((row) => (
-                    <li key={row.department} className="rounded-r-[20px] border-l-[6px] border-[#ff3b30] bg-[#fdf0f0] px-5 py-4">
-                      <p className="text-[16px] font-bold text-[#1d1d1f]">{row.department}</p>
-                      <p className="mt-3 text-[14px] text-[#2f2f31]">
+                    <li
+                      key={row.department}
+                      className="rounded-r-[20px] border-l-[6px] px-5 py-4"
+                      style={{ borderColor: BRAND.colors.alertCritical, backgroundColor: BRAND.colors.alertCriticalBackground }}
+                    >
+                      <p className="text-[16px] font-bold" style={{ color: BRAND.colors.textStrong }}>{row.department}</p>
+                      <p className="mt-3 text-[14px]" style={{ color: BRAND.colors.textBody }}>
                         <span className="font-normal">Open backlog:</span>{" "}
-                        <strong className="font-bold text-[#ff3b30]">{row.backlog.toLocaleString()}</strong>
+                        <strong className="font-bold" style={{ color: BRAND.colors.alertCritical }}>{row.backlog.toLocaleString()}</strong>
                       </p>
-                      <p className="mt-1 text-[14px] text-[#2f2f31]">
+                      <p className="mt-1 text-[14px]" style={{ color: BRAND.colors.textBody }}>
                         <span className="font-normal">Resolution rate:</span>{" "}
-                        <strong className="font-bold text-[#1d1d1f]">
+                        <strong className="font-bold" style={{ color: BRAND.colors.textStrong }}>
                           {row.resolution_ratio === null ? NO_DATA_LABEL : `${Math.round(row.resolution_ratio * 100)}%`}
                         </strong>
                       </p>
@@ -2701,24 +2904,28 @@ export default function DashboardClient({ initialData }: Props) {
                   ))}
                 </ol>
               ) : (
-                <div className="mt-6 rounded-[20px] border border-dashed border-black/25 bg-[#f7f1ee] p-4 text-sm">
+                <div className="mt-6 rounded-[20px] border border-dashed border-black/25 p-4 text-sm" style={{ backgroundColor: BRAND.colors.surfaceMutedWarm }}>
                   {NO_DATA_LABEL}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="rounded-[26px] border-2 border-black/80 bg-[#f0f0f0] px-8 py-7 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
+          <div
+            className="rounded-[26px] border-2 border-black/80 px-8 py-7"
+            style={{ backgroundColor: BRAND.colors.neutralBackground, boxShadow: `0 2px 8px ${BRAND.colors.overlaySubtleCool}` }}
+          >
             <div className="flex gap-5">
               <span className="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center">
                 <ClipboardList className="h-7 w-7 text-black/80" />
               </span>
-              <div className="text-[14px] leading-relaxed text-[#2b2f38]">
+              <div className="text-[14px] leading-relaxed" style={{ color: BRAND.colors.textBody }}>
                 <p>
                   Need to check an existing City of Cape Town reference? You can use the{" "}
                   <a
                     href="https://eservices1.capetown.gov.za/coct/wapl/zsreq_app/index.html"
-                    className="font-bold text-[#1d1d1f]"
+                    className="font-bold"
+                    style={{ color: BRAND.colors.textStrong }}
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -2728,11 +2935,11 @@ export default function DashboardClient({ initialData }: Props) {
                 </p>
                 <p className="mt-4">
                   Contact us on WhatsApp at{" "}
-                  <a href="https://wa.me/27690078644" className="font-bold text-[#1d1d1f]" target="_blank" rel="noreferrer">
+                  <a href="https://wa.me/27690078644" className="font-bold" style={{ color: BRAND.colors.textStrong }} target="_blank" rel="noreferrer">
                     089 007 6644
                   </a>{" "}
                   (message only) or call the LGCID 24-hour line on{" "}
-                  <a href="tel:0873302177" className="font-bold text-[#1d1d1f]">
+                  <a href="tel:0873302177" className="font-bold" style={{ color: BRAND.colors.textStrong }}>
                     087 330 2177
                   </a>.
                 </p>

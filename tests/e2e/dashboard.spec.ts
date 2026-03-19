@@ -1,4 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+function visibleReportingWeekSelect(page: Page) {
+  return page.locator("#dashboard-reporting-week, #dashboard-reporting-week-mobile").filter({ visible: true });
+}
 
 test("dashboard API serves fixed local CSV data for a historical week", async ({ request }) => {
   const response = await request.get("/api/dashboard?weekStart=2026-02-23");
@@ -34,23 +38,45 @@ test("preview query exposes one unpublished week in the API response", async ({ 
 test("dashboard renders and tab navigation works without client errors", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Weekly Operations Dashboard" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Weekly Operations Dashboard", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Summary", level: 2 })).toBeVisible();
 
   await page.getByRole("button", { name: "Current Week" }).click();
-  await expect(page.getByRole("heading", { name: "Current Week" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Current Week", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Public Safety", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cleaning & Maintenance", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Social Services", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Parks & Recreation", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Law Enforcement", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Urban Management Incidents", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Control Room Engagement", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "C3 Logged Requests", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Criminal Incidents by Location", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Hotspot Intelligence/, level: 4 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Incident Log/, level: 4 })).toBeVisible();
 
   await page.getByRole("button", { name: "Trends" }).click();
-  await expect(page.getByRole("heading", { name: "Trends" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Trends", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Public Safety Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cleaning & Maintenance Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Social Services Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Parks & Recreation Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Law Enforcement Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Urban Management Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Control Room Engagement Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "CoCT C3 Logged Requests Trend", level: 3 })).toBeVisible();
 
   await page.getByRole("button", { name: "C3 Tracker" }).click();
-  await expect(page.getByRole("heading", { name: "C3 Tracker" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "C3 Tracker", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Logged vs Resolved by Category", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Open Backlog by Category", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pressure Points", level: 3 })).toBeVisible();
 });
 
 test("current week view updates when a historical reporting week is selected", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Current Week" }).click();
-  await page.getByLabel("Reporting week").selectOption("2026-02-23");
+  await visibleReportingWeekSelect(page).selectOption("2026-02-23");
 
   const incidentsSection = page.locator("#incidents");
 
@@ -63,7 +89,7 @@ test("preview query makes the unpublished latest week visible in the dashboard",
   await page.goto("/?preview=2026-03-10");
   await page.getByRole("button", { name: "Current Week" }).click();
 
-  await expect(page.getByLabel("Reporting week")).toHaveValue("2026-03-09");
+  await expect(visibleReportingWeekSelect(page)).toHaveValue("2026-03-09");
 
   const incidentsSection = page.locator("#incidents");
 
