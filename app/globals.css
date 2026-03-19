@@ -238,6 +238,12 @@ h6 {
   animation: none !important;
 }
 
+#trends .recharts-wrapper:focus,
+#trends .recharts-surface:focus,
+#trends [tabindex]:focus {
+  outline: none !important;
+}
+
 .export-image-header,
 .export-image-footer {
   display: none;

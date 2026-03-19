@@ -116,6 +116,9 @@ type TrendChartPoint = {
 const C3_RESOLVED_GREY = "rgba(0, 0, 0, 0.35)";
 const CRIME_TREND_COLOR = BRAND.colors.safety;
 const CLEANING_TREND_COLOR = BRAND.colors.cleaning;
+const TREND_AVERAGE_COLOR = "#d2d5da";
+const TREND_GRID_COLOR = "#e8ecf2";
+const TREND_AXIS_TEXT_COLOR = "#2f3743";
 const URBAN_TREND_COLOR = BRAND.colors.black;
 const LAW_ENFORCEMENT_TREND_COLOR = BRAND.colors.black;
 const SOCIAL_TREND_COLOR = BRAND.colors.social;
@@ -321,7 +324,7 @@ function tooltipTextColorForBackground(color: string): string {
 }
 
 type TooltipNameType = string | number;
-type TooltipSwatchStyle = "solid" | "dashed" | "hatched" | "block";
+type TooltipSwatchStyle = "solid" | "dashed" | "hatched" | "block" | "lineDot";
 type TooltipPayloadEntry = NonNullable<TooltipContentProps<TooltipValueType, TooltipNameType>["payload"]>[number];
 type TooltipSeriesConfig = {
   label?: string;
@@ -456,6 +459,19 @@ function TooltipSwatch({
     );
   }
 
+  if (style === "lineDot") {
+    return (
+      <span className="inline-flex h-3.5 w-6 items-center" aria-hidden>
+        <span className="block h-0.5 w-full rounded-full" style={{ backgroundColor: color }}>
+          <span
+            className="relative top-[-5px] mx-auto block h-2.5 w-2.5 rounded-full border-2 bg-white"
+            style={{ borderColor: color }}
+          />
+        </span>
+      </span>
+    );
+  }
+
   return (
     <span
       className="inline-block w-5 border-t-[3px]"
@@ -537,7 +553,29 @@ function TrendTooltip({
   const chartPoint = payload[0]?.payload as TrendChartPoint | undefined;
   const dateLabel = chartPoint?.period_start ? formatWeekDate(chartPoint.period_start) : "";
 
-  return <ChartTooltipCard title={dateLabel} rows={buildTooltipRows(payload)} />;
+  return (
+    <ChartTooltipCard
+      title={dateLabel}
+      rows={buildTooltipRows(payload, {
+        criminal_incidents: { swatchStyle: "lineDot" },
+        criminal_ma4: { swatchStyle: "lineDot" },
+        cleaning_bags_collected: { swatchStyle: "lineDot" },
+        cleaning_ma4: { swatchStyle: "lineDot" },
+        social_touch_points: { swatchStyle: "lineDot" },
+        social_touch_points_ma4: { swatchStyle: "lineDot" },
+        parks_total_bags: { swatchStyle: "lineDot" },
+        parks_total_bags_ma4: { swatchStyle: "lineDot" },
+        fines_total: { swatchStyle: "lineDot" },
+        fines_total_ma4: { swatchStyle: "lineDot" },
+        urban_total: { swatchStyle: "lineDot" },
+        urban_ma4: { swatchStyle: "lineDot" },
+        contacts_total: { swatchStyle: "lineDot" },
+        contacts_total_ma4: { swatchStyle: "lineDot" },
+        c3_logged_total: { swatchStyle: "lineDot" },
+        c3_logged_total_ma4: { swatchStyle: "lineDot" }
+      })}
+    />
+  );
 }
 
 function TrendLegend({
@@ -547,23 +585,118 @@ function TrendLegend({
     return null;
   }
 
+  const sorted = [...payload].sort((left, right) => {
+    const leftIsAverage = typeof left.dataKey === "string" && left.dataKey.endsWith("_ma4");
+    const rightIsAverage = typeof right.dataKey === "string" && right.dataKey.endsWith("_ma4");
+
+    if (leftIsAverage === rightIsAverage) {
+      return 0;
+    }
+
+    return leftIsAverage ? 1 : -1;
+  });
+
   return (
-    <ul className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px]">
-      {payload.map((entry, index) => {
+    <ul className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12px] md:text-[13px]">
+      {sorted.map((entry, index) => {
         const isMovingAverage = typeof entry.dataKey === "string" && entry.dataKey.endsWith("_ma4");
         const color = entry.color ?? BRAND.colors.black;
         const key = `${entry.dataKey ?? entry.value ?? index}`;
 
         return (
           <li key={key} className="flex items-center gap-2">
-            <svg width="24" height="10" viewBox="0 0 24 10" aria-hidden>
-              <line x1="0" y1="5" x2="24" y2="5" stroke={color} strokeWidth={2} strokeDasharray={isMovingAverage ? "6 4" : undefined} />
+            <svg width="24" height="12" viewBox="0 0 24 12" aria-hidden>
+              <line x1="2" y1="6" x2="22" y2="6" stroke={color} strokeWidth={3} strokeLinecap="round" />
+              <circle cx="12" cy="6" r="4" fill={BRAND.colors.white} stroke={color} strokeWidth={2} />
             </svg>
             <span style={{ color: BRAND.colors.black }}>{entry.value}</span>
           </li>
         );
       })}
     </ul>
+  );
+}
+
+function getTrendXAxisInterval(length: number, granularity: TrendGranularity): number {
+  if (granularity !== "week") {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil(length / 6) - 1);
+}
+
+type TrendCardProps = {
+  title: string;
+  dataKey: keyof TrendChartPoint;
+  averageKey: keyof TrendChartPoint;
+  stroke: string;
+  dataName: string;
+  averageName: string;
+  data: TrendChartPoint[];
+  granularity: TrendGranularity;
+};
+
+function TrendLineCard({
+  title,
+  dataKey,
+  averageKey,
+  stroke,
+  dataName,
+  averageName,
+  data,
+  granularity
+}: TrendCardProps) {
+  return (
+    <div className="rounded-[28px] border border-[#d7dde5] bg-white px-4 pb-4 pt-5 shadow-[0_2px_10px_rgba(15,23,42,0.06)] md:px-5 md:pb-5">
+      <p className="mb-3 text-[20px] leading-none font-bold tracking-[-0.025em] text-[#1a1e23] md:text-[21px]">{title}</p>
+      <div className="h-[280px] md:h-[300px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 4, right: 10, left: -6, bottom: 8 }}>
+            <CartesianGrid vertical={false} stroke={TREND_GRID_COLOR} strokeDasharray="3 6" />
+            <XAxis
+              dataKey="period_label"
+              axisLine={false}
+              tickLine={false}
+              interval={getTrendXAxisInterval(data.length, granularity)}
+              minTickGap={28}
+              tick={{ fontSize: 12, fill: TREND_AXIS_TEXT_COLOR }}
+              tickMargin={8}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 12, fill: TREND_AXIS_TEXT_COLOR }}
+              tickMargin={4}
+              width={40}
+            />
+            <Tooltip content={(props) => <TrendTooltip {...props} />} />
+            <Legend verticalAlign="bottom" align="center" content={(props) => <TrendLegend {...props} />} />
+            <Line
+              type="monotone"
+              dataKey={dataKey}
+              stroke={stroke}
+              strokeWidth={3.25}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: stroke, fill: BRAND.colors.white }}
+              name={dataName}
+            />
+            <Line
+              type="monotone"
+              dataKey={averageKey}
+              stroke={TREND_AVERAGE_COLOR}
+              strokeWidth={3.25}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: TREND_AVERAGE_COLOR, fill: BRAND.colors.white }}
+              name={averageName}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
 }
 
@@ -2048,7 +2181,7 @@ export default function DashboardClient({ initialData }: Props) {
                           type="button"
                           onClick={() => setTrendGranularity(option.id)}
                           className={clsx(
-                            "min-h-[48px] rounded-[8px] px-6 py-3 font-[var(--font-body)] text-[1rem] font-semibold transition-colors",
+                            "rounded-[8px] px-6 py-3 font-[var(--font-body)] text-[.9rem] transition-colors",
                             trendGranularity === option.id ? "bg-black text-white" : "bg-black/6 text-black hover:bg-black/10"
                           )}
                           aria-pressed={trendGranularity === option.id}
@@ -2118,7 +2251,7 @@ export default function DashboardClient({ initialData }: Props) {
         </div>
       </section>
 
-      <div className="dashboard-container bg-[#f9fafb] py-1 md:py-2">
+      <div className="dashboard-container bg-[#f9fafb] py-1 pb-10 md:py-2 md:pb-14">
 
         {activeTab === "main" ? (
         <div ref={mainPrintableRef} className="space-y-6">
@@ -2295,248 +2428,96 @@ export default function DashboardClient({ initialData }: Props) {
         {activeTab === "trends" ? (
           <div ref={trendsPrintableRef}>
             <ExportImageHeader />
-            <section id="trends" className="card-frame rounded-[24px] border border-black/12 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.08)] md:p-8">
+            <section id="trends" className="py-1">
             {trendSeries.length ? (
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Public Safety Trend</p>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
-                      <Legend content={(props) => <TrendLegend {...props} />} />
-                      <Line
-                        type="monotone"
-                        dataKey="criminal_incidents"
-                        stroke={CRIME_TREND_COLOR}
-                        strokeWidth={3}
-                        dot={false}
-                        name={`${trendPeriodLabel} criminal incidents`}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="criminal_ma4"
-                        stroke={BRAND.colors.black}
-                        strokeWidth={2}
-                        strokeDasharray="6 4"
-                        dot={false}
-                        name={trendAverageLabel}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="grid gap-5 lg:grid-cols-2">
+                <TrendLineCard
+                  title="Public Safety Trend"
+                  data={trendSeries}
+                  granularity={trendGranularity}
+                  dataKey="criminal_incidents"
+                  averageKey="criminal_ma4"
+                  stroke={CRIME_TREND_COLOR}
+                  dataName={`${trendPeriodLabel} criminal incidents`}
+                  averageName={trendAverageLabel}
+                />
 
-                <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Cleaning & Maintenance Trend</p>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
-                      <Legend content={(props) => <TrendLegend {...props} />} />
-                      <Line
-                        type="monotone"
-                        dataKey="cleaning_bags_collected"
-                        stroke={CLEANING_TREND_COLOR}
-                        strokeWidth={3}
-                        dot={false}
-                        name={`${trendPeriodLabel} bags (total)`}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="cleaning_ma4"
-                        stroke={BRAND.colors.black}
-                        strokeWidth={2}
-                        strokeDasharray="6 4"
-                        dot={false}
-                        name={trendAverageLabel}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <TrendLineCard
+                  title="Cleaning & Maintenance Trend"
+                  data={trendSeries}
+                  granularity={trendGranularity}
+                  dataKey="cleaning_bags_collected"
+                  averageKey="cleaning_ma4"
+                  stroke={CLEANING_TREND_COLOR}
+                  dataName={`${trendPeriodLabel} bags (total)`}
+                  averageName={trendAverageLabel}
+                />
 
-                <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Social Services Trend</p>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
-                      <Legend content={(props) => <TrendLegend {...props} />} />
-                      <Line
-                        type="monotone"
-                        dataKey="social_touch_points"
-                        stroke={SOCIAL_TREND_COLOR}
-                        strokeWidth={3}
-                        dot={false}
-                        name={`${trendPeriodLabel} touch points`}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="social_touch_points_ma4"
-                        stroke={BRAND.colors.black}
-                        strokeWidth={2}
-                        strokeDasharray="6 4"
-                        dot={false}
-                        name={trendAverageLabel}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <TrendLineCard
+                  title="Social Services Trend"
+                  data={trendSeries}
+                  granularity={trendGranularity}
+                  dataKey="social_touch_points"
+                  averageKey="social_touch_points_ma4"
+                  stroke={SOCIAL_TREND_COLOR}
+                  dataName={`${trendPeriodLabel} touch points`}
+                  averageName={trendAverageLabel}
+                />
 
-                <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Parks & Recreation Trend</p>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
-                      <Legend content={(props) => <TrendLegend {...props} />} />
-                      <Line
-                        type="monotone"
-                        dataKey="parks_total_bags"
-                        stroke={PARKS_TREND_COLOR}
-                        strokeWidth={3}
-                        dot={false}
-                        name={`${trendPeriodLabel} bags (total)`}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="parks_total_bags_ma4"
-                        stroke={BRAND.colors.black}
-                        strokeWidth={2}
-                        strokeDasharray="6 4"
-                        dot={false}
-                        name={trendAverageLabel}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <TrendLineCard
+                  title="Parks & Recreation Trend"
+                  data={trendSeries}
+                  granularity={trendGranularity}
+                  dataKey="parks_total_bags"
+                  averageKey="parks_total_bags_ma4"
+                  stroke={PARKS_TREND_COLOR}
+                  dataName={`${trendPeriodLabel} bags (total)`}
+                  averageName={trendAverageLabel}
+                />
 
-                <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Law Enforcement Trend</p>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
-                      <Legend content={(props) => <TrendLegend {...props} />} />
-                      <Line
-                        type="monotone"
-                        dataKey="fines_total"
-                        stroke={LAW_ENFORCEMENT_TREND_COLOR}
-                        strokeWidth={3}
-                        dot={false}
-                        name={`${trendPeriodLabel} fines (total)`}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="fines_total_ma4"
-                        stroke={BRAND.colors.black}
-                        strokeWidth={2}
-                        strokeDasharray="6 4"
-                        dot={false}
-                        name={trendAverageLabel}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <TrendLineCard
+                  title="Law Enforcement Trend"
+                  data={trendSeries}
+                  granularity={trendGranularity}
+                  dataKey="fines_total"
+                  averageKey="fines_total_ma4"
+                  stroke={LAW_ENFORCEMENT_TREND_COLOR}
+                  dataName={`${trendPeriodLabel} fines (total)`}
+                  averageName={trendAverageLabel}
+                />
 
-                <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Urban Management Trend</p>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
-                      <Legend content={(props) => <TrendLegend {...props} />} />
-                      <Line
-                        type="monotone"
-                        dataKey="urban_total"
-                        stroke={URBAN_TREND_COLOR}
-                        strokeWidth={3}
-                        dot={false}
-                        name={`${trendPeriodLabel} incidents`}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="urban_ma4"
-                        stroke={BRAND.colors.black}
-                        strokeWidth={2}
-                        strokeDasharray="6 4"
-                        dot={false}
-                        name={trendAverageLabel}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <TrendLineCard
+                  title="Urban Management Trend"
+                  data={trendSeries}
+                  granularity={trendGranularity}
+                  dataKey="urban_total"
+                  averageKey="urban_ma4"
+                  stroke={URBAN_TREND_COLOR}
+                  dataName={`${trendPeriodLabel} incidents`}
+                  averageName={trendAverageLabel}
+                />
 
-                <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Control Room Engagement Trend</p>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
-                      <Legend content={(props) => <TrendLegend {...props} />} />
-                      <Line
-                        type="monotone"
-                        dataKey="contacts_total"
-                        stroke={CONTACTS_TREND_COLOR}
-                        strokeWidth={3}
-                        dot={false}
-                        name={`${trendPeriodLabel} calls + Whatsapps`}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="contacts_total_ma4"
-                        stroke={BRAND.colors.black}
-                        strokeWidth={2}
-                        strokeDasharray="6 4"
-                        dot={false}
-                        name={trendAverageLabel}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <TrendLineCard
+                  title="Control Room Engagement Trend"
+                  data={trendSeries}
+                  granularity={trendGranularity}
+                  dataKey="contacts_total"
+                  averageKey="contacts_total_ma4"
+                  stroke={CONTACTS_TREND_COLOR}
+                  dataName={`${trendPeriodLabel} calls + Whatsapps`}
+                  averageName={trendAverageLabel}
+                />
 
-                <div className="h-[300px] rounded-xl border border-black p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">CoCT C3 Logged Requests Trend</p>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendSeries} margin={{ top: 8, right: 18, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                      <XAxis dataKey="period_label" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip content={(props) => <TrendTooltip {...props} />} />
-                      <Legend content={(props) => <TrendLegend {...props} />} />
-                      <Line
-                        type="monotone"
-                        dataKey="c3_logged_total"
-                        stroke={C3_LOGGED_TREND_COLOR}
-                        strokeWidth={3}
-                        dot={false}
-                        name={`${trendPeriodLabel} logged requests`}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="c3_logged_total_ma4"
-                        stroke={BRAND.colors.black}
-                        strokeWidth={2}
-                        strokeDasharray="6 4"
-                        dot={false}
-                        name={trendAverageLabel}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <TrendLineCard
+                  title="CoCT C3 Logged Requests Trend"
+                  data={trendSeries}
+                  granularity={trendGranularity}
+                  dataKey="c3_logged_total"
+                  averageKey="c3_logged_total_ma4"
+                  stroke={C3_LOGGED_TREND_COLOR}
+                  dataName={`${trendPeriodLabel} logged requests`}
+                  averageName={trendAverageLabel}
+                />
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-black p-5 text-center font-semibold">
