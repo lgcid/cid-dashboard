@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef, useState, type CSSProperties, type RefObj
 import Image from "next/image";
 import clsx from "clsx";
 import { format, parseISO } from "date-fns";
-import { ChevronDown, ClipboardCheck, ClipboardList, FileText, Printer, TrendingUp, type LucideIcon } from "lucide-react";
+import { AlertCircle, ChevronDown, ClipboardCheck, ClipboardList, FileText, Printer, TrendingUp, type LucideIcon } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -651,7 +651,7 @@ function TrendLineCard({
       <p className="mb-3 text-[20px] leading-none font-bold tracking-[-0.025em] text-[#1a1e23] md:text-[21px]">{title}</p>
       <div className="h-[280px] md:h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 4, right: 10, left: -6, bottom: 8 }}>
+          <LineChart data={data} margin={{ top: 4, right: 20, left: -6, bottom: 8 }}>
             <CartesianGrid vertical={false} stroke={TREND_GRID_COLOR} strokeDasharray="3 6" />
             <XAxis
               dataKey="period_label"
@@ -2532,137 +2532,212 @@ export default function DashboardClient({ initialData }: Props) {
         {activeTab === "c3" ? (
           <div ref={c3PrintableRef}>
             <ExportImageHeader />
-            <section id="c3" className="card-frame rounded-[24px] border border-black/12 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.08)] md:p-8">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <SummaryMetricCard label="Total Logged" current={c3OverallTotals.logged} previous={null} showDelta={false} />
-            <SummaryMetricCard label="Resolved" current={c3OverallTotals.resolved} previous={null} showDelta={false} />
-            <SummaryMetricCard label="Open Backlog" current={c3OverallTotals.backlog} previous={null} showDelta={false} />
-            <SummaryMetricCard
-              label="Resolution Rate"
-              current={c3OverallResolutionRatio === null ? null : Math.round(c3OverallResolutionRatio * 100)}
-              previous={null}
-              valueSuffix="%"
-              showDelta={false}
-            />
+            <section id="c3" className="space-y-6 rounded-[24px] border-0 bg-transparent p-0 shadow-none">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5 shadow-[0_2px_10px_rgba(15,23,42,0.08)]">
+              <p className="text-[40px] leading-none font-black tracking-[-0.04em] text-[#1f1f1f]">{c3OverallTotals.logged.toLocaleString()}</p>
+              <p className="mt-4 text-[17px] font-medium text-black/62">Total Logged</p>
+            </article>
+            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5 shadow-[0_2px_10px_rgba(15,23,42,0.08)]">
+              <p className="text-[40px] leading-none font-black tracking-[-0.04em] text-[#1f1f1f]">{c3OverallTotals.resolved.toLocaleString()}</p>
+              <p className="mt-4 text-[17px] font-medium text-black/62">Resolved</p>
+            </article>
+            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5 shadow-[0_2px_10px_rgba(15,23,42,0.08)]">
+              <p className="text-[40px] leading-none font-black tracking-[-0.04em] text-[#1f1f1f]">{c3OverallTotals.backlog.toLocaleString()}</p>
+              <p className="mt-4 text-[17px] font-medium text-black/62">Open Backlog</p>
+            </article>
+            <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5 shadow-[0_2px_10px_rgba(15,23,42,0.08)]">
+              <p className="text-[40px] leading-none font-black tracking-[-0.04em] text-[#1f1f1f]">
+                {c3OverallResolutionRatio === null ? NO_DATA_LABEL : `${Math.round(c3OverallResolutionRatio * 100)}%`}
+              </p>
+              <p className="mt-4 text-[17px] font-medium text-black/62">Resolution Rate</p>
+            </article>
           </div>
 
-          <div className="mt-4 h-[340px] rounded-xl border border-black p-3">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={c3OverallBreakdown} margin={{ top: 8, right: 8, left: 0, bottom: 70 }}>
-                <defs>
-                  <pattern id="resolvedHatch" patternUnits="userSpaceOnUse" width="8" height="8">
-                    <rect width="8" height="8" fill={BRAND.colors.white} />
-                    <path d="M-2 2l4-4M0 8l8-8M6 10l4-4" stroke={C3_RESOLVED_GREY} strokeWidth="1.2" />
-                  </pattern>
-                </defs>
-                <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.25} />
-                <XAxis dataKey="department" tick={{ fontSize: 9 }} interval={0} angle={-24} textAnchor="end" height={74} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip
-                  cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
-                  content={(props) => (
-                    <CategoricalTooltip
-                      {...props}
-                      labelKey="department"
-                      seriesConfig={C3_TOOLTIP_SERIES_CONFIG}
-                    />
-                  )}
-                />
-                <Legend formatter={legendLabelFormatter} />
-                <Bar
-                  dataKey="logged"
-                  fill={BRAND.colors.black}
-                  name="Logged"
-                  activeBar={{ fill: BRAND.colors.black, opacity: 0.92, stroke: BRAND.colors.black, strokeWidth: 1 }}
-                >
-                  <LabelList dataKey="logged" position="top" fill="#000000" fontSize={9} />
-                </Bar>
-                <Bar
-                  dataKey="resolved"
-                  fill="url(#resolvedHatch)"
-                  stroke={C3_RESOLVED_GREY}
-                  strokeWidth={1}
-                  name="Resolved"
-                  activeBar={{ fill: "url(#resolvedHatch)", stroke: BRAND.colors.black, strokeWidth: 1.2 }}
-                >
-                  <LabelList dataKey="resolved" position="top" fill="#000000" fontSize={9} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <div className="rounded-[26px] border border-black/10 bg-white px-7 pt-8 shadow-[0_3px_12px_rgba(15,23,42,0.08)] md:px-8">
+            <h3 className="text-[26px] font-bold tracking-[-0.03em] text-[#1d1d1f]">Logged vs Resolved by Category</h3>
+            <p className="mt-2 text-[15px] text-[#667085]">Comparison of service requests logged and resolved across all categories</p>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_280px]">
-            <div className="h-[300px] rounded-xl border border-black p-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">Open Backlog by Category</p>
+            <div className="mt-8 h-[560px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={c3OverallBreakdown} layout="vertical" margin={{ top: 8, right: 18, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="2 2" stroke="#000000" opacity={0.2} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} />
-                  <YAxis type="category" dataKey="department" width={150} tick={{ fontSize: 9 }} interval={0} />
+                <BarChart data={c3OverallBreakdown} margin={{ top: 34, right: 12, left: 0, bottom: 34 }} barGap={2} barCategoryGap="18%" barSize={36}>
+                  <defs>
+                    <pattern id="resolvedHatch" patternUnits="userSpaceOnUse" width="8" height="8">
+                      <rect width="8" height="8" fill={BRAND.colors.white} />
+                      <path d="M-2 2l4-4M0 8l8-8M6 10l4-4" stroke={C3_RESOLVED_GREY} strokeWidth="1.2" />
+                    </pattern>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 4" stroke="#d6dde8" vertical={false} />
+                  <XAxis
+                    dataKey="department"
+                    tick={{ fontSize: 14, fill: "#343a40" }}
+                    interval={0}
+                    angle={-46}
+                    textAnchor="end"
+                    height={110}
+                    axisLine={{ stroke: "#525866", strokeWidth: 1.5 }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 14, fill: "#343a40" }}
+                    axisLine={{ stroke: "#525866", strokeWidth: 1.5 }}
+                    tickLine={{ stroke: "#525866" }}
+                    domain={[0, "dataMax + 12"]}
+                  />
                   <Tooltip
-                    cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
+                    cursor={{ fill: "rgba(15, 23, 42, 0.04)" }}
                     content={(props) => (
                       <CategoricalTooltip
                         {...props}
                         labelKey="department"
-                        seriesConfig={C3_BACKLOG_TOOLTIP_SERIES_CONFIG}
+                        seriesConfig={C3_TOOLTIP_SERIES_CONFIG}
                       />
                     )}
                   />
+                  <Legend
+                    verticalAlign="bottom"
+                    align="center"
+                    iconType="square"
+                    wrapperStyle={{ paddingTop: 22, fontSize: "18px" }}
+                    formatter={legendLabelFormatter}
+                  />
                   <Bar
-                    dataKey="backlog"
-                    fill={BRAND.colors.black}
-                    name="Open backlog"
-                    activeBar={{ fill: BRAND.colors.black, opacity: 0.9, stroke: BRAND.colors.black, strokeWidth: 1 }}
+                    dataKey="logged"
+                    fill="#3b3b3b"
+                    radius={[5, 5, 0, 0]}
+                    name="Logged"
+                    activeBar={{ fill: "#3b3b3b", stroke: "#2c2c2c", strokeWidth: 1 }}
                   >
-                    <LabelList dataKey="backlog" position="right" fill="#000000" fontSize={9} />
+                    <LabelList dataKey="logged" position="top" fill="#303030" fontSize={13} />
+                  </Bar>
+                  <Bar
+                    dataKey="resolved"
+                    fill="url(#resolvedHatch)"
+                    radius={[5, 5, 0, 0]}
+                    stroke={C3_RESOLVED_GREY}
+                    strokeWidth={1}
+                    name="Resolved"
+                    activeBar={{ fill: "url(#resolvedHatch)", stroke: BRAND.colors.black, strokeWidth: 1.2 }}
+                  >
+                    <LabelList dataKey="resolved" position="top" fill="#303030" fontSize={13} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
+          </div>
 
-            <div className="rounded-xl border border-black p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Pressure Points</p>
+          <div className="grid gap-6 xl:grid-cols-[1.7fr_0.95fr] xl:items-stretch">
+            <div className="h-full rounded-[26px] border border-black/10 bg-white px-8 py-7 shadow-[0_3px_12px_rgba(15,23,42,0.08)]">
+              <h3 className="text-[26px] font-bold tracking-[-0.03em] text-[#1d1d1f]">Open Backlog by Category</h3>
+              <p className="mt-2 text-[15px] text-[#667085]">Number of unresolved requests per category</p>
+
+              <div className="mt-8 h-[360px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={c3OverallBreakdown} layout="vertical" margin={{ top: 8, right: 32, left: 0, bottom: 18 }}>
+                    <CartesianGrid strokeDasharray="4 4" stroke="#d6dde8" horizontal={false} />
+                    <XAxis
+                      type="number"
+                      tick={{ fontSize: 14, fill: "#343a40" }}
+                      axisLine={{ stroke: "#525866", strokeWidth: 1.5 }}
+                      tickLine={{ stroke: "#525866" }}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="department"
+                      width={150}
+                      tick={{ fontSize: 14, fill: "#343a40" }}
+                      axisLine={{ stroke: "#525866", strokeWidth: 1.5 }}
+                      tickLine={{ stroke: "#525866" }}
+                      interval={0}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "rgba(15, 23, 42, 0.04)" }}
+                      content={(props) => (
+                        <CategoricalTooltip
+                          {...props}
+                          labelKey="department"
+                          seriesConfig={C3_BACKLOG_TOOLTIP_SERIES_CONFIG}
+                        />
+                      )}
+                    />
+                    <Bar
+                      dataKey="backlog"
+                      fill="#3b3b3b"
+                      radius={[0, 10, 10, 0]}
+                      name="Open backlog"
+                      activeBar={{ fill: "#3b3b3b", stroke: "#2f2f2f", strokeWidth: 1 }}
+                    >
+                      <LabelList dataKey="backlog" position="right" fill="#303030" fontSize={13} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="h-full rounded-[26px] border border-black/10 bg-white px-8 py-7 shadow-[0_3px_12px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-8 w-8 items-center justify-center text-[#ff3b30]">
+                  <AlertCircle className="h-6 w-6" />
+                </span>
+                <h3 className="text-[26px] font-bold tracking-[-0.03em] text-[#1d1d1f]">Pressure Points</h3>
+              </div>
+              <p className="mt-2 text-[15px] text-[#667085]">Categories requiring immediate attention</p>
               {c3BacklogTop3.length ? (
-                <ol className="mt-3 space-y-2 text-sm">
-                  {c3BacklogTop3.map((row, index) => (
-                    <li key={row.department} className="rounded-md border border-black p-2">
-                      <p className="font-semibold">{index + 1}. {row.department}</p>
-                      <p className="mt-1">Open backlog: <strong>{row.backlog.toLocaleString()}</strong></p>
-                      <p className="text-xs">
-                        Resolution rate: <strong>{row.resolution_ratio === null ? NO_DATA_LABEL : `${Math.round(row.resolution_ratio * 100)}%`}</strong>
+                <ol className="mt-5 space-y-4 text-[14px]">
+                  {c3BacklogTop3.map((row) => (
+                    <li key={row.department} className="rounded-r-[20px] border-l-[6px] border-[#ff3b30] bg-[#fdf0f0] px-5 py-4">
+                      <p className="text-[16px] font-bold text-[#1d1d1f]">{row.department}</p>
+                      <p className="mt-3 text-[14px] text-[#2f2f31]">
+                        <span className="font-normal">Open backlog:</span>{" "}
+                        <strong className="font-bold text-[#ff3b30]">{row.backlog.toLocaleString()}</strong>
+                      </p>
+                      <p className="mt-1 text-[14px] text-[#2f2f31]">
+                        <span className="font-normal">Resolution rate:</span>{" "}
+                        <strong className="font-bold text-[#1d1d1f]">
+                          {row.resolution_ratio === null ? NO_DATA_LABEL : `${Math.round(row.resolution_ratio * 100)}%`}
+                        </strong>
                       </p>
                     </li>
                   ))}
                 </ol>
               ) : (
-                <div className="mt-3 rounded-md border border-dashed border-black p-3 text-sm">
+                <div className="mt-6 rounded-[20px] border border-dashed border-black/25 bg-[#f7f1ee] p-4 text-sm">
                   {NO_DATA_LABEL}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="mt-4 rounded-xl border border-black bg-stone-50 p-4 text-sm leading-relaxed">
-            <p>
-              Need to check an existing City of Cape Town reference? You can use the{" "}
-              <a
-                href="https://eservices1.capetown.gov.za/coct/wapl/zsreq_app/index.html"
-                className="font-semibold underline underline-offset-4"
-                target="_blank"
-                rel="noreferrer"
-              >
-                CoCT service request portal
-              </a>{" "}
-              to look up a reference directly. The portal also allows new submissions, but please report new requests through us where possible so we can track and follow up. Contact us on WhatsApp at{" "}
-              <a href="https://wa.me/27690078644" className="font-semibold underline underline-offset-4" target="_blank" rel="noreferrer">
-                069 007 8644
-              </a>{" "}
-              (message only) or call the LGCID 24-hour line on{" "}
-              <a href="tel:0873302177" className="font-semibold underline underline-offset-4">
-                087 330 2177
-              </a>
-            </p>
+          <div className="rounded-[26px] border-2 border-black/80 bg-[#f0f0f0] px-8 py-7 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
+            <div className="flex gap-5">
+              <span className="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center">
+                <ClipboardList className="h-7 w-7 text-black/80" />
+              </span>
+              <div className="text-[14px] leading-relaxed text-[#2b2f38]">
+                <p>
+                  Need to check an existing City of Cape Town reference? You can use the{" "}
+                  <a
+                    href="https://eservices1.capetown.gov.za/coct/wapl/zsreq_app/index.html"
+                    className="font-bold text-[#1d1d1f]"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    CoCT service request portal
+                  </a>{" "}
+                  to look up a reference directly. The portal also allows new registrations, but please report new requests through us where possible so we can track and follow up.
+                </p>
+                <p className="mt-4">
+                  Contact us on WhatsApp at{" "}
+                  <a href="https://wa.me/27690078644" className="font-bold text-[#1d1d1f]" target="_blank" rel="noreferrer">
+                    089 007 6644
+                  </a>{" "}
+                  (message only) or call the LGCID 24-hour line on{" "}
+                  <a href="tel:0873302177" className="font-bold text-[#1d1d1f]">
+                    087 330 2177
+                  </a>.
+                </p>
+              </div>
+            </div>
           </div>
             </section>
             <ExportImageFooter />

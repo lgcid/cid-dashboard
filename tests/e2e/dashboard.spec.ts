@@ -74,8 +74,8 @@ test("preview query makes the unpublished latest week visible in the dashboard",
 test("trends view reflects a fixed range and monthly granularity", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Trends" }).click();
-  await page.getByLabel("From").fill("2026-02-23");
-  await page.getByLabel("To").fill("2026-03-02");
+  await page.locator("#trends-from-date").fill("2026-02-23");
+  await page.locator("#trends-to-date").fill("2026-03-02");
   await page.getByRole("button", { name: "Month" }).click();
 
   const trendsSection = page.locator("#trends");
@@ -88,10 +88,10 @@ test("trends view reflects a fixed range and monthly granularity", async ({ page
 test("c3 tracker reflects a fixed date range and expected totals", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "C3 Tracker" }).click();
-  await page.getByLabel("From").fill("2026-03-07");
-  await page.getByLabel("To").fill("2026-03-10");
+  await page.locator("#c3-from-date").fill("2026-03-07");
+  await page.locator("#c3-to-date").fill("2026-03-10");
 
-  await expect(page.getByText("07 Mar 2026 to 08 Mar 2026")).toBeVisible();
+  await expect(page.getByText("07 Mar 2026 to 08 Mar 2026.", { exact: true })).toBeVisible();
   await expect(page.locator("article", { hasText: "Total Logged" })).toContainText("9");
   await expect(page.locator("article", { hasText: "Resolved" })).toContainText("2");
   await expect(page.locator("article", { hasText: "Open Backlog" })).toContainText("7");
@@ -108,8 +108,8 @@ test("summary export downloads and chart surfaces render SVG output", async ({ p
   expect(download.suggestedFilename()).toMatch(/^lgcid-summary-.*\.png$/);
 
   await page.getByRole("button", { name: "Trends" }).click();
-  await page.getByLabel("From").fill("2026-02-23");
-  await page.getByLabel("To").fill("2026-03-02");
+  await page.locator("#trends-from-date").fill("2026-02-23");
+  await page.locator("#trends-to-date").fill("2026-03-02");
 
   const trendSvgs = page.locator("#trends .recharts-responsive-container svg");
   const trendCurves = page.locator("#trends .recharts-line-curve");
