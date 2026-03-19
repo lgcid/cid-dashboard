@@ -8,10 +8,9 @@ const { toPngMock } = vi.hoisted(() => ({
   toPngMock: vi.fn()
 }));
 
-vi.mock("dom-to-image", () => ({
-  default: {
-    toPng: toPngMock
-  }
+vi.mock("html-to-image", () => ({
+  getFontEmbedCSS: vi.fn().mockResolvedValue("@font-face { font-family: MockFont; }"),
+  toPng: toPngMock
 }));
 
 import {
@@ -74,13 +73,15 @@ describe("dashboard screenshot export", () => {
       expect(node.classList.contains(DASHBOARD_EXPORT_MODE_CLASS)).toBe(true);
       expect(node.classList.contains(SUMMARY_EXPORT_MODE_CLASS)).toBe(true);
       expect(options).toMatchObject({
-        bgcolor: BRAND.colors.white,
+        backgroundColor: BRAND.colors.white,
         cacheBust: true,
-        width: 1280,
-        height: 720,
+        width: 640,
+        height: 360,
+        canvasWidth: 1280,
+        canvasHeight: 720,
+        pixelRatio: 1,
+        fontEmbedCSS: "@font-face { font-family: MockFont; }",
         style: {
-          transform: `scale(${SCREENSHOT_EXPORT_SCALE})`,
-          transformOrigin: "top left",
           width: "640px",
           height: "360px"
         }

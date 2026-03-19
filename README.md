@@ -19,7 +19,7 @@ User documentation is currently maintained in Google Docs:
 - C3 tracker based on logged requests, CID-managed resolved flags, and backlog by category
 - Social value KPI module (shelter referrals + work readiness)
 - Public safety wins + hotspot street ranking
-- WhatsApp link sharing + PNG screenshot mode (`dom-to-image`)
+- WhatsApp link sharing + PNG screenshot mode (`html-to-image`)
 
 ## Local Setup
 

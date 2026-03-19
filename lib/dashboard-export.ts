@@ -1,4 +1,4 @@
-import domtoimage from "dom-to-image";
+import { getFontEmbedCSS, toPng } from "html-to-image";
 import { BRAND } from "@/lib/config";
 
 export type DashboardExportTab = "main" | "summary" | "trends" | "c3";
@@ -53,14 +53,17 @@ export async function exportDashboardPng({
 
     const exportWidth = Math.ceil(exportNode.scrollWidth);
     const exportHeight = Math.ceil(exportNode.scrollHeight);
-    const pngDataUrl = await domtoimage.toPng(exportNode, {
-      bgcolor: BRAND.colors.white,
+    const fontEmbedCSS = await getFontEmbedCSS(exportNode);
+    const pngDataUrl = await toPng(exportNode, {
+      backgroundColor: BRAND.colors.white,
       cacheBust: true,
-      width: exportWidth * SCREENSHOT_EXPORT_SCALE,
-      height: exportHeight * SCREENSHOT_EXPORT_SCALE,
+      width: exportWidth,
+      height: exportHeight,
+      canvasWidth: exportWidth * SCREENSHOT_EXPORT_SCALE,
+      canvasHeight: exportHeight * SCREENSHOT_EXPORT_SCALE,
+      pixelRatio: 1,
+      fontEmbedCSS,
       style: {
-        transform: `scale(${SCREENSHOT_EXPORT_SCALE})`,
-        transformOrigin: "top left",
         width: `${exportWidth}px`,
         height: `${exportHeight}px`
       }
