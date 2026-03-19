@@ -48,4 +48,4 @@ export const BRAND = {
 
 export const HOTSPOT_LIMIT = 8;
 
-export const NO_DATA_LABEL = "No Data Reported";
+export const NO_DATA_LABEL = "-";
