@@ -99,6 +99,9 @@ type SummaryInfographicGroup = {
   description: string;
   accent: string;
   headingAccent?: string;
+  background?: string;
+  headerTextColor?: string;
+  iconColor?: string;
 };
 
 type SummaryInfographicMetricDefinition = {
@@ -203,63 +206,84 @@ const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
     id: "safety_response",
     title: "Public Safety",
     description: "Crime and crime prevention activities",
-    accent: BRAND.colors.safety
+    accent: BRAND.colors.safety,
+    background: BRAND.colors.safetyBackground,
+    headerTextColor: BRAND.colors.textStrong,
+    iconColor: BRAND.colors.black
   },
   {
     id: "law_enforcement",
     title: "Law Enforcement",
-    description: "Total fines issued (Section 56 + Section 341)",
-    accent: BRAND.colors.black,
-    headingAccent: BRAND.colors.white
+    description: "Total fines issued (Section 56 + 341)",
+    accent: BRAND.colors.lawEnforcement,
+    headingAccent: BRAND.colors.lawEnforcement,
+    background: BRAND.colors.lawEnforcementBackground,
+    headerTextColor: BRAND.colors.textStrong,
+    iconColor: BRAND.colors.white
   },
   {
     id: "urban_management",
     title: "Urban Management",
     description: "Operational incidents and actions",
-    accent: BRAND.colors.black,
-    headingAccent: BRAND.colors.white
+    accent: BRAND.colors.urbanManagement,
+    headingAccent: BRAND.colors.urbanManagement,
+    background: BRAND.colors.urbanManagementBackground,
+    headerTextColor: BRAND.colors.textStrong,
+    iconColor: BRAND.colors.white
   },
   {
     id: "cleaning_urban",
     title: "Cleaning & Maintenance",
-    description: "Street and public area cleaning and maintenance",
-    accent: BRAND.colors.cleaning
+    description: "Street and public area maintenance",
+    accent: BRAND.colors.cleaning,
+    background: BRAND.colors.cleaningBackground,
+    headerTextColor: BRAND.colors.textStrong,
+    iconColor: BRAND.colors.black
   },
   {
     id: "social_services",
     title: "Social Services",
-    description: "Engagements with the homeless and vulnerable",
-    accent: BRAND.colors.social
+    description: "Engagements with the vulnerable",
+    accent: BRAND.colors.social,
+    background: BRAND.colors.socialBackground,
+    headerTextColor: BRAND.colors.textStrong,
+    iconColor: BRAND.colors.white
   },
   {
     id: "parks",
     title: "Parks & Recreation",
-    description: "Maintenance of green spaces and public areas",
-    accent: BRAND.colors.parks
+    description: "Management of public green spaces",
+    accent: BRAND.colors.parks,
+    background: BRAND.colors.parksBackground,
+    headerTextColor: BRAND.colors.textStrong,
+    iconColor: BRAND.colors.black
   },
   {
     id: "control_room_engagement",
     title: "Control Room Engagement",
     description: "Reporting to the 24-hour control room",
-    accent: BRAND.colors.black,
-    headingAccent: BRAND.colors.white
+    accent: BRAND.colors.neutralStrong,
+    headingAccent: BRAND.colors.neutralStrong,
+    background: BRAND.colors.neutralBackground,
+    headerTextColor: BRAND.colors.textStrong,
+    iconColor: BRAND.colors.white
   }
 ];
 
 const SUMMARY_INFOGRAPHIC_RENDER_ORDER: SummaryInfographicGroupId[] = [
   "safety_response",
   "cleaning_urban",
-  "social_services",
   "parks",
+  "social_services",
   "law_enforcement",
   "urban_management",
   "control_room_engagement"
 ];
 
 const SUMMARY_INFOGRAPHIC_COLUMNS: SummaryInfographicGroupId[][] = [
-  ["safety_response", "social_services"],
-  ["cleaning_urban", "parks"],
-  ["law_enforcement", "urban_management", "control_room_engagement"]
+  ["safety_response", "social_services", "control_room_engagement"],
+  ["cleaning_urban", "law_enforcement"],
+  ["parks", "urban_management"]
 ];
 
 const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
@@ -1452,62 +1476,62 @@ function summaryMetricValue(
 
 function SummaryInfographicIcon({ kind, className }: { kind: SummaryInfographicIconKind; className?: string }) {
   if (kind === "publicSpace") {
-    return <SquareUserRound className={className} strokeWidth={1} aria-hidden />;
+    return <SquareUserRound className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "urbanManagement") {
-    return <Building2 className={className} strokeWidth={1} aria-hidden />;
+    return <Building2 className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "crime") {
-    return <Shield className={className} strokeWidth={1} aria-hidden />;
+    return <Shield className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "arrests") {
-    return <Scale className={className} strokeWidth={1} aria-hidden />;
+    return <Scale className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "proactive") {
-    return <OctagonX className={className} strokeWidth={1} aria-hidden />;
+    return <OctagonX className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "cleaning") {
-    return <Trash2 className={className} strokeWidth={1} aria-hidden />;
+    return <Trash2 className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "drain") {
-    return <Waves className={className} strokeWidth={1} aria-hidden />;
+    return <Waves className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "shelter") {
-    return <House className={className} strokeWidth={1} aria-hidden />;
+    return <House className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "tree") {
-    return <Trees className={className} strokeWidth={1} aria-hidden />;
+    return <Trees className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "cleaningBags") {
-    return <Trash2 className={className} strokeWidth={1} aria-hidden />;
+    return <Trash2 className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "parksBags") {
-    return <Leaf className={className} strokeWidth={1} aria-hidden />;
+    return <Leaf className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "logged") {
-    return <ClipboardList className={className} strokeWidth={1} aria-hidden />;
+    return <ClipboardList className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "file") {
-    return <File className={className} strokeWidth={1} aria-hidden />;
+    return <File className={className} strokeWidth={1.7} aria-hidden />;
   }
 
   if (kind === "calls") {
-    return <Phone className={className} strokeWidth={1} aria-hidden />;
+    return <Phone className={className} strokeWidth={1.7} aria-hidden />;
   }
 
-  return <PersonStanding className={className} strokeWidth={1} aria-hidden />;
+  return <PersonStanding className={className} strokeWidth={1.7} aria-hidden />;
 }
 
 function SummaryInfographicRow({
@@ -1515,6 +1539,7 @@ function SummaryInfographicRow({
   current,
   previous,
   accent,
+  iconColor,
   icon,
   index
 }: {
@@ -1522,6 +1547,7 @@ function SummaryInfographicRow({
   current: number | null | undefined;
   previous: number | null | undefined;
   accent: string;
+  iconColor: string;
   icon: SummaryInfographicIconKind;
   index: number;
 }) {
@@ -1529,7 +1555,7 @@ function SummaryInfographicRow({
   const hasValue = current !== null && current !== undefined && !Number.isNaN(current);
   const style = {
     ["--summary-accent" as string]: accent,
-    ["--summary-icon-color" as string]: accent === BRAND.colors.black ? BRAND.colors.white : BRAND.colors.black,
+    ["--summary-icon-color" as string]: iconColor,
     ["--summary-index" as string]: String(index)
   } as CSSProperties;
 
@@ -1540,7 +1566,16 @@ function SummaryInfographicRow({
       </div>
       <div className="summary-ribbon__body">
         <p className="summary-ribbon__label">{label}</p>
-        <span className={clsx("summary-ribbon__delta", summaryDeltaPillClass(delta.tone))}>{delta.text}</span>
+        <span
+          className="summary-ribbon__delta"
+          style={{
+            backgroundColor: BRAND.colors.neutralBackground,
+            color: BRAND.colors.neutralStrong,
+            borderColor: "transparent"
+          }}
+        >
+          {delta.text}
+        </span>
       </div>
       <div className="summary-ribbon__value-box">
         <p className={clsx("summary-ribbon__value", !hasValue && "summary-ribbon__value--no-data")}>{valueText(current)}</p>
@@ -1557,13 +1592,22 @@ function SummaryGroupCard({
   groupIndex: number;
 }) {
   const groupStyle = {
-    ["--summary-group-accent" as string]: group.headingAccent ?? group.accent
+    ["--summary-group-accent" as string]: group.headingAccent ?? group.accent,
+    ["--summary-group-background" as string]: group.background ?? BRAND.colors.surfaceRaised,
+    ["--summary-group-text" as string]: group.headerTextColor ?? BRAND.colors.textStrong
   } as CSSProperties;
+
+  const rowIconColor = group.iconColor ?? (group.accent === BRAND.colors.black ? BRAND.colors.white : BRAND.colors.black);
 
   return (
     <article className="summary-group-card">
       <div className="summary-group-card__header" style={groupStyle}>
-        <h3 className="summary-group-card__title">{group.title}</h3>
+        <h3
+          className="summary-group-card__title dashboard-heading-3"
+          style={{ ["--dashboard-heading-color" as string]: group.headerTextColor ?? BRAND.colors.textStrong }}
+        >
+          {group.title}
+        </h3>
         <p className="summary-group-card__description">{group.description}</p>
       </div>
 
@@ -1575,6 +1619,7 @@ function SummaryGroupCard({
             current={metric.current}
             previous={metric.previous}
             accent={group.accent}
+            iconColor={rowIconColor}
             icon={metric.icon}
             index={groupIndex * 10 + metricIndex}
           />
@@ -1642,14 +1687,18 @@ function PillarMetricRow({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p
-            className="text-[0.95rem] font-semibold tracking-[0.06em] leading-[1.2]"
+            className="summary-ribbon__label"
             style={{ color: BRAND.colors.textStrong }}
           >
             {label}
           </p>
           <span
-            className="inline-flex min-w-10 items-center justify-center rounded-full px-1 py-2 text-[0.55rem] font-semibold leading-none"
-            style={{ backgroundColor: BRAND.colors.neutralBackground, color: BRAND.colors.neutralMedium }}
+            className="summary-ribbon__delta"
+            style={{
+              backgroundColor: BRAND.colors.neutralBackground,
+              color: BRAND.colors.neutralStrong,
+              borderColor: "transparent"
+            }}
           >
             {delta.text}
           </span>
@@ -2205,13 +2254,9 @@ export default function DashboardClient({ initialData }: Props) {
         <div className="dashboard-container py-9 md:py-10">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 flex-1 text-left">
-              <p className="font-[var(--font-heading)] text-[0.85rem] font-semibold uppercase tracking-[0.12em] text-white/92">
-                Lower Gardens City Improvement District
-              </p>
-              <h1 className="dashboard-heading-1 mt-5 text-white" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.white }}>
-                Weekly Operations Dashboard
-              </h1>
-              <p className="mt-7 font-[var(--font-body)] text-[1.25rem] leading-[1.6] text-white/78 md:text-[1.2rem]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em]">Lower Gardens City Improvement District</p>
+              <h1 className="mt-3 max-w-4xl text-3xl font-bold leading-tight md:text-5xl">Weekly Operations Dashboard</h1>
+              <p className="mt-3 max-w-3xl text-sm md:text-base">
                 Weekly and historical operational performance for stakeholders, covering safety, cleaning, social upliftment, and urban management.
               </p>
               <p className="mt-9 font-[var(--font-heading)] text-[0.83rem] font-semibold uppercase tracking-[0.08em] text-white/92">
@@ -2596,27 +2641,19 @@ export default function DashboardClient({ initialData }: Props) {
         {activeTab === "summary" ? (
           <div ref={summaryPrintableRef}>
             <ExportImageHeader />
-            <section
-              id="summary-infographic"
-              className="card-frame rounded-[24px] border bg-white p-6 md:p-8"
-              style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 2px 8px ${BRAND.colors.shadowMedium}` }}
-            >
+            <section id="summary-infographic">
               {currentWeek?.record_status === "NO_DATA_REPORTED" ? (
                 <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
               ) : (
                 <div className="summary-infographic-grid">
-                  {SUMMARY_INFOGRAPHIC_COLUMNS.map((columnGroupIds, columnIndex) => (
-                    <div key={`summary-column-${columnIndex}`} className="summary-infographic-column">
-                      {columnGroupIds.map((groupId) => {
-                        const group = summaryGroupsById[groupId];
-                        if (!group) {
-                          return null;
-                        }
-                        const groupIndex = SUMMARY_INFOGRAPHIC_RENDER_ORDER.indexOf(groupId);
-                        return <SummaryGroupCard key={groupId} group={group} groupIndex={groupIndex} />;
-                      })}
-                    </div>
-                  ))}
+                  {SUMMARY_INFOGRAPHIC_RENDER_ORDER.map((groupId) => {
+                    const group = summaryGroupsById[groupId];
+                    if (!group) {
+                      return null;
+                    }
+                    const groupIndex = SUMMARY_INFOGRAPHIC_RENDER_ORDER.indexOf(groupId);
+                    return <SummaryGroupCard key={groupId} group={group} groupIndex={groupIndex} />;
+                  })}
                 </div>
               )}
             </section>
