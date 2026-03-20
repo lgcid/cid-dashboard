@@ -3026,7 +3026,7 @@ export default function DashboardClient({ initialData, enableImageExport = false
                   granularity={trendGranularity}
                   dataKey="fines_total"
                   averageKey="fines_total_ma4"
-                  stroke={BRAND.colors.black}
+                  stroke={BRAND.colors.lawEnforcement}
                   dataName={`${trendPeriodLabel} fines (total)`}
                   averageName={trendAverageLabel}
                 />
@@ -3037,7 +3037,7 @@ export default function DashboardClient({ initialData, enableImageExport = false
                   granularity={trendGranularity}
                   dataKey="urban_total"
                   averageKey="urban_ma4"
-                  stroke={BRAND.colors.black}
+                  stroke={BRAND.colors.urbanManagement}
                   dataName={`${trendPeriodLabel} incidents`}
                   averageName={trendAverageLabel}
                 />
