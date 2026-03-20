@@ -2811,6 +2811,24 @@ export default function DashboardClient({ initialData, enableImageExport = false
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
+                <CurrentWeekBreakdownChart
+                  title="Law Enforcement"
+                  data={currentWeekLawEnforcementBreakdown}
+                  color={BRAND.colors.lawEnforcement}
+                  theme="law"
+                  icon={Scale}
+                />
+
+                <CurrentWeekBreakdownChart
+                  title="Urban Management Incidents"
+                  data={currentWeekUrbanBreakdown}
+                  color={BRAND.colors.urbanManagement}
+                  theme="urban"
+                  icon={Building2}
+                />
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
                 <PillarSection
                   key={socialPillar.id}
                   title={socialPillar.title}
@@ -2827,24 +2845,6 @@ export default function DashboardClient({ initialData, enableImageExport = false
                   theme={parksPillar.theme}
                   summary={parksPillar.summary}
                   metrics={parksPillar.metrics}
-                />
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <CurrentWeekBreakdownChart
-                  title="Law Enforcement"
-                  data={currentWeekLawEnforcementBreakdown}
-                  color={BRAND.colors.lawEnforcement}
-                  theme="law"
-                  icon={Scale}
-                />
-
-                <CurrentWeekBreakdownChart
-                  title="Urban Management Incidents"
-                  data={currentWeekUrbanBreakdown}
-                  color={BRAND.colors.urbanManagement}
-                  theme="urban"
-                  icon={Building2}
                 />
               </div>
 
