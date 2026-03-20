@@ -1369,7 +1369,7 @@ function DateField({
         max={max}
         onChange={onChange}
         className={clsx(
-          "w-full rounded-[6px] border bg-white px-4 py-2 font-[var(--font-body)] text-[1rem] text-black outline-none",
+          "dashboard-date-input w-full min-w-0 max-w-full rounded-[6px] border bg-white px-4 py-2 font-[var(--font-body)] text-[1rem] text-black outline-none",
           inlineLabelOnMobile ? "md:mt-2" : "mt-2"
         )}
         style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
@@ -1404,7 +1404,7 @@ function DashboardTopPanel({
               {title}
             </h2>
           </div>
-          <div className="mt-2 text-[1.1rem]" style={{ color: BRAND.colors.textMuted }}>{description}</div>
+          <div className="mt-2 leading-7" style={{ color: BRAND.colors.textMuted }}>{description}</div>
         </div>
         {controls ? <div className="min-w-0 lg:flex-[1.35_1_34rem]">{controls}</div> : null}
       </div>
@@ -1612,7 +1612,7 @@ function SummaryInfographicRow({
         <SummaryInfographicIcon kind={icon} className="summary-ribbon__icon-glyph" />
       </div>
       <div className="summary-ribbon__body">
-        <p className="summary-ribbon__label p-1 pb-2">{label}</p>
+        <p className="summary-ribbon__label py-1">{label}</p>
         <span
           className="summary-ribbon__delta"
           style={{
@@ -1734,7 +1734,7 @@ function PillarMetricRow({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p
-            className="summary-ribbon__label p-1 pb-2"
+            className="summary-ribbon__label py-1"
             style={{ color: BRAND.colors.textStrong }}
           >
             {label}
@@ -1867,7 +1867,7 @@ function CurrentWeekBreakdownChart({
       </div>
       <div className="mt-4 min-h-0 min-w-0 h-[268px] rounded-[10px] border bg-white px-2 py-2.5" style={{ borderColor: BRAND.colors.borderSubtle }}>
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-          <BarChart data={data} layout="vertical" margin={{ top: 10, right: 16, left: 12, bottom: 6 }} barCategoryGap="20%">
+          <BarChart data={data} layout="vertical" margin={{ top: 10, right: 16, left: 5, bottom: 6 }} barCategoryGap="20%">
             <CartesianGrid strokeDasharray="2 3" stroke={BRAND.colors.gridSubtle} vertical horizontal={false} />
             <XAxis
               type="number"
@@ -2180,6 +2180,23 @@ export default function DashboardClient({ initialData }: Props) {
   const c3PrintableRef = useRef<HTMLDivElement>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const handleChange = () => setIsMobileViewport(mediaQuery.matches);
+
+    handleChange();
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange);
+    };
+  }, []);
 
   const weeklyByStart = useMemo(
     () => new Map(weekly.map((row) => [row.week_start, row])),
@@ -2517,10 +2534,8 @@ export default function DashboardClient({ initialData }: Props) {
               title={activeTabLabel}
               icon={FileText}
               description={
-                <>
-                  <div>{activeTab === "summary" ? "Activity report showing the key metrics from " : "Detailed operational results across each CID focus area from "}
-                  <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}>{selectedWeekRange}.</span></div>
-                </>
+                <p>{activeTab === "summary" ? "Activity report showing the key metrics from " : "Detailed operational results across each CID focus area from "}
+                <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}>{selectedWeekRange}.</span></p>
               }
               controls={
                 <div className="grid gap-4 md:grid-cols-[160px_minmax(0,1fr)]">
@@ -2571,11 +2586,9 @@ export default function DashboardClient({ initialData }: Props) {
               title="Trends"
               icon={TrendingUp}
               description={
-                <>
-                  <div>
-                    {trendPeriodLabel} results from <span className="font-semibold" style={{ color: BRAND.colors.textMuted }}>{trendRangeLabel}</span>, compared with a {trendAverageLabel} to show underlying direction over time.
-                  </div>
-                </>
+                <p>
+                  {trendPeriodLabel} results from <span className="font-semibold" style={{ color: BRAND.colors.textMuted }}>{trendRangeLabel}</span>, compared with a {trendAverageLabel} to show underlying direction over time.
+                </p>
               }
               controls={
                 <div className="min-w-0 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
@@ -2618,7 +2631,7 @@ export default function DashboardClient({ initialData }: Props) {
                     }}
                   />
                   <div className="min-w-0">
-                    <label className="block font-[var(--font-heading)] text-[0.92rem] font-semibold tracking-[-0.01em] text-black/80">View By</label>
+                    <label className="block font-[var(--font-heading)] text-[0.92rem] font-medium tracking-[-0.01em] text-black/80">View By</label>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {TREND_GRANULARITY_OPTIONS.map((option) => (
                         <button
@@ -2646,10 +2659,8 @@ export default function DashboardClient({ initialData }: Props) {
               title="C3 Tracker"
               icon={ClipboardList}
               description={
-                <>
-                  <div>City service requests logged vs resolved by category from
-                  <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}> {c3RangeLabel}.</span></div>
-                </>
+                <p>City service requests logged vs resolved by category from
+                <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}> {c3RangeLabel}.</span></p>
               }
               controls={
                 <div className="grid gap-4 md:grid-cols-2">
@@ -2998,7 +3009,7 @@ export default function DashboardClient({ initialData }: Props) {
           <div ref={c3PrintableRef}>
             <ExportImageHeader />
             <section id="c3" className="space-y-6 rounded-[24px] border-0 bg-transparent p-0 shadow-none">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5" style={{ boxShadow: `0 2px 10px ${BRAND.colors.shadowMediumCool}` }}>
               <p className="text-[40px] leading-none font-black tracking-[-0.04em]" style={{ color: BRAND.colors.textStrong }}>{c3OverallTotals.logged.toLocaleString()}</p>
               <p className="mt-4 text-[17px] font-medium text-black/62">Total Logged</p>
@@ -3019,13 +3030,13 @@ export default function DashboardClient({ initialData }: Props) {
             </article>
           </div>
 
-          <div className="rounded-[26px] border border-black/10 bg-white px-7 pt-8 md:px-8" style={{ boxShadow: `0 3px 12px ${BRAND.colors.shadowMediumCool}` }}>
+          <div className="rounded-[26px] border border-black/10 bg-white px-4 pt-8 md:px-8" style={{ boxShadow: `0 3px 12px ${BRAND.colors.shadowMediumCool}` }}>
             <h3 className="dashboard-heading-3" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>Logged vs Resolved by Category</h3>
             <p className="mt-2 text-[15px]" style={{ color: BRAND.colors.textMuted }}>Comparison of service requests logged and resolved across all categories</p>
 
             <div className="mt-8 min-h-0 min-w-0 h-[560px]">
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <BarChart data={c3OverallBreakdown} margin={{ top: 34, right: 12, left: 0, bottom: 34 }} barGap={2} barCategoryGap="18%" barSize={36}>
+                <BarChart data={c3OverallBreakdown} margin={{ top: 34, right: 12, left: -25, bottom: 34 }} barGap={2} barCategoryGap="18%" barSize={36}>
                   <defs>
                     <pattern id="resolvedHatch" patternUnits="userSpaceOnUse" width="8" height="8">
                       <rect width="8" height="8" fill={BRAND.colors.white} />
@@ -3035,16 +3046,16 @@ export default function DashboardClient({ initialData }: Props) {
                   <CartesianGrid strokeDasharray="4 4" stroke={BRAND.colors.gridSubtle} vertical={false} />
                   <XAxis
                     dataKey="department"
-                    tick={{ fontSize: 14, fill: BRAND.colors.textBody }}
+                    tick={{ fontSize: isMobileViewport ? 12 : 14, fill: BRAND.colors.textBody }}
                     interval={0}
-                    angle={-46}
+                    angle={isMobileViewport ? -90 : -46}
                     textAnchor="end"
-                    height={110}
+                    height={isMobileViewport ? 132 : 110}
                     axisLine={{ stroke: BRAND.colors.textMuted, strokeWidth: 1.5 }}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 14, fill: BRAND.colors.textBody }}
+                    tick={{ fontSize: isMobileViewport ? 11 : 14, fill: BRAND.colors.textBody }}
                     axisLine={{ stroke: BRAND.colors.textMuted, strokeWidth: 1.5 }}
                     tickLine={{ stroke: BRAND.colors.textMuted }}
                     domain={[0, "dataMax + 12"]}
@@ -3063,7 +3074,7 @@ export default function DashboardClient({ initialData }: Props) {
                     verticalAlign="bottom"
                     align="center"
                     iconType="square"
-                    wrapperStyle={{ paddingTop: 22, fontSize: "18px" }}
+                    wrapperStyle={{ paddingTop: 22, fontSize: isMobileViewport ? "14px" : "18px" }}
                     formatter={legendLabelFormatter}
                   />
                   <Bar
@@ -3073,7 +3084,7 @@ export default function DashboardClient({ initialData }: Props) {
                     name="Logged"
                     activeBar={{ fill: BRAND.colors.neutralStrong, stroke: BRAND.colors.black, strokeWidth: 1 }}
                   >
-                    <LabelList dataKey="logged" position="top" fill={BRAND.colors.textBody} fontSize={13} />
+                    <LabelList dataKey="logged" position="top" fill={BRAND.colors.textBody} fontSize={isMobileViewport ? 8 : 13} />
                   </Bar>
                   <Bar
                     dataKey="resolved"
@@ -3084,7 +3095,7 @@ export default function DashboardClient({ initialData }: Props) {
                     name="Resolved"
                     activeBar={{ fill: "url(#resolvedHatch)", stroke: BRAND.colors.black, strokeWidth: 1.2 }}
                   >
-                    <LabelList dataKey="resolved" position="top" fill={BRAND.colors.textBody} fontSize={13} />
+                    <LabelList dataKey="resolved" position="top" fill={BRAND.colors.textBody} fontSize={isMobileViewport ? 8 : 13} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -3098,7 +3109,7 @@ export default function DashboardClient({ initialData }: Props) {
 
               <div className="mt-8 min-h-0 min-w-0 h-[360px]">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                  <BarChart data={c3OverallBreakdown} layout="vertical" margin={{ top: 8, right: 32, left: 0, bottom: 18 }}>
+                  <BarChart data={c3OverallBreakdown} layout="vertical" margin={{ top: 8, right: 32, left: -15, bottom: 18 }}>
                     <CartesianGrid strokeDasharray="4 4" stroke={BRAND.colors.gridSubtle} horizontal={false} />
                     <XAxis
                       type="number"
