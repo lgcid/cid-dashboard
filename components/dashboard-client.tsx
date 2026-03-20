@@ -2435,7 +2435,16 @@ export default function DashboardClient({ initialData }: Props) {
       <header className="header">
         <div className="dashboard-container">
           <div className="flex min-h-[78px] items-center justify-between gap-4">
-            <Image src={BRAND.logoPath} alt="Lower Gardens CID" width={240} height={44} className="h-auto w-[190px] md:w-[230px]" priority />
+            <a href="https://lowergardenscid.co.za" target="_blank" rel="noreferrer" aria-label="Visit the Lower Gardens CID website">
+              <Image
+                src={BRAND.logoPath}
+                alt="Lower Gardens CID"
+                width={240}
+                height={44}
+                className="h-auto w-[190px] md:w-[230px]"
+                priority
+              />
+            </a>
 
             <a
               href="https://www.lowergardenscid.co.za/contact-us?hsLang=en"
@@ -3206,7 +3215,7 @@ export default function DashboardClient({ initialData }: Props) {
       <TermsDefinitionsDialog open={isTermsDialogOpen} onClose={() => setIsTermsDialogOpen(false)} />
 
       <footer className="bg-black text-white">
-        <div className="dashboard-container grid gap-8 py-10 md:grid-cols-12">
+        <div className="dashboard-container grid items-start gap-8 py-10 md:grid-cols-12">
           <div className="md:col-span-5">
             <Image src={BRAND.logoPathWhite} alt="Lower Gardens CID" width={300} height={54} className="h-auto w-[240px] md:w-[300px]" />
             <p className="mt-4 text-base leading-relaxed text-white/90">
@@ -3236,27 +3245,17 @@ export default function DashboardClient({ initialData }: Props) {
 
           <div className="md:col-span-3">
             <h5 className="text-lg font-bold">Important Links</h5>
-            <ul className="footer-link-list mt-4 text-base text-white/90">
-              <li>
-                <a href="https://www.lowergardenscid.co.za/cid-control-room?hsLang=en" target="_blank" rel="noreferrer">
-                  CID Control Room
-                </a>
-              </li>
-              <li>
-                <a href="https://www.lowergardenscid.co.za/lgcid-connect?hsLang=en" target="_blank" rel="noreferrer">
-                  LGCID Connect
-                </a>
-              </li>
-            </ul>
-
-            <a
-              className="footer-cta button mt-5"
-              href="https://www.lowergardenscid.co.za/contact-us?hsLang=en"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Report an Incident
-            </a>
+            <div className="mt-4 text-base leading-relaxed text-white/90">
+              <a className="block" href="https://www.lowergardenscid.co.za/cid-control-room?hsLang=en" target="_blank" rel="noreferrer">
+                CID Control Room
+              </a>
+              <a className="mt-[0.6rem] block" href="https://www.lowergardenscid.co.za/lgcid-connect?hsLang=en" target="_blank" rel="noreferrer">
+                LGCID Connect
+              </a>
+              <a className="mt-[0.6rem] block" href="https://www.lowergardenscid.co.za/contact-us?hsLang=en" target="_blank" rel="noreferrer">
+                Report an Incident
+              </a>
+            </div>
           </div>
         </div>
 
