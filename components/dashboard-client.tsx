@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
 import Image from "next/image";
 import clsx from "clsx";
 import { format, parseISO } from "date-fns";
@@ -12,6 +12,7 @@ import {
   ClipboardList,
   File,
   FileText,
+  BookOpenText,
   House,
   Leaf,
   OctagonAlert,
@@ -46,6 +47,12 @@ import {
   YAxis
 } from "recharts";
 import { compareC3Categories, isResolvedC3Request } from "@/lib/c3-requests";
+import {
+  DASHBOARD_TERMS_INTRO,
+  DASHBOARD_TERMS_SECTIONS,
+  DASHBOARD_TERMS_TITLE,
+  type DashboardTermsSection
+} from "@/lib/dashboard-terms";
 import { BRAND, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
 import { exportDashboardPng } from "@/lib/dashboard-export";
 import type {
@@ -200,6 +207,46 @@ const TREND_GRANULARITY_OPTIONS: Array<{ id: TrendGranularity; label: string }> 
   { id: "month", label: "Month" },
   { id: "year", label: "Year" }
 ];
+
+function getTermsAccentStyles(section: DashboardTermsSection) {
+  switch (section.accentToken) {
+    case "safety":
+      return {
+        iconBackground: BRAND.colors.safety,
+        sectionBorder: BRAND.colors.safety
+      };
+    case "cleaning":
+      return {
+        iconBackground: BRAND.colors.cleaning,
+        sectionBorder: BRAND.colors.cleaning
+      };
+    case "social":
+      return {
+        iconBackground: BRAND.colors.social,
+        sectionBorder: BRAND.colors.social
+      };
+    case "parks":
+      return {
+        iconBackground: BRAND.colors.parks,
+        sectionBorder: BRAND.colors.parks
+      };
+    case "lawEnforcement":
+      return {
+        iconBackground: BRAND.colors.lawEnforcement,
+        sectionBorder: BRAND.colors.lawEnforcement
+      };
+    case "urbanManagement":
+      return {
+        iconBackground: BRAND.colors.urbanManagement,
+        sectionBorder: BRAND.colors.urbanManagement
+      };
+    default:
+      return {
+        iconBackground: BRAND.colors.neutralBackground,
+        sectionBorder: BRAND.colors.borderSubtle
+      };
+  }
+}
 
 const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
   {
@@ -1961,6 +2008,157 @@ function buildC3TrackerSummary(rows: C3RequestRow[]): {
   };
 }
 
+function TermsDefinitionsDialog({
+  open,
+  onClose
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose, open]);
+
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto px-4 py-6 md:px-8 md:py-10"
+      aria-labelledby="dashboard-terms-title"
+      aria-modal="true"
+      role="dialog"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        aria-label="Close Terms and Definitions"
+        onClick={onClose}
+        style={{ backgroundColor: "rgba(0, 0, 0, 0.58)" }}
+      />
+
+      <div
+        className="relative z-10 w-full max-w-5xl overflow-hidden rounded-[14px] border bg-white"
+        style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 24px 60px ${BRAND.colors.shadowStrong}` }}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 z-20 shrink-0 p-1 transition-opacity hover:opacity-70 md:right-6 md:top-6"
+          style={{ color: BRAND.colors.textStrong }}
+          aria-label="Close Terms and Definitions"
+        >
+          <span aria-hidden className="block text-2xl leading-none">
+            ×
+          </span>
+        </button>
+
+        <div className="max-h-[calc(100vh-3rem)] overflow-y-auto">
+          <div
+            className="border-b px-5 py-5 pr-14 md:px-8 md:py-7 md:pr-16"
+            style={{ borderColor: BRAND.colors.borderSubtle }}
+          >
+            <div className="min-w-0">
+              <h2
+                id="dashboard-terms-title"
+                className="text-2xl font-bold leading-tight md:text-[2.1rem]"
+                style={{ color: BRAND.colors.textStrong }}
+              >
+                {DASHBOARD_TERMS_TITLE}
+              </h2>
+              <p className="mt-3 text-sm leading-6 md:text-[0.95rem]" style={{ color: BRAND.colors.textBody }}>
+                {DASHBOARD_TERMS_INTRO}
+              </p>
+            </div>
+          </div>
+
+          <div className="px-5 py-5 md:px-8 md:py-7">
+            <div className="space-y-8 md:space-y-10">
+              {DASHBOARD_TERMS_SECTIONS.map((section) => {
+                const accent = getTermsAccentStyles(section);
+                const SectionIcon = section.icon;
+
+                return (
+                  <section key={section.id} aria-labelledby={`${section.id}-title`}>
+                    <div className="flex items-start gap-4 md:gap-5">
+                      <div
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
+                        style={{ backgroundColor: accent.iconBackground, color: BRAND.colors.textStrong }}
+                      >
+                        {section.iconPath ? (
+                          <Image
+                          src={section.iconPath}
+                          alt=""
+                          width={34}
+                          height={34}
+                          className="h-8.5 w-8.5 object-contain"
+                          aria-hidden
+                          unoptimized
+                        />
+                        ) : SectionIcon ? (
+                          <SectionIcon className="h-6 w-6" strokeWidth={2.1} aria-hidden />
+                        ) : null}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h3
+                          id={`${section.id}-title`}
+                          className="text-xl font-bold leading-tight md:text-[1.7rem]"
+                          style={{ color: BRAND.colors.textStrong }}
+                        >
+                          {section.title}
+                        </h3>
+                        {section.description ? (
+                          <p className="mt-2 text-base leading-7" style={{ color: BRAND.colors.textMuted }}>
+                            {section.description}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <dl className="mt-5 space-y-4 border-t pt-5" style={{ borderColor: BRAND.colors.borderSubtle }}>
+                      {section.definitions.map((definition) => (
+                        <div key={definition.term}>
+                          <dt className="inline text-base font-semibold" style={{ color: BRAND.colors.textStrong }}>
+                            {definition.term}
+                            {": "}
+                          </dt>
+                          <dd className="inline text-base leading-7" style={{ color: BRAND.colors.textBody }}>
+                            {definition.definition}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </section>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardClient({ initialData }: Props) {
   const weekly = initialData.weekly;
   const defaultTrendBounds = trendDateBounds(weekly, initialData.meta.selected_week_start);
@@ -1981,6 +2179,7 @@ export default function DashboardClient({ initialData }: Props) {
   const trendsPrintableRef = useRef<HTMLDivElement>(null);
   const c3PrintableRef = useRef<HTMLDivElement>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
 
   const weeklyByStart = useMemo(
     () => new Map(weekly.map((row) => [row.week_start, row])),
@@ -2280,10 +2479,24 @@ export default function DashboardClient({ initialData }: Props) {
 
       <section style={{ backgroundColor: BRAND.colors.pageBackground }}>
         <div className="dashboard-container flex flex-col gap-6 py-7 md:py-8">
-          <div className="flex flex-wrap gap-4">
-            {DASHBOARD_TABS.map((tab) => (
-              <DashboardTabButton key={tab.id} active={activeTab === tab.id} label={tab.label} onClick={() => setActiveTab(tab.id)} />
-            ))}
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap gap-4">
+              {DASHBOARD_TABS.map((tab) => (
+                <DashboardTabButton key={tab.id} active={activeTab === tab.id} label={tab.label} onClick={() => setActiveTab(tab.id)} />
+              ))}
+            </div>
+
+            <div className="flex w-full justify-start md:ml-auto md:w-auto md:justify-end">
+              <button
+                type="button"
+                onClick={() => setIsTermsDialogOpen(true)}
+                className="inline-flex items-center gap-2 font-[var(--font-body)] text-base underline underline-offset-4 transition-opacity hover:opacity-70"
+                style={{ color: BRAND.colors.textMuted }}
+              >
+                Terms and Definitions
+                <BookOpenText className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -2989,6 +3202,8 @@ export default function DashboardClient({ initialData }: Props) {
         ) : null}
 
       </div>
+
+      <TermsDefinitionsDialog open={isTermsDialogOpen} onClose={() => setIsTermsDialogOpen(false)} />
 
       <footer className="bg-black text-white">
         <div className="dashboard-container grid gap-8 py-10 md:grid-cols-12">

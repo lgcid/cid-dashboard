@@ -73,6 +73,23 @@ test("dashboard renders and tab navigation works without client errors", async (
   await expect(page.getByRole("heading", { name: "Pressure Points", level: 3 })).toBeVisible();
 });
 
+test("terms and definitions dialog opens and closes from the tab row", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Terms and Definitions" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "CID Dashboard: Terms and Definitions" });
+
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("General Terms", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Public Safety", { exact: true })).toBeVisible();
+  await expect(dialog).toContainText("4-Week Moving Average");
+
+  await page.keyboard.press("Escape");
+
+  await expect(dialog).toBeHidden();
+});
+
 test("current week view updates when a historical reporting week is selected", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Current Week" }).click();
