@@ -279,18 +279,31 @@ h6 {
 .summary-infographic-grid {
   display: grid;
   gap: 1.25rem;
+}
+
+.summary-infographic-grid__row {
+  display: grid;
+  gap: 1.25rem;
   grid-template-columns: 1fr;
 }
 
 @media (min-width: 768px) {
-  .summary-infographic-grid {
+  .summary-infographic-grid__row:first-child,
+  .summary-infographic-grid__row:last-child {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary-infographic-grid__row:nth-child(2) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1024px) {
   .summary-infographic-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+
+  .summary-infographic-grid__row {
     gap: 1.5rem;
   }
 }
@@ -464,7 +477,7 @@ h6 {
   --summary-accent: var(--lg-safety);
   --summary-icon-color: var(--lg-black);
   display: grid;
-  grid-template-columns: 74px minmax(0, 1fr) minmax(72px, 92px);
+  grid-template-columns: 85px minmax(0, 1fr) minmax(72px, 92px);
   align-items: stretch;
   overflow: hidden;
   border: 1px solid var(--lg-border-subtle);
@@ -482,15 +495,15 @@ h6 {
   justify-content: center;
   background: var(--summary-accent);
   color: var(--summary-icon-color);
-  margin: 0.9rem 0 0.9rem 0.9rem;
   min-height: 3.75rem;
-  border-radius: 1rem 0.85rem 0.85rem 1rem;
-  clip-path: polygon(0 0, 82% 0, 100% 50%, 82% 100%, 0 100%);
+  border-radius: 1rem 0 0 1rem;
+  clip-path: polygon(0 0, 78% 0, 100% 50%, 78% 100%, 0 100%);
+  margin-left: -.45rem;
 }
 
 .summary-ribbon__icon-glyph {
-  width: 1.8rem;
-  height: 1.8rem;
+  width: 2.25rem;
+  height: 2.25rem;
 }
 
 .summary-ribbon__body {
@@ -499,7 +512,7 @@ h6 {
   flex-direction: column;
   justify-content: center;
   gap: 0.42rem;
-  padding: 0.9rem 0.9rem 0.9rem 0.8rem;
+  padding: 0.9rem 0 0.9rem 0.8rem;
 }
 
 .summary-ribbon__label {
@@ -542,8 +555,7 @@ h6 {
 }
 
 .summary-ribbon__value--no-data {
-  font-size: 0.8rem;
-  line-height: 1.1;
+  color: var(--lg-black);
 }
 
 @keyframes summaryRibbonEnter {
@@ -582,7 +594,7 @@ h6 {
   }
 
   .summary-ribbon {
-    grid-template-columns: 62px minmax(0, 1fr) minmax(58px, 76px);
+    grid-template-columns: 108px minmax(0, 1fr) minmax(58px, 76px);
   }
 
   .summary-ribbon__value {
@@ -594,17 +606,12 @@ h6 {
   }
 
   .summary-ribbon__icon-glyph {
-    width: 1.45rem;
-    height: 1.45rem;
-  }
-
-  .summary-ribbon__icon-box {
-    margin: 0.72rem 0 0.72rem 0.72rem;
-    min-height: 3.2rem;
+    width: 1.8rem;
+    height: 1.8rem;
   }
 
   .summary-ribbon__body {
-    padding: 0.72rem 0.72rem 0.72rem 0.65rem;
+    padding: 0.72rem 0 0.72rem 0.25rem;
   }
 
   .summary-ribbon__value-box {
@@ -614,7 +621,7 @@ h6 {
 
 @media (max-width: 480px) {
   .summary-ribbon {
-    grid-template-columns: 58px minmax(0, 1fr) minmax(52px, 68px);
+    grid-template-columns: 96px minmax(0, 1fr) minmax(52px, 68px);
   }
 
   .summary-ribbon__label {

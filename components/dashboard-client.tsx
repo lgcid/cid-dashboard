@@ -320,17 +320,17 @@ const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
 const SUMMARY_INFOGRAPHIC_RENDER_ORDER: SummaryInfographicGroupId[] = [
   "safety_response",
   "cleaning_urban",
-  "parks",
-  "social_services",
   "law_enforcement",
   "urban_management",
+  "social_services",
+  "parks",
   "control_room_engagement"
 ];
 
-const SUMMARY_INFOGRAPHIC_COLUMNS: SummaryInfographicGroupId[][] = [
-  ["safety_response", "social_services", "control_room_engagement"],
-  ["cleaning_urban", "law_enforcement"],
-  ["parks", "urban_management"]
+const SUMMARY_INFOGRAPHIC_ROWS: SummaryInfographicGroupId[][] = [
+  ["safety_response", "cleaning_urban"],
+  ["law_enforcement", "urban_management", "social_services"],
+  ["parks", "control_room_engagement"]
 ];
 
 const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
@@ -2871,14 +2871,18 @@ export default function DashboardClient({ initialData }: Props) {
                 <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
               ) : (
                 <div className="summary-infographic-grid">
-                  {SUMMARY_INFOGRAPHIC_RENDER_ORDER.map((groupId) => {
-                    const group = summaryGroupsById[groupId];
-                    if (!group) {
-                      return null;
-                    }
-                    const groupIndex = SUMMARY_INFOGRAPHIC_RENDER_ORDER.indexOf(groupId);
-                    return <SummaryGroupCard key={groupId} group={group} groupIndex={groupIndex} />;
-                  })}
+                  {SUMMARY_INFOGRAPHIC_ROWS.map((row, rowIndex) => (
+                    <div key={`summary-row-${rowIndex}`} className="summary-infographic-grid__row">
+                      {row.map((groupId) => {
+                        const group = summaryGroupsById[groupId];
+                        if (!group) {
+                          return null;
+                        }
+                        const groupIndex = SUMMARY_INFOGRAPHIC_RENDER_ORDER.indexOf(groupId);
+                        return <SummaryGroupCard key={groupId} group={group} groupIndex={groupIndex} />;
+                      })}
+                    </div>
+                  ))}
                 </div>
               )}
             </section>
