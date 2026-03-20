@@ -481,11 +481,10 @@ const C3_TOOLTIP_SERIES_CONFIG: Record<string, TooltipSeriesConfig> = {
   },
   resolved: {
     label: "Resolved",
-    color: BRAND.colors.c3Resolved,
-    swatchStyle: "hatched",
-    valueBackgroundColor: BRAND.colors.white,
-    valueBorderColor: BRAND.colors.c3Resolved,
-    valueTextColor: BRAND.colors.black
+    color: BRAND.colors.trendAverage,
+    swatchStyle: "block",
+    valueBackgroundColor: BRAND.colors.trendAverage,
+    valueBorderColor: BRAND.colors.trendAverage
   }
 };
 
@@ -616,10 +615,12 @@ function TooltipSwatch({
 
 function ChartTooltipCard({
   title,
-  rows
+  rows,
+  showSwatch = true
 }: {
   title: string;
   rows: TooltipRowDefinition[];
+  showSwatch?: boolean;
 }) {
   return (
     <div
@@ -633,7 +634,7 @@ function ChartTooltipCard({
       <div className="mt-5 space-y-3">
         {rows.map((row) => (
           <div key={row.key} className="flex items-center gap-2.5">
-            <TooltipSwatch color={row.color} style={row.swatchStyle} />
+            {showSwatch ? <TooltipSwatch color={row.color} style={row.swatchStyle} /> : null}
             <span className="text-[16px] leading-none text-black">{row.label}:</span>
             <span
               className="ml-auto inline-flex min-w-8 items-center justify-center rounded-md border px-2 py-1 text-[16px] font-semibold leading-none"
@@ -673,7 +674,7 @@ function CategoricalTooltip({
       ? String(chartPoint[labelKey])
       : "";
 
-  return <ChartTooltipCard title={title} rows={buildTooltipRows(payload, seriesConfig)} />;
+  return <ChartTooltipCard title={title} rows={buildTooltipRows(payload, seriesConfig)} showSwatch={false} />;
 }
 
 function TrendTooltip({
@@ -3038,12 +3039,6 @@ export default function DashboardClient({ initialData }: Props) {
             <div className="mt-8 min-h-0 min-w-0 h-[560px]">
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={c3OverallBreakdown} margin={{ top: 34, right: 12, left: -25, bottom: 34 }} barGap={2} barCategoryGap="18%" barSize={36}>
-                  <defs>
-                    <pattern id="resolvedHatch" patternUnits="userSpaceOnUse" width="8" height="8">
-                      <rect width="8" height="8" fill={BRAND.colors.white} />
-                      <path d="M-2 2l4-4M0 8l8-8M6 10l4-4" stroke={BRAND.colors.c3Resolved} strokeWidth="1.2" />
-                    </pattern>
-                  </defs>
                   <CartesianGrid strokeDasharray="4 4" stroke={BRAND.colors.gridSubtle} vertical={false} />
                   <XAxis
                     dataKey="department"
@@ -3089,12 +3084,12 @@ export default function DashboardClient({ initialData }: Props) {
                   </Bar>
                   <Bar
                     dataKey="resolved"
-                    fill="url(#resolvedHatch)"
+                    fill={BRAND.colors.trendAverage}
                     radius={[5, 5, 0, 0]}
-                    stroke={BRAND.colors.c3Resolved}
+                    stroke={BRAND.colors.trendAverage}
                     strokeWidth={1}
                     name="Resolved"
-                    activeBar={{ fill: "url(#resolvedHatch)", stroke: BRAND.colors.black, strokeWidth: 1.2 }}
+                    activeBar={{ fill: BRAND.colors.trendAverage, stroke: BRAND.colors.black, strokeWidth: 1.2 }}
                   >
                     <LabelList dataKey="resolved" position="top" fill={BRAND.colors.textBody} fontSize={isMobileViewport ? 8 : 13} />
                   </Bar>
@@ -3165,12 +3160,12 @@ export default function DashboardClient({ initialData }: Props) {
                     <li
                       key={row.department}
                       className="rounded-r-[20px] border-l-[6px] px-5 py-4"
-                      style={{ borderColor: BRAND.colors.alertCritical, backgroundColor: BRAND.colors.alertCriticalBackground }}
+                      style={{ borderColor: BRAND.colors.neutralStrong, backgroundColor: BRAND.colors.neutralBackground }}
                     >
                       <p className="text-[16px] font-bold" style={{ color: BRAND.colors.textStrong }}>{row.department}</p>
                       <p className="mt-3 text-[14px]" style={{ color: BRAND.colors.textBody }}>
                         <span className="font-normal">Open backlog:</span>{" "}
-                        <strong className="font-bold" style={{ color: BRAND.colors.alertCritical }}>{row.backlog.toLocaleString()}</strong>
+                        <strong className="font-bold" style={{ color: BRAND.colors.neutralStrong }}>{row.backlog.toLocaleString()}</strong>
                       </p>
                       <p className="mt-1 text-[14px]" style={{ color: BRAND.colors.textBody }}>
                         <span className="font-normal">Resolution rate:</span>{" "}
