@@ -452,7 +452,7 @@ function tooltipTextColorForBackground(color: string): string {
 }
 
 type TooltipNameType = string | number;
-type TooltipSwatchStyle = "solid" | "dashed" | "hatched" | "block" | "lineDot";
+type TooltipSwatchStyle = "solid" | "dashed" | "dotted" | "hatched" | "block" | "lineDot";
 type TooltipPayloadEntry = NonNullable<TooltipContentProps<TooltipValueType, TooltipNameType>["payload"]>[number];
 type TooltipSeriesConfig = {
   label?: string;
@@ -538,7 +538,7 @@ function buildTooltipRows(
     const dataKey = String(entry.dataKey ?? entry.name ?? index);
     const config = seriesConfig?.[dataKey] ?? {};
     const color = resolveTooltipEntryColor(entry, config.color);
-    const swatchStyle = config.swatchStyle ?? (typeof entry.dataKey === "string" && entry.dataKey.endsWith("_ma4") ? "dashed" : "solid");
+    const swatchStyle = config.swatchStyle ?? (typeof entry.dataKey === "string" && entry.dataKey.endsWith("_ma4") ? "dotted" : "solid");
     const valueBackgroundColor = config.valueBackgroundColor ?? color;
     const valueTextColor = config.valueTextColor ?? tooltipTextColorForBackground(valueBackgroundColor);
 
@@ -602,10 +602,13 @@ function TooltipSwatch({
 
   return (
     <span
-      className="inline-block w-5 border-t-[3px]"
+      className={clsx(
+        "inline-block w-5",
+        style === "dotted" ? "border-t-2" : "border-t-[3px]"
+      )}
       style={{
         borderTopColor: color,
-        borderTopStyle: style === "dashed" ? "dashed" : "solid"
+        borderTopStyle: style === "dashed" ? "dashed" : style === "dotted" ? "dotted" : "solid"
       }}
     />
   );
@@ -688,22 +691,22 @@ function TrendTooltip({
     <ChartTooltipCard
       title={dateLabel}
       rows={buildTooltipRows(payload, {
-        criminal_incidents: { swatchStyle: "lineDot" },
-        criminal_ma4: { swatchStyle: "lineDot" },
-        cleaning_bags_collected: { swatchStyle: "lineDot" },
-        cleaning_ma4: { swatchStyle: "lineDot" },
-        social_touch_points: { swatchStyle: "lineDot" },
-        social_touch_points_ma4: { swatchStyle: "lineDot" },
-        parks_total_bags: { swatchStyle: "lineDot" },
-        parks_total_bags_ma4: { swatchStyle: "lineDot" },
-        fines_total: { swatchStyle: "lineDot" },
-        fines_total_ma4: { swatchStyle: "lineDot" },
-        urban_total: { swatchStyle: "lineDot" },
-        urban_ma4: { swatchStyle: "lineDot" },
-        contacts_total: { swatchStyle: "lineDot" },
-        contacts_total_ma4: { swatchStyle: "lineDot" },
-        c3_logged_total: { swatchStyle: "lineDot" },
-        c3_logged_total_ma4: { swatchStyle: "lineDot" }
+        criminal_incidents: { swatchStyle: "solid" },
+        criminal_ma4: { swatchStyle: "dotted" },
+        cleaning_bags_collected: { swatchStyle: "solid" },
+        cleaning_ma4: { swatchStyle: "dotted" },
+        social_touch_points: { swatchStyle: "solid" },
+        social_touch_points_ma4: { swatchStyle: "dotted" },
+        parks_total_bags: { swatchStyle: "solid" },
+        parks_total_bags_ma4: { swatchStyle: "dotted" },
+        fines_total: { swatchStyle: "solid" },
+        fines_total_ma4: { swatchStyle: "dotted" },
+        urban_total: { swatchStyle: "solid" },
+        urban_ma4: { swatchStyle: "dotted" },
+        contacts_total: { swatchStyle: "solid" },
+        contacts_total_ma4: { swatchStyle: "dotted" },
+        c3_logged_total: { swatchStyle: "solid" },
+        c3_logged_total_ma4: { swatchStyle: "dotted" }
       })}
     />
   );
@@ -730,16 +733,16 @@ function TrendLegend({
   return (
     <ul className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12px] md:text-[13px]">
       {sorted.map((entry, index) => {
-        const isMovingAverage = typeof entry.dataKey === "string" && entry.dataKey.endsWith("_ma4");
         const color = entry.color ?? BRAND.colors.black;
         const key = `${entry.dataKey ?? entry.value ?? index}`;
 
         return (
           <li key={key} className="flex items-center gap-2">
-            <svg width="24" height="12" viewBox="0 0 24 12" aria-hidden>
-              <line x1="2" y1="6" x2="22" y2="6" stroke={color} strokeWidth={3} strokeLinecap="round" />
-              <circle cx="12" cy="6" r="4" fill={BRAND.colors.white} stroke={color} strokeWidth={2} />
-            </svg>
+            <span
+              className="inline-block h-5 w-5 rounded-[4px]"
+              style={{ backgroundColor: color }}
+              aria-hidden
+            />
             <span style={{ color: BRAND.colors.black }}>{entry.value}</span>
           </li>
         );
@@ -816,12 +819,13 @@ function TrendLineCard({
             <Line
               type="monotone"
               dataKey={averageKey}
-              stroke={BRAND.colors.trendAverage}
-              strokeWidth={3.25}
+              stroke={BRAND.colors.neutralMedium}
+              strokeWidth={2.25}
+              strokeDasharray="3 6"
               strokeLinecap="round"
               strokeLinejoin="round"
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: BRAND.colors.trendAverage, fill: BRAND.colors.white }}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: BRAND.colors.neutralMedium, fill: BRAND.colors.white }}
               name={averageName}
             />
           </LineChart>
@@ -3106,7 +3110,7 @@ export default function DashboardClient({ initialData }: Props) {
 
               <div className="mt-8 min-h-0 min-w-0 h-[360px]">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                  <BarChart data={c3OverallBreakdown} layout="vertical" margin={{ top: 8, right: 32, left: -15, bottom: 18 }}>
+                  <BarChart data={c3OverallBreakdown} layout="vertical" margin={{ top: 8, right: 32, left: isMobileViewport ? -15 : 0, bottom: 18 }}>
                     <CartesianGrid strokeDasharray="4 4" stroke={BRAND.colors.gridSubtle} horizontal={false} />
                     <XAxis
                       type="number"
