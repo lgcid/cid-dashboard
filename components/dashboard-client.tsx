@@ -2801,7 +2801,10 @@ export default function DashboardClient({ initialData }: Props) {
             iconColor={BRAND.colors.white}
           />
 
-          <div className="mb-5 rounded-[14px] border p-5" style={{ borderColor: BRAND.colors.safety, backgroundColor: BRAND.colors.safetyBackground }}>
+          <div
+            className="mb-5 rounded-[14px] border-2 p-5"
+            style={{ borderColor: BRAND.colors.safety, backgroundColor: BRAND.colors.safetyBackground, boxShadow: `0 2px 8px ${BRAND.colors.overlaySubtleCool}` }}
+          >
             <h4 className="dashboard-heading-4" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>Your Eyes, Our Impact: See it, Share it.</h4>
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed" style={{ color: BRAND.colors.textBody }}>
               <li>
