@@ -1394,8 +1394,8 @@ function DashboardTopPanel({
       className="rounded-[24px] border bg-white px-6 py-6"
       style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 2px 8px ${BRAND.colors.shadowMedium}` }}
     >
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0 flex-1">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end">
+        <div className="min-w-0 lg:flex-[1_1_24rem]">
           <div className="flex items-center gap-4">
             <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white">
               <Icon className="h-6 w-6" strokeWidth={2.1} aria-hidden />
@@ -1406,7 +1406,7 @@ function DashboardTopPanel({
           </div>
           <div className="mt-2 text-[1.1rem]" style={{ color: BRAND.colors.textMuted }}>{description}</div>
         </div>
-        {controls ? <div className="w-full lg:w-[46%] lg:min-w-[420px]">{controls}</div> : null}
+        {controls ? <div className="min-w-0 lg:flex-[1.35_1_34rem]">{controls}</div> : null}
       </div>
     </div>
   );
@@ -1612,7 +1612,7 @@ function SummaryInfographicRow({
         <SummaryInfographicIcon kind={icon} className="summary-ribbon__icon-glyph" />
       </div>
       <div className="summary-ribbon__body">
-        <p className="summary-ribbon__label">{label}</p>
+        <p className="summary-ribbon__label p-1 pb-2">{label}</p>
         <span
           className="summary-ribbon__delta"
           style={{
@@ -1734,7 +1734,7 @@ function PillarMetricRow({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p
-            className="summary-ribbon__label"
+            className="summary-ribbon__label p-1 pb-2"
             style={{ color: BRAND.colors.textStrong }}
           >
             {label}
@@ -1790,7 +1790,7 @@ function PillarSection({
         style={{ background: headerTheme.headerBackground }}
       >
         <span className="absolute inset-y-0 left-0 w-2 rounded-full" style={{ backgroundColor: headerTheme.accent }} aria-hidden />
-        <h3 className="dashboard-heading-3" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>{title}</h3>
+        <h3 className="dashboard-heading-3 pl-2" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>{title}</h3>
         <span
           className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
           style={{ backgroundColor: headerTheme.iconBackground }}
@@ -1854,7 +1854,7 @@ function CurrentWeekBreakdownChart({
       >
         <span className="absolute inset-y-0 left-0 w-2 rounded-full" style={{ backgroundColor: headerTheme.accent }} aria-hidden />
         <div>
-          <h3 className="dashboard-heading-3" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>{title}</h3>
+          <h3 className="dashboard-heading-3 pl-2" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>{title}</h3>
           {subtitle ? <p className="mt-0.5 text-xs" style={{ color: BRAND.colors.textMuted }}>{subtitle}</p> : null}
         </div>
         <span
@@ -2578,7 +2578,7 @@ export default function DashboardClient({ initialData }: Props) {
                 </>
               }
               controls={
-                <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                <div className="min-w-0 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
                   <DateField
                     id="trends-from-date"
                     label="From"
@@ -2617,9 +2617,9 @@ export default function DashboardClient({ initialData }: Props) {
                       }
                     }}
                   />
-                  <div>
+                  <div className="min-w-0">
                     <label className="block font-[var(--font-heading)] text-[0.92rem] font-semibold tracking-[-0.01em] text-black/80">View By</label>
-                    <div className="mt-2 inline-flex gap-2">
+                    <div className="mt-2 flex flex-wrap gap-2">
                       {TREND_GRANULARITY_OPTIONS.map((option) => (
                         <button
                           key={option.id}
@@ -2794,7 +2794,7 @@ export default function DashboardClient({ initialData }: Props) {
             style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 2px 8px ${BRAND.colors.shadowSoft}` }}
           >
           <SectionHeading
-            title="Criminal Incidents by Location"
+            title="Criminal Incidents"
             description={<>Details of reported incidents for the current week: <strong>{selectedWeekRange}</strong></>}
             icon="incidents"
             iconBackground={BRAND.colors.textStrong}
