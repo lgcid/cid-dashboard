@@ -51,7 +51,7 @@ test("dashboard renders and tab navigation works without client errors", async (
   await expect(page.getByRole("heading", { name: "Urban Management Incidents", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Control Room Engagement", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "C3 Logged Requests", level: 3 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Criminal Incidents by Location", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Criminal Incidents", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: /Hotspot Intelligence/, level: 4 })).toBeVisible();
   await expect(page.getByRole("heading", { name: /Incident Log/, level: 4 })).toBeVisible();
 
