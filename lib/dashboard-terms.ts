@@ -63,7 +63,7 @@ export const DASHBOARD_TERMS_SECTIONS: DashboardTermsSection[] = [
     title: "Public Safety",
     description:
       "These metrics track criminal activity within the CID and crime prevention activities by the public safety officers:",
-    iconPath: "/icons/pillar-safety.webp",
+    iconPath: "/icons/safety.svg",
     accentToken: "safety",
     definitions: [
       {
@@ -90,7 +90,7 @@ export const DASHBOARD_TERMS_SECTIONS: DashboardTermsSection[] = [
     id: "cleaning-maintenance",
     title: "Cleaning & Maintenance",
     description: "These metrics track the cleaning and maintenance activities of the CID cleaning team:",
-    iconPath: "/icons/pillar-cleaning.webp",
+    iconPath: "/icons/cleaning.svg",
     accentToken: "cleaning",
     definitions: [
       {
@@ -121,7 +121,7 @@ export const DASHBOARD_TERMS_SECTIONS: DashboardTermsSection[] = [
     title: "Social Services",
     description:
       "These metrics track both direct outreach and employment transition initiatives supported by the CID social services team:",
-    iconPath: "/icons/pillar-social.webp",
+    iconPath: "/icons/social%20services.svg",
     accentToken: "social",
     definitions: [
       {
@@ -166,7 +166,7 @@ export const DASHBOARD_TERMS_SECTIONS: DashboardTermsSection[] = [
     id: "parks-recreation",
     title: "Parks & Recreation",
     description: "These metrics track activities across all green areas managed or supported by the CID park wardens:",
-    iconPath: "/icons/pillar-parks.webp",
+    iconPath: "/icons/parks.svg",
     accentToken: "parks",
     definitions: [
       {

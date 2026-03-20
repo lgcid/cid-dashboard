@@ -1612,7 +1612,7 @@ function SummaryInfographicRow({
         <SummaryInfographicIcon kind={icon} className="summary-ribbon__icon-glyph" />
       </div>
       <div className="summary-ribbon__body">
-        <p className="summary-ribbon__label py-1">{label}</p>
+        <p className="summary-ribbon__label">{label}</p>
         <span
           className="summary-ribbon__delta"
           style={{
@@ -1640,7 +1640,7 @@ function SummaryGroupCard({
 }) {
   const groupStyle = {
     ["--summary-group-accent" as string]: group.headingAccent ?? group.accent,
-    ["--summary-group-background" as string]: group.background ?? BRAND.colors.surfaceRaised,
+    ["--summary-group-background" as string]: BRAND.colors.neutralBackground,
     ["--summary-group-text" as string]: group.headerTextColor ?? BRAND.colors.textStrong
   } as CSSProperties;
 
@@ -1699,7 +1699,7 @@ function SummaryMetricCard({
     <article className={clsx("rounded-xl border border-black bg-white p-4", railClass && "rail-card", railClass)}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.09em]">{label}</p>
       <div className={clsx("mt-3", showDelta && "flex items-end justify-between gap-3")}>
-        <p className="text-3xl font-bold">{currentText}</p>
+        <p className="text-[1.6rem] font-bold leading-none tracking-[-0.03em]">{currentText}</p>
         {showDelta ? (
           <span
             className={clsx(
@@ -1728,13 +1728,13 @@ function PillarMetricRow({
 
   return (
     <li
-      className="rounded-[10px] border bg-white px-3 py-2.5"
+      className="rounded-[10px] border bg-white px-3 py-2"
       style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtleCool}` }}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p
-            className="summary-ribbon__label py-1"
+            className="summary-ribbon__label"
             style={{ color: BRAND.colors.textStrong }}
           >
             {label}
@@ -1750,7 +1750,7 @@ function PillarMetricRow({
             {delta.text}
           </span>
         </div>
-        <span className="self-center text-[2rem] font-bold leading-none tracking-[-0.04em]" style={{ color: BRAND.colors.textStrong }}>
+        <span className="self-center text-[1.6rem] font-bold leading-none tracking-[-0.03em]" style={{ color: BRAND.colors.textStrong }}>
           {metricValueText(current)}
         </span>
       </div>
@@ -1791,21 +1791,16 @@ function PillarSection({
       >
         <span className="absolute inset-y-0 left-0 w-2 rounded-full" style={{ backgroundColor: headerTheme.accent }} aria-hidden />
         <h3 className="dashboard-heading-3 pl-2" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>{title}</h3>
-        <span
-          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
-          style={{ backgroundColor: headerTheme.iconBackground }}
+        <Image
+          src={iconPath}
+          alt=""
+          width={iconSize}
+          height={iconSize}
+          className="shrink-0 object-contain"
+          style={{ width: `${iconSize}px`, height: `${iconSize}px` }}
           aria-hidden
-        >
-          <Image
-            src={iconPath}
-            alt=""
-            width={iconSize}
-            height={iconSize}
-            className="object-contain"
-            style={{ width: `${iconSize}px`, height: `${iconSize}px` }}
-            unoptimized
-          />
-        </span>
+          unoptimized
+        />
       </div>
 
       <ul className="mt-2.5 space-y-1.5">
@@ -2100,24 +2095,26 @@ function TermsDefinitionsDialog({
                 return (
                   <section key={section.id} aria-labelledby={`${section.id}-title`}>
                     <div className="flex items-start gap-4 md:gap-5">
-                      <div
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
-                        style={{ backgroundColor: accent.iconBackground, color: BRAND.colors.textStrong }}
-                      >
-                        {section.iconPath ? (
-                          <Image
+                      {section.iconPath ? (
+                        <Image
                           src={section.iconPath}
                           alt=""
-                          width={34}
-                          height={34}
-                          className="h-8.5 w-8.5 object-contain"
+                          width={48}
+                          height={48}
+                          className="h-12 w-12 shrink-0 object-contain"
                           aria-hidden
                           unoptimized
                         />
-                        ) : SectionIcon ? (
+                      ) : (
+                        <div
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
+                          style={{ backgroundColor: accent.iconBackground, color: BRAND.colors.textStrong }}
+                        >
+                          {SectionIcon ? (
                           <SectionIcon className="h-6 w-6" strokeWidth={2.1} aria-hidden />
-                        ) : null}
-                      </div>
+                          ) : null}
+                        </div>
+                      )}
 
                       <div className="min-w-0 flex-1">
                         <h3
@@ -2372,7 +2369,7 @@ export default function DashboardClient({ initialData }: Props) {
       id: "public-safety",
       title: "Public Safety",
       theme: "safety" as const,
-      iconPath: "/icons/pillar-safety.webp",
+      iconPath: "/icons/safety.svg",
       summary: "Security patrols and emergency response to ensure community safety.",
       metrics: toPillarMetrics(initialData.sections.public_safety)
     }),
@@ -2383,7 +2380,7 @@ export default function DashboardClient({ initialData }: Props) {
       id: "cleaning",
       title: "Cleaning & Maintenance",
       theme: "cleaning" as const,
-      iconPath: "/icons/pillar-cleaning.webp",
+      iconPath: "/icons/cleaning.svg",
       summary: "Public cleaning and infrastructure maintenance to keep our district pristine.",
       metrics: toPillarMetrics(initialData.sections.cleaning)
     }),
@@ -2394,7 +2391,7 @@ export default function DashboardClient({ initialData }: Props) {
       id: "social-services",
       title: "Social Services",
       theme: "social" as const,
-      iconPath: "/icons/pillar-social.webp",
+      iconPath: "/icons/social%20services.svg",
       summary: "Community support programs and social development initiatives",
       metrics: toPillarMetrics(initialData.sections.social_services)
     }),
@@ -2405,7 +2402,7 @@ export default function DashboardClient({ initialData }: Props) {
       id: "parks-recreation",
       title: "Parks & Recreation",
       theme: "parks" as const,
-      iconPath: "/icons/pillar-parks.webp",
+      iconPath: "/icons/parks.svg",
       summary: "Maintaining and improving green spaces and recreational facilities.",
       metrics: toPillarMetrics(initialData.sections.parks)
     }),

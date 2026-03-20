@@ -447,7 +447,7 @@ h6 {
   position: relative;
   background: var(--summary-group-background, var(--lg-white));
   color: var(--summary-group-text, var(--lg-black));
-  padding: 1.1rem 1.15rem 1.1rem 1.75rem;
+  padding: 1rem 1.15rem 1rem 1.75rem;
   margin: 1.15rem 1.15rem 0;
   border-radius: 0.9rem;
 }
@@ -485,7 +485,7 @@ h6 {
   --summary-accent: var(--lg-safety);
   --summary-icon-color: var(--lg-black);
   display: grid;
-  grid-template-columns: 85px minmax(0, 1fr) minmax(72px, 92px);
+  grid-template-columns: 76px minmax(0, 1fr) minmax(68px, 88px);
   align-items: stretch;
   overflow: hidden;
   border: 1px solid var(--lg-border-subtle);
@@ -503,15 +503,15 @@ h6 {
   justify-content: center;
   background: var(--summary-accent);
   color: var(--summary-icon-color);
-  min-height: 3.75rem;
+  min-height: 2.7rem;
   border-radius: 1rem 0 0 1rem;
   clip-path: polygon(0 0, 78% 0, 100% 50%, 78% 100%, 0 100%);
   margin-left: -.45rem;
 }
 
 .summary-ribbon__icon-glyph {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2rem;
+  height: 2rem;
 }
 
 .summary-ribbon__body {
@@ -519,8 +519,8 @@ h6 {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.42rem;
-  padding: 0.9rem 0 0.9rem 0.8rem;
+  gap: 0.32rem;
+  padding: 0.65rem 0 0.65rem 0.7rem;
 }
 
 .summary-ribbon__label {
@@ -535,11 +535,11 @@ h6 {
 .summary-ribbon__delta {
   display: inline-flex;
   width: fit-content;
-  min-height: 1.55rem;
+  min-height: 1.4rem;
   align-items: center;
   border-radius: 999px;
-  padding: 0 0.7rem;
-  font-size: 0.78rem;
+  padding: 0 0.62rem;
+  font-size: 0.74rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -549,15 +549,15 @@ h6 {
   align-items: center;
   justify-content: flex-end;
   background: var(--lg-white);
-  padding: 0.9rem 1.1rem 0.9rem 0.3rem;
+  padding: 0.65rem 1rem 0.65rem 0.3rem;
 }
 
 .summary-ribbon__value {
   margin: 0;
-  font-size: clamp(2.1rem, 3vw, 2.35rem);
+  font-size: 1.6rem;
   font-weight: 800;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   text-align: right;
   color: var(--lg-black);
 }
@@ -584,7 +584,7 @@ h6 {
 
   .summary-group-card__header {
     margin: 0.8rem 0.8rem 0;
-    padding: 0.9rem 0.9rem 0.9rem 1.35rem;
+    padding: 0.82rem 0.9rem 0.82rem 1.35rem;
   }
 
   .summary-group-card__title {
@@ -602,11 +602,11 @@ h6 {
   }
 
   .summary-ribbon {
-    grid-template-columns: 108px minmax(0, 1fr) minmax(58px, 76px);
+    grid-template-columns: 96px minmax(0, 1fr) minmax(56px, 72px);
   }
 
   .summary-ribbon__value {
-    font-size: 1.7rem;
+    font-size: 1.45rem;
   }
 
   .summary-ribbon__label {
@@ -614,22 +614,22 @@ h6 {
   }
 
   .summary-ribbon__icon-glyph {
-    width: 1.8rem;
-    height: 1.8rem;
+    width: 1.6rem;
+    height: 1.6rem;
   }
 
   .summary-ribbon__body {
-    padding: 0.72rem 0 0.72rem 0.25rem;
+    padding: 0.58rem 0 0.58rem 0.25rem;
   }
 
   .summary-ribbon__value-box {
-    padding: 0.72rem 0.8rem 0.72rem 0.25rem;
+    padding: 0.58rem 0.8rem 0.58rem 0.25rem;
   }
 }
 
 @media (max-width: 480px) {
   .summary-ribbon {
-    grid-template-columns: 96px minmax(0, 1fr) minmax(52px, 68px);
+    grid-template-columns: 88px minmax(0, 1fr) minmax(52px, 64px);
   }
 
   .summary-ribbon__label {
@@ -643,7 +643,7 @@ h6 {
   }
 
   .summary-ribbon__value {
-    font-size: 1.45rem;
+    font-size: 1.3rem;
   }
 }
 
