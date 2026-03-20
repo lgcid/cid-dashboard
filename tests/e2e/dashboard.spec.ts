@@ -141,12 +141,20 @@ test("c3 tracker reflects a fixed date range and expected totals", async ({ page
   await expect(page.locator("article", { hasText: "Resolution Rate" })).toContainText("22%");
 });
 
-test("summary export downloads and chart surfaces render SVG output", async ({ page }) => {
+test("pdf export downloads by default and image export remains available via query parameter", async ({ page }) => {
   await page.goto("/");
 
-  const downloadPromise = page.waitForEvent("download");
+  let downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Print" }).click();
-  const download = await downloadPromise;
+  let download = await downloadPromise;
+
+  expect(download.suggestedFilename()).toMatch(/^lgcid-summary-.*\.pdf$/);
+
+  await page.goto("/?export=image");
+
+  downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export Image" }).click();
+  download = await downloadPromise;
 
   expect(download.suggestedFilename()).toMatch(/^lgcid-summary-.*\.png$/);
 

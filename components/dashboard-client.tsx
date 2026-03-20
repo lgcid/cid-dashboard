@@ -54,7 +54,7 @@ import {
   type DashboardTermsSection
 } from "@/lib/dashboard-terms";
 import { BRAND, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
-import { exportDashboardPng } from "@/lib/dashboard-export";
+import { exportDashboardPdf, exportDashboardPng } from "@/lib/dashboard-export";
 import type {
   C3RequestRow,
   C3TrackerBreakdownRow,
@@ -68,6 +68,7 @@ import type {
 
 type Props = {
   initialData: DashboardResponse;
+  enableImageExport?: boolean;
 };
 
 type MetricTheme = "safety" | "cleaning" | "social" | "parks" | "neutral";
@@ -2161,7 +2162,7 @@ function TermsDefinitionsDialog({
   );
 }
 
-export default function DashboardClient({ initialData }: Props) {
+export default function DashboardClient({ initialData, enableImageExport = false }: Props) {
   const weekly = initialData.weekly;
   const defaultTrendBounds = trendDateBounds(weekly, initialData.meta.selected_week_start);
   const defaultC3Bounds = c3DateBounds(
@@ -2180,7 +2181,8 @@ export default function DashboardClient({ initialData }: Props) {
   const summaryPrintableRef = useRef<HTMLDivElement>(null);
   const trendsPrintableRef = useRef<HTMLDivElement>(null);
   const c3PrintableRef = useRef<HTMLDivElement>(null);
-  const [isPrinting, setIsPrinting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isExportingImage, setIsExportingImage] = useState(false);
   const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
 
@@ -2414,6 +2416,60 @@ export default function DashboardClient({ initialData }: Props) {
     [initialData.sections.parks, toPillarMetrics]
   );
 
+  async function handlePrintPdf() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      return;
+    }
+    const exportRefByTab: Record<DashboardTab, RefObject<HTMLDivElement | null>> = {
+      main: mainPrintableRef,
+      summary: summaryPrintableRef,
+      trends: trendsPrintableRef,
+      c3: c3PrintableRef
+    };
+    const exportNode = exportRefByTab[activeTab].current;
+    if (!exportNode) {
+      return;
+    }
+
+    const weekToken = currentWeek
+      ? `${currentWeek.week_start}_to_${currentWeek.week_end}`
+      : selectedWeekStart;
+
+    const pdfMetaByTab: Record<DashboardTab, { title: string; detailLine: string }> = {
+      main: {
+        title: "Current Week",
+        detailLine: `Detailed operational results across each CID focus area from ${selectedWeekRange}.`
+      },
+      summary: {
+        title: "Summary",
+        detailLine: `Activity report showing the key metrics from ${selectedWeekRange}.`
+      },
+      trends: {
+        title: "Trends",
+        detailLine: `${trendPeriodLabel} results from ${trendRangeLabel}, compared with a ${trendAverageLabel.toLowerCase()} to show underlying direction over time.`
+      },
+      c3: {
+        title: "C3 Tracker",
+        detailLine: `City service requests logged vs resolved by category from ${c3RangeLabel}.`
+      }
+    };
+
+    setIsExportingPdf(true);
+    try {
+      await exportDashboardPdf({
+        exportNode,
+        tab: activeTab,
+        weekToken,
+        ...pdfMetaByTab[activeTab]
+      });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }
+
   async function handlePrintScreenshot() {
     if (typeof window === "undefined") {
       return;
@@ -2433,7 +2489,7 @@ export default function DashboardClient({ initialData }: Props) {
       return;
     }
 
-    setIsPrinting(true);
+    setIsExportingImage(true);
     try {
       const weekToken = currentWeek
         ? `${currentWeek.week_start}_to_${currentWeek.week_end}`
@@ -2445,7 +2501,7 @@ export default function DashboardClient({ initialData }: Props) {
         weekToken
       });
     } finally {
-      setIsPrinting(false);
+      setIsExportingImage(false);
     }
   }
 
@@ -2490,16 +2546,27 @@ export default function DashboardClient({ initialData }: Props) {
                 Last Update <strong>{formatDataUpdate(initialData.meta.data_updated_at)}</strong>
               </p>
             </div>
-            <div className="flex justify-start lg:justify-end">
+            <div className="flex flex-wrap justify-start gap-3 lg:justify-end">
               <button
                 type="button"
-                onClick={handlePrintScreenshot}
-                disabled={isPrinting}
+                onClick={handlePrintPdf}
+                disabled={isExportingPdf}
                 className="inline-flex items-center gap-3 rounded-[14px] border-1 border-white px-6 py-2 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Printer className="h-5 w-5" strokeWidth={2.2} aria-hidden />
-                <span>{isPrinting ? "Preparing..." : "Print"}</span>
+                <span>{isExportingPdf ? "Preparing..." : "Print"}</span>
               </button>
+              {enableImageExport ? (
+                <button
+                  type="button"
+                  onClick={handlePrintScreenshot}
+                  disabled={isExportingImage}
+                  className="inline-flex items-center gap-3 rounded-[14px] border-1 border-white/55 px-6 py-2 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:border-white hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <File className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+                  <span>{isExportingImage ? "Preparing..." : "Export Image"}</span>
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
