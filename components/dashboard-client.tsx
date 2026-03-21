@@ -2420,9 +2420,6 @@ export default function DashboardClient({ initialData, enableImageExport = false
     if (typeof window === "undefined") {
       return;
     }
-    if (window.matchMedia("(max-width: 767px)").matches) {
-      return;
-    }
     const exportRefByTab: Record<DashboardTab, RefObject<HTMLDivElement | null>> = {
       main: mainPrintableRef,
       summary: summaryPrintableRef,
@@ -2472,9 +2469,6 @@ export default function DashboardClient({ initialData, enableImageExport = false
 
   async function handlePrintScreenshot() {
     if (typeof window === "undefined") {
-      return;
-    }
-    if (window.matchMedia("(max-width: 767px)").matches) {
       return;
     }
 
