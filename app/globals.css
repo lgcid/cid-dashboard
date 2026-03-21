@@ -145,12 +145,6 @@ body {
   letter-spacing: 0.01em;
 }
 
-.dashboard-date-input {
-  inline-size: 100%;
-  min-inline-size: 0;
-  max-inline-size: 100%;
-}
-
 h1,
 h2,
 h3,
@@ -377,11 +371,6 @@ h6 {
 }
 
 @media (max-width: 640px) {
-  .dashboard-date-input {
-    /* Prevent iOS input auto-zoom and keep native date UI stable. */
-    font-size: 16px;
-  }
-
   .dashboard-export-mode .export-image-header {
     align-items: flex-start;
     gap: 0.35rem;

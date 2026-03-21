@@ -1375,7 +1375,7 @@ function DateField({
         max={max}
         onChange={onChange}
         className={clsx(
-          "dashboard-date-input w-full min-w-0 max-w-full rounded-[6px] border bg-white px-4 py-2 font-[var(--font-body)] text-[1rem] text-black outline-none",
+          "w-full rounded-[6px] border bg-white px-0 py-2 font-[var(--font-body)] text-[1rem] text-black outline-none sm:px-4",
           inlineLabelOnMobile ? "md:mt-2" : "mt-2"
         )}
         style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
