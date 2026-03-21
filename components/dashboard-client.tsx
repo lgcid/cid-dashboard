@@ -2420,6 +2420,9 @@ export default function DashboardClient({ initialData, enableImageExport = false
     if (typeof window === "undefined") {
       return;
     }
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      return;
+    }
     const exportRefByTab: Record<DashboardTab, RefObject<HTMLDivElement | null>> = {
       main: mainPrintableRef,
       summary: summaryPrintableRef,
@@ -2469,6 +2472,9 @@ export default function DashboardClient({ initialData, enableImageExport = false
 
   async function handlePrintScreenshot() {
     if (typeof window === "undefined") {
+      return;
+    }
+    if (window.matchMedia("(max-width: 767px)").matches) {
       return;
     }
 
@@ -2540,7 +2546,7 @@ export default function DashboardClient({ initialData, enableImageExport = false
                 Last Update <strong>{formatDataUpdate(initialData.meta.data_updated_at)}</strong>
               </p>
             </div>
-            <div className="flex flex-wrap justify-start gap-3 lg:justify-end">
+            <div className="hidden flex-wrap justify-start gap-3 md:flex lg:justify-end">
               <button
                 type="button"
                 onClick={handlePrintPdf}
