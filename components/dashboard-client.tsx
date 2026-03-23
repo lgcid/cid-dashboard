@@ -452,7 +452,7 @@ const SUMMARY_IMAGE_LAYOUT: Array<
       groupId: "law_enforcement",
       iconComponent: Scale,
       description: "Total fines issued  (Section 56 + Section 341)",
-      metrics: [{ id: "fines_issued", label: "Fines Issued" }]
+      metrics: [{ id: "fines_issued", label: "Fines Issued", spanTwoColumns: true }]
     },
     {
       groupId: "urban_management",
