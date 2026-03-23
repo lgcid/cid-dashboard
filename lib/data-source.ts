@@ -21,7 +21,7 @@ import {
   type SectionMap
 } from "@/types/dashboard";
 
-const ROOT = process.cwd();
+const CSV_ROOT = path.join(process.cwd(), "data", "csv");
 type DataSourceMode = "local_csv" | "google_sheets";
 interface LoadDataOptions {
   preview?: string;
@@ -56,7 +56,7 @@ async function readLocalCsv(relativePath: string): Promise<Array<Record<string, 
 }
 
 async function readLocalCsvRows(relativePath: string): Promise<string[][]> {
-  const filePath = path.join(ROOT, relativePath);
+  const filePath = path.join(CSV_ROOT, relativePath);
   const raw = await readFile(filePath, "utf8");
   return parseCsv(raw);
 }
@@ -89,7 +89,7 @@ async function readC3RequestsFromSheets(): Promise<C3RequestRow[]> {
 }
 
 async function readC3RequestsFromLocalCsv(): Promise<C3RequestRow[]> {
-  const rows = await readLocalCsv("data/csv/sections/c3_requests.csv");
+  const rows = await readLocalCsv("sections/c3_requests.csv");
   return c3RequestRowsSchema.parse(rows);
 }
 
@@ -151,7 +151,7 @@ async function readPublishedWeeksFromSheets(): Promise<string[]> {
 }
 
 async function readPublishedWeeksFromLocalCsv(): Promise<string[]> {
-  const rows = await readLocalCsv("data/csv/published_weeks.csv");
+  const rows = await readLocalCsv("published_weeks.csv");
   return normalizePublishedWeeks(publishedWeekRowsSchema.parse(rows));
 }
 
@@ -200,7 +200,7 @@ async function readMatrixSectionsFromSheets(): Promise<Record<MatrixSectionKey, 
 async function readMatrixSectionsFromLocalCsv(): Promise<Record<MatrixSectionKey, SectionData>> {
   const sectionEntries = await Promise.all(
     MATRIX_SECTION_KEYS.map(async (sectionKey) => {
-      const rows = await readLocalCsvRows(`data/csv/sections/${sectionKey}.csv`);
+      const rows = await readLocalCsvRows(`sections/${sectionKey}.csv`);
       return [sectionKey, parseSectionMatrix(rows, sectionKey)] as const;
     })
   );
@@ -250,7 +250,7 @@ async function readFromLocalCsv(options: LoadDataOptions = {}): Promise<{
   const [baseSections, publishedWeeks, incidentObjects, c3Rows] = await Promise.all([
     readMatrixSectionsFromLocalCsv(),
     readPublishedWeeksFromLocalCsv(),
-    readLocalCsv("data/csv/incidents.csv"),
+    readLocalCsv("incidents.csv"),
     readC3RequestsFromLocalCsv()
   ]);
   const previewWeek = resolvePreviewWeek(options.preview, collectMatrixWeekStarts(baseSections));
