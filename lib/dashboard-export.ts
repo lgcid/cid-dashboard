@@ -1,4 +1,4 @@
-import { getFontEmbedCSS, toPng } from "html-to-image";
+import { getFontEmbedCSS, toJpeg, toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { BRAND } from "@/lib/config";
 
@@ -9,6 +9,10 @@ export const SUMMARY_EXPORT_MODE_CLASS = "summary-export-mode";
 export const PDF_EXPORT_MODE_CLASS = "dashboard-pdf-export-mode";
 export const SUMMARY_IMAGE_EXPORT_WIDTH = 1414;
 export const SUMMARY_IMAGE_EXPORT_HEIGHT = 2000;
+const PDF_IMAGE_EXPORT_SCALE = 1.25;
+const PDF_IMAGE_JPEG_QUALITY = 0.72;
+const PDF_HEADER_IMAGE_ALIAS = "dashboard-pdf-header";
+const PDF_FOOTER_IMAGE_ALIAS = "dashboard-pdf-footer";
 
 const A4_WIDTH_PT = 595.28;
 const A4_HEIGHT_PT = 841.89;
@@ -28,6 +32,13 @@ const PDF_FONT_FAMILY = "Roboto";
 
 type PdfBlock = {
   render: () => HTMLElement;
+};
+
+type RenderedImage = {
+  dataUrl: string;
+  format: "PNG" | "JPEG";
+  width: number;
+  height: number;
 };
 
 let robotoFontDataPromise: Promise<{ regular: string; bold: string }> | null = null;
@@ -119,6 +130,70 @@ async function renderDashboardNodeToPng({
   }
 }
 
+async function renderDashboardNodeToJpeg({
+  exportNode,
+  exportWidth,
+  exportHeight,
+  canvasScale = PDF_IMAGE_EXPORT_SCALE,
+  modeClass,
+  filter
+}: {
+  exportNode: HTMLElement;
+  exportWidth?: number;
+  exportHeight?: number;
+  canvasScale?: number;
+  modeClass?: string;
+  filter?: (node: HTMLElement) => boolean;
+}): Promise<RenderedImage> {
+  const targetDocument = exportNode.ownerDocument;
+
+  if (modeClass) {
+    exportNode.classList.add(modeClass);
+  }
+  exportNode.classList.add(SUMMARY_EXPORT_MODE_CLASS);
+
+  try {
+    await waitForNextPaint(targetDocument);
+
+    const fonts = "fonts" in targetDocument ? targetDocument.fonts : undefined;
+    if (fonts) {
+      await fonts.ready;
+    }
+
+    const measuredWidth = exportWidth ?? Math.ceil(exportNode.scrollWidth);
+    const measuredHeight = exportHeight ?? Math.ceil(exportNode.scrollHeight);
+    const fontEmbedCSS = await getFontEmbedCSS(exportNode);
+    const jpegDataUrl = await toJpeg(exportNode, {
+      backgroundColor: BRAND.colors.white,
+      cacheBust: true,
+      width: measuredWidth,
+      height: measuredHeight,
+      canvasWidth: measuredWidth * canvasScale,
+      canvasHeight: measuredHeight * canvasScale,
+      pixelRatio: 1,
+      fontEmbedCSS,
+      quality: PDF_IMAGE_JPEG_QUALITY,
+      filter: filter ? (node) => !(node instanceof HTMLElement) || filter(node) : undefined,
+      style: {
+        width: `${measuredWidth}px`,
+        height: `${measuredHeight}px`
+      }
+    });
+
+    return {
+      dataUrl: jpegDataUrl,
+      format: "JPEG",
+      width: measuredWidth,
+      height: measuredHeight
+    };
+  } finally {
+    if (modeClass) {
+      exportNode.classList.remove(modeClass);
+    }
+    exportNode.classList.remove(SUMMARY_EXPORT_MODE_CLASS);
+  }
+}
+
 async function imageUrlToDataUrl(url: string): Promise<string> {
   const response = await fetch(url);
   const blob = await response.blob();
@@ -170,8 +245,8 @@ async function ensurePdfRobotoFonts(pdf: jsPDF): Promise<void> {
 }
 
 function addPdfChrome(pdf: jsPDF, headerDataUrl: string, footerDataUrl: string) {
-  pdf.addImage(headerDataUrl, "PNG", 0, 0, A4_WIDTH_PT, PDF_HEADER_HEIGHT);
-  pdf.addImage(footerDataUrl, "PNG", 0, A4_HEIGHT_PT - PDF_FOOTER_HEIGHT, A4_WIDTH_PT, PDF_FOOTER_HEIGHT);
+  pdf.addImage(headerDataUrl, "PNG", 0, 0, A4_WIDTH_PT, PDF_HEADER_HEIGHT, PDF_HEADER_IMAGE_ALIAS);
+  pdf.addImage(footerDataUrl, "PNG", 0, A4_HEIGHT_PT - PDF_FOOTER_HEIGHT, A4_WIDTH_PT, PDF_FOOTER_HEIGHT, PDF_FOOTER_IMAGE_ALIAS);
 }
 
 function addPdfIntro({
@@ -357,7 +432,7 @@ function buildPdfBlocks(exportNode: HTMLElement, tab: DashboardExportTab): PdfBl
   }
 }
 
-async function renderPdfBlockToPng({
+async function renderPdfBlockToImage({
   targetDocument,
   stagingRoot,
   block
@@ -365,7 +440,7 @@ async function renderPdfBlockToPng({
   targetDocument: Document;
   stagingRoot: HTMLElement;
   block: PdfBlock;
-}): Promise<{ pngDataUrl: string; width: number; height: number }> {
+}): Promise<RenderedImage> {
   const blockNode = block.render();
   stagingRoot.appendChild(blockNode);
 
@@ -380,22 +455,28 @@ async function renderPdfBlockToPng({
     const exportWidth = Math.ceil(blockNode.scrollWidth);
     const exportHeight = Math.ceil(blockNode.scrollHeight);
     const fontEmbedCSS = await getFontEmbedCSS(blockNode);
-    const pngDataUrl = await toPng(blockNode, {
+    const jpegDataUrl = await toJpeg(blockNode, {
       backgroundColor: BRAND.colors.white,
       cacheBust: true,
       width: exportWidth,
       height: exportHeight,
-      canvasWidth: exportWidth * SCREENSHOT_EXPORT_SCALE,
-      canvasHeight: exportHeight * SCREENSHOT_EXPORT_SCALE,
+      canvasWidth: exportWidth * PDF_IMAGE_EXPORT_SCALE,
+      canvasHeight: exportHeight * PDF_IMAGE_EXPORT_SCALE,
       pixelRatio: 1,
       fontEmbedCSS,
+      quality: PDF_IMAGE_JPEG_QUALITY,
       style: {
         width: `${exportWidth}px`,
         height: `${exportHeight}px`
       }
     });
 
-    return { pngDataUrl, width: exportWidth, height: exportHeight };
+    return {
+      dataUrl: jpegDataUrl,
+      format: "JPEG",
+      width: exportWidth,
+      height: exportHeight
+    };
   } finally {
     blockNode.remove();
   }
@@ -409,30 +490,30 @@ function startPdfPage(pdf: jsPDF, headerDataUrl: string, footerDataUrl: string):
 
 function addBlockImageWithPagination({
   pdf,
-  pngDataUrl,
+  image,
   headerDataUrl,
   footerDataUrl,
   cursorY
 }: {
   pdf: jsPDF;
-  pngDataUrl: string;
+  image: RenderedImage;
   headerDataUrl: string;
   footerDataUrl: string;
   cursorY: number;
 }): number {
   const imageWidth = PDF_BODY_TEXT_WIDTH;
-  const imageProps = pdf.getImageProperties(pngDataUrl);
+  const imageProps = pdf.getImageProperties(image.dataUrl);
   const renderedImageHeight = (imageProps.height * imageWidth) / imageProps.width;
   const fullPageHeight = PDF_BOTTOM_LIMIT - PDF_LATER_PAGE_TOP;
 
   if (renderedImageHeight <= PDF_BOTTOM_LIMIT - cursorY) {
-    pdf.addImage(pngDataUrl, "PNG", PDF_MARGIN_X, cursorY, imageWidth, renderedImageHeight);
+    pdf.addImage(image.dataUrl, image.format, PDF_MARGIN_X, cursorY, imageWidth, renderedImageHeight, undefined, "MEDIUM");
     return cursorY + renderedImageHeight + PDF_BLOCK_GAP;
   }
 
   if (renderedImageHeight <= fullPageHeight) {
     const nextPageTop = startPdfPage(pdf, headerDataUrl, footerDataUrl);
-    pdf.addImage(pngDataUrl, "PNG", PDF_MARGIN_X, nextPageTop, imageWidth, renderedImageHeight);
+    pdf.addImage(image.dataUrl, image.format, PDF_MARGIN_X, nextPageTop, imageWidth, renderedImageHeight, undefined, "MEDIUM");
     return nextPageTop + renderedImageHeight + PDF_BLOCK_GAP;
   }
 
@@ -448,7 +529,7 @@ function addBlockImageWithPagination({
     }
 
     const consumedHeight = Math.min(availableHeight, remainingHeight);
-    pdf.addImage(pngDataUrl, "PNG", PDF_MARGIN_X, pageCursorY - offsetY, imageWidth, renderedImageHeight);
+    pdf.addImage(image.dataUrl, image.format, PDF_MARGIN_X, pageCursorY - offsetY, imageWidth, renderedImageHeight, undefined, "MEDIUM");
     remainingHeight -= consumedHeight;
     offsetY += consumedHeight;
 
@@ -529,28 +610,28 @@ export async function exportDashboardPdf({
     const blocks = buildPdfBlocks(exportNode, tab);
 
     if (!blocks.length) {
-      const { pngDataUrl } = await renderDashboardNodeToPng({
+      const image = await renderDashboardNodeToJpeg({
         exportNode,
         modeClass: PDF_EXPORT_MODE_CLASS,
         filter: (node) => !(node.classList.contains("export-image-header") || node.classList.contains("export-image-footer"))
       });
       cursorY = addBlockImageWithPagination({
         pdf,
-        pngDataUrl,
+        image,
         headerDataUrl,
         footerDataUrl,
         cursorY
       });
     } else {
       for (const block of blocks) {
-        const { pngDataUrl } = await renderPdfBlockToPng({
+        const image = await renderPdfBlockToImage({
           targetDocument,
           stagingRoot,
           block
         });
         cursorY = addBlockImageWithPagination({
           pdf,
-          pngDataUrl,
+          image,
           headerDataUrl,
           footerDataUrl,
           cursorY

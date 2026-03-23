@@ -8,6 +8,10 @@ const { toPngMock } = vi.hoisted(() => ({
   toPngMock: vi.fn()
 }));
 
+const { toJpegMock } = vi.hoisted(() => ({
+  toJpegMock: vi.fn()
+}));
+
 const { jsPdfInstances, jsPdfSaveMock } = vi.hoisted(() => {
   const saveMock = vi.fn();
   const instances: Array<Record<string, unknown>> = [];
@@ -19,6 +23,7 @@ const { jsPdfInstances, jsPdfSaveMock } = vi.hoisted(() => {
 
 vi.mock("html-to-image", () => ({
   getFontEmbedCSS: vi.fn().mockResolvedValue("@font-face { font-family: MockFont; }"),
+  toJpeg: toJpegMock,
   toPng: toPngMock
 }));
 
@@ -155,7 +160,7 @@ describe("dashboard screenshot export", () => {
   });
 
   it("exports a pdf with the expected filename and temporary export classes", async () => {
-    toPngMock.mockImplementation(async (node: HTMLElement, options: Record<string, unknown>) => {
+    toJpegMock.mockImplementation(async (node: HTMLElement, options: Record<string, unknown>) => {
       expect(node.classList.contains(PDF_EXPORT_MODE_CLASS)).toBe(true);
       expect(node.classList.contains(SUMMARY_EXPORT_MODE_CLASS)).toBe(true);
       expect(options).toMatchObject({
@@ -163,12 +168,13 @@ describe("dashboard screenshot export", () => {
         cacheBust: true,
         width: 640,
         height: 360,
-        canvasWidth: 1280,
-        canvasHeight: 720,
-        pixelRatio: 1
+        canvasWidth: 800,
+        canvasHeight: 450,
+        pixelRatio: 1,
+        quality: 0.72
       });
 
-      return "data:image/png;base64,exported";
+      return "data:image/jpeg;base64,exported";
     });
 
     const exportTarget = document.createElement("div");
@@ -195,6 +201,7 @@ describe("dashboard screenshot export", () => {
     expect(exportTarget.classList.contains(PDF_EXPORT_MODE_CLASS)).toBe(false);
     expect(exportTarget.classList.contains(SUMMARY_EXPORT_MODE_CLASS)).toBe(false);
     expect(jsPdfInstances).toHaveLength(1);
+    expect(toPngMock).not.toHaveBeenCalled();
 
     const pdf = jsPdfInstances[0] as {
       addImage: ReturnType<typeof vi.fn>;
