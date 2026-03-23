@@ -54,7 +54,12 @@ import {
   type DashboardTermsSection
 } from "@/lib/dashboard-terms";
 import { BRAND, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
-import { exportDashboardPdf, exportDashboardPng } from "@/lib/dashboard-export";
+import {
+  SUMMARY_IMAGE_EXPORT_HEIGHT,
+  SUMMARY_IMAGE_EXPORT_WIDTH,
+  exportDashboardPdf,
+  exportNodePng
+} from "@/lib/dashboard-export";
 import type {
   C3RequestRow,
   C3TrackerBreakdownRow,
@@ -68,13 +73,14 @@ import type {
 
 type Props = {
   initialData: DashboardResponse;
-  enableImageExport?: boolean;
+  initialTab?: DashboardTab;
 };
 
 type MetricTheme = "safety" | "cleaning" | "social" | "parks" | "neutral";
 type SectionIconKind = "summary" | "currentWeek" | "incidents" | "trends" | "c3";
 type ComparisonTone = "increase" | "decrease" | "flat" | "none";
-type DashboardTab = "main" | "summary" | "trends" | "c3";
+type StandardDashboardTab = "main" | "summary" | "trends" | "c3";
+type DashboardTab = StandardDashboardTab | "summary-image";
 type TrendGranularity = "week" | "month" | "year";
 type SummaryInfographicGroupId =
   | "safety_response"
@@ -202,6 +208,11 @@ const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
   { id: "main", label: "Current Week" },
   { id: "trends", label: "Trends" },
   { id: "c3", label: "C3 Tracker" }
+];
+
+const SUMMARY_IMAGE_TABS: Array<{ id: DashboardTab; label: string }> = [
+  ...DASHBOARD_TABS,
+  { id: "summary-image", label: "Summary Image" }
 ];
 const TREND_GRANULARITY_OPTIONS: Array<{ id: TrendGranularity; label: string }> = [
   { id: "week", label: "Week" },
@@ -379,6 +390,89 @@ const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
     key: "parks_total_bags"
   },
   { id: "parks_pruned_trees", label: "Pruned trees", icon: "tree", groupId: "parks", key: "parks_pruned_trees" }
+];
+
+const SUMMARY_IMAGE_LAYOUT: Array<
+  Array<{
+    groupId: SummaryInfographicGroupId;
+    iconPath?: string;
+    iconScale?: number;
+    iconComponent?: LucideIcon;
+    description: string;
+    metrics: Array<{ id: string; label: string; spanTwoColumns?: boolean }>;
+    wide?: boolean;
+  }>
+> = [
+  [
+    {
+      groupId: "safety_response",
+      iconPath: "/icons/safety.svg",
+      iconScale: 1.02,
+      description: "Crime and crime prevention activities",
+      metrics: [
+        { id: "criminal_incidents", label: "Criminal incidents" },
+        { id: "arrests_made", label: "Arrests" },
+        { id: "proactive_actions", label: "Stop and Search" },
+        { id: "public_space_interventions", label: "Public Space Interventions" }
+      ]
+    },
+    {
+      groupId: "cleaning_urban",
+      iconPath: "/icons/cleaning.svg",
+      iconScale: 1,
+      description: "Street and public area cleaning and maintenance",
+      metrics: [
+        { id: "cleaning_total_bags", label: "Bags Collected" },
+        { id: "cleaning_servitudes_cleaned", label: "Servitudes Cleaned" },
+        { id: "cleaning_stormwater_drains_cleaned", label: "Stormwater Drains\nCleaned", spanTwoColumns: true }
+      ]
+    }
+  ],
+  [
+    {
+      groupId: "parks",
+      iconPath: "/icons/parks.svg",
+      iconScale: 1,
+      description: "Maintenance of green spaces and public areas",
+      metrics: [
+        { id: "parks_total_bags", label: "Bags" },
+        { id: "parks_pruned_trees", label: "Pruned Trees" }
+      ]
+    },
+    {
+      groupId: "social_services",
+      iconPath: "/icons/social%20services.svg",
+      iconScale: 1,
+      description: "Engagements with the homeless and vulnerable",
+      metrics: [{ id: "social_touch_points", label: "Touch points", spanTwoColumns: true }]
+    }
+  ],
+  [
+    {
+      groupId: "law_enforcement",
+      iconComponent: Scale,
+      description: "Total fines issued  (Section 56 + Section 341)",
+      metrics: [{ id: "fines_issued", label: "Fines Issued" }]
+    },
+    {
+      groupId: "urban_management",
+      iconComponent: Building2,
+      description: "Operational incidents and actions",
+      metrics: [{ id: "urban_total", label: "Total Incidents", spanTwoColumns: true }]
+    }
+  ],
+  [
+    {
+      groupId: "control_room_engagement",
+      iconComponent: PhoneCall,
+      description: "Reporting to the 24-hour control room",
+      metrics: [
+        { id: "c3_logged_total", label: "C3 Logged Requests" },
+        { id: "contacts_total", label: "Total Calls + WhatsApp Received" }
+      ],
+      wide: true
+    }
+  ]
 ];
 
 function themeRailClass(theme: MetricTheme): string {
@@ -1682,6 +1776,149 @@ function SummaryGroupCard({
   );
 }
 
+function formatSummaryImageWeekRange(weekStart: string, weekEnd: string): string {
+  return `${formatWeekDate(weekStart)} - ${formatWeekDate(weekEnd)}.`;
+}
+
+function SummaryImageMetric({
+  value,
+  label,
+  spanTwoColumns = false
+}: {
+  value: number | null | undefined;
+  label: string;
+  spanTwoColumns?: boolean;
+}) {
+  return (
+    <div className={clsx("summary-image-card__metric", spanTwoColumns && "summary-image-card__metric--span-2")}>
+      <p className="summary-image-card__metric-value">{valueText(value)}</p>
+      <p className="summary-image-card__metric-label">{label}</p>
+    </div>
+  );
+}
+
+function SummaryImageCard({
+  title,
+  description,
+  accent,
+  iconColor,
+  iconPath,
+  iconScale = 1,
+  iconComponent: Icon,
+  metrics,
+  wide = false
+}: {
+  title: string;
+  description: string;
+  accent: string;
+  iconColor: string;
+  iconPath?: string;
+  iconScale?: number;
+  iconComponent?: LucideIcon;
+  metrics: Array<{ id: string; label: string; value: number | null | undefined; spanTwoColumns?: boolean }>;
+  wide?: boolean;
+}) {
+  const iconSize = Math.round(94 * iconScale);
+
+  return (
+    <article className={clsx("summary-image-card", wide && "summary-image-card--wide")} style={{ ["--summary-image-accent" as string]: accent }}>
+      <div className="summary-image-card__header">
+        <div className="summary-image-card__copy">
+          <h3 className="summary-image-card__title">{title}</h3>
+          <p className="summary-image-card__description">{description}</p>
+        </div>
+        <div
+          className={clsx("summary-image-card__icon", iconPath && "summary-image-card__icon--asset")}
+          style={iconPath ? undefined : { backgroundColor: accent, color: iconColor }}
+        >
+          {iconPath ? (
+            <Image
+              src={iconPath}
+              alt=""
+              width={iconSize}
+              height={iconSize}
+              className="summary-image-card__icon-asset"
+              style={{ width: `${iconSize}px`, height: `${iconSize}px` }}
+              aria-hidden
+              unoptimized
+            />
+          ) : Icon ? (
+            <Icon className="summary-image-card__icon-glyph" strokeWidth={2.1} aria-hidden />
+          ) : null}
+        </div>
+      </div>
+        <div className={clsx("summary-image-card__metrics", wide && "summary-image-card__metrics--wide")}>
+        {metrics.map((metric) => (
+          <SummaryImageMetric key={metric.id} value={metric.value} label={metric.label} spanTwoColumns={metric.spanTwoColumns} />
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function SummaryImageCanvas({
+  selectedWeekRange,
+  cards
+}: {
+  selectedWeekRange: string;
+  cards: Array<
+    Array<{
+      groupId: SummaryInfographicGroupId;
+      title: string;
+      accent: string;
+      iconColor: string;
+      iconPath?: string;
+      iconScale?: number;
+      iconComponent?: LucideIcon;
+      description: string;
+      metrics: Array<{ id: string; label: string; value: number | null | undefined; spanTwoColumns?: boolean }>;
+      wide?: boolean;
+    }>
+  >;
+}) {
+  return (
+    <div className="summary-image-canvas">
+      <div className="summary-image-canvas__hero">
+        <img src="/logos/lgcid-horizontal-black.png" alt="Lower Gardens City Improvement District" className="summary-image-canvas__logo" />
+        <h1 className="summary-image-canvas__title">Weekly Operational Performance</h1>
+      </div>
+
+      <div className="summary-image-canvas__body">
+        <p className="summary-image-canvas__intro">Activity report showing the key metrics for:</p>
+        <p className="summary-image-canvas__date">{selectedWeekRange}</p>
+
+        <div className="summary-image-grid">
+          {cards.map((row, rowIndex) => (
+            <div key={`summary-image-row-${rowIndex}`} className={clsx("summary-image-grid__row", row.some((card) => card.wide) && "summary-image-grid__row--wide")}>
+              {row.map((card) => (
+                <SummaryImageCard
+                  key={card.groupId}
+                  title={card.title}
+                  description={card.description}
+                  accent={card.accent}
+                  iconColor={card.iconColor}
+                  iconPath={card.iconPath}
+                  iconScale={card.iconScale}
+                  iconComponent={card.iconComponent}
+                  metrics={card.metrics}
+                  wide={card.wide}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <footer className="summary-image-canvas__footer">
+        <p className="summary-image-canvas__footer-copy">Report incidents to the CID Control Room:</p>
+        <div className="summary-image-canvas__footer-contact">
+          <img src="/logos/24hr-white.png" alt="CID Control Room contact number" className="summary-image-canvas__footer-logo" />
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 function SummaryMetricCard({
   label,
   current,
@@ -1925,34 +2162,6 @@ function CurrentWeekBreakdownChart({
   );
 }
 
-function ExportImageHeader() {
-  return (
-    <header className="export-image-header" aria-hidden>
-      <div className="export-image-header__cell export-image-header__cell--logo">
-        <Image
-          src={BRAND.logoPath}
-          alt="Lower Gardens CID"
-          width={280}
-          height={52}
-          className="export-image-header__logo"
-          unoptimized
-        />
-      </div>
-      <p className="export-image-header__cell export-image-header__tagline">Your Eyes, Our Impact: See it, Share it.</p>
-    </header>
-  );
-}
-
-function ExportImageFooter() {
-  return (
-    <footer className="export-image-footer" aria-hidden>
-      <p className="export-image-footer__cell">LGCID Phone (24hr): 087 330 2177</p>
-      <p className="export-image-footer__cell">WhatsApp: 069 007 8644 (message only)</p>
-      <p className="export-image-footer__cell">lowergardenscid.co.za</p>
-    </footer>
-  );
-}
-
 function c3DateBounds(reportingWindowStart: string, reportingWindowEnd: string): { from: string; to: string } {
   return {
     from: reportingWindowStart,
@@ -2162,7 +2371,7 @@ function TermsDefinitionsDialog({
   );
 }
 
-export default function DashboardClient({ initialData, enableImageExport = false }: Props) {
+export default function DashboardClient({ initialData, initialTab = "summary" }: Props) {
   const weekly = initialData.weekly;
   const defaultTrendBounds = trendDateBounds(weekly, initialData.meta.selected_week_start);
   const defaultC3Bounds = c3DateBounds(
@@ -2171,7 +2380,7 @@ export default function DashboardClient({ initialData, enableImageExport = false
   );
 
   const [selectedWeekStart, setSelectedWeekStart] = useState(initialData.meta.selected_week_start);
-  const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
+  const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab);
   const [trendFromDate, setTrendFromDate] = useState(defaultTrendBounds.from);
   const [trendToDate, setTrendToDate] = useState(defaultTrendBounds.to);
   const [c3FromDate, setC3FromDate] = useState(defaultC3Bounds.from);
@@ -2181,6 +2390,7 @@ export default function DashboardClient({ initialData, enableImageExport = false
   const summaryPrintableRef = useRef<HTMLDivElement>(null);
   const trendsPrintableRef = useRef<HTMLDivElement>(null);
   const c3PrintableRef = useRef<HTMLDivElement>(null);
+  const summaryImagePrintableRef = useRef<HTMLDivElement>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingImage, setIsExportingImage] = useState(false);
   const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
@@ -2272,6 +2482,15 @@ export default function DashboardClient({ initialData, enableImageExport = false
     }
     return groups;
   }, [summaryInfographicGroups]);
+  const summaryMetricsById = useMemo(() => {
+    const metrics = new Map<string, SummaryInfographicMetric>();
+    for (const group of summaryInfographicGroups) {
+      for (const metric of group.metrics) {
+        metrics.set(metric.id, metric);
+      }
+    }
+    return metrics;
+  }, [summaryInfographicGroups]);
 
   const currentIncidents = useMemo(
     () => incidentsForWeek(initialData.incidents, selectedWeekStart),
@@ -2326,7 +2545,7 @@ export default function DashboardClient({ initialData, enableImageExport = false
   const c3OverallBreakdown = c3TrackerSummary.breakdown;
   const c3OverallTotals = c3TrackerSummary.totals;
   const c3OverallResolutionRatio = c3TrackerSummary.totals.resolution_ratio;
-  const activeTabLabel = DASHBOARD_TABS.find((tab) => tab.id === activeTab)?.label ?? "Summary";
+  const activeTabLabel = SUMMARY_IMAGE_TABS.find((tab) => tab.id === activeTab)?.label ?? "Summary";
   const c3BacklogTop3 = useMemo(
     () =>
       [...c3OverallBreakdown]
@@ -2359,6 +2578,40 @@ export default function DashboardClient({ initialData, enableImageExport = false
   const currentWeekC3LoggedBreakdown = useMemo(
     () => weekChartDataFromSection(initialData.sections.c3_requests, currentWeekStart),
     [currentWeekStart, initialData.sections.c3_requests]
+  );
+  const summaryImageWeekRange = useMemo(
+    () => (currentWeek ? formatSummaryImageWeekRange(currentWeek.week_start, currentWeek.week_end) : `${formatWeekDate(selectedWeekStart)}.`),
+    [currentWeek, selectedWeekStart]
+  );
+  const summaryImageCards = useMemo(
+    () =>
+      SUMMARY_IMAGE_LAYOUT.map((row) =>
+        row
+          .map((card) => {
+            const group = summaryGroupsById[card.groupId];
+            if (!group) {
+              return null;
+            }
+
+            return {
+              groupId: card.groupId,
+              title: group.title,
+              accent: group.accent,
+              iconColor: group.iconColor ?? (group.accent === BRAND.colors.black ? BRAND.colors.white : BRAND.colors.black),
+              iconPath: card.iconPath,
+              iconScale: card.iconScale,
+              iconComponent: card.iconComponent,
+              description: card.description,
+              metrics: card.metrics.map((metric) => ({
+                ...metric,
+                value: summaryMetricsById.get(metric.id)?.current ?? null
+              })),
+              wide: card.wide
+            };
+          })
+          .filter((card): card is NonNullable<typeof card> => card !== null)
+      ),
+    [summaryGroupsById, summaryMetricsById]
   );
 
   const toPillarMetrics = useCallback(
@@ -2423,12 +2676,15 @@ export default function DashboardClient({ initialData, enableImageExport = false
     if (window.matchMedia("(max-width: 767px)").matches) {
       return;
     }
-    const exportRefByTab: Record<DashboardTab, RefObject<HTMLDivElement | null>> = {
+    const exportRefByTab: Record<StandardDashboardTab, RefObject<HTMLDivElement | null>> = {
       main: mainPrintableRef,
       summary: summaryPrintableRef,
       trends: trendsPrintableRef,
       c3: c3PrintableRef
     };
+    if (activeTab === "summary-image") {
+      return;
+    }
     const exportNode = exportRefByTab[activeTab].current;
     if (!exportNode) {
       return;
@@ -2438,7 +2694,7 @@ export default function DashboardClient({ initialData, enableImageExport = false
       ? `${currentWeek.week_start}_to_${currentWeek.week_end}`
       : selectedWeekStart;
 
-    const pdfMetaByTab: Record<DashboardTab, { title: string; detailLine: string }> = {
+    const pdfMetaByTab: Record<StandardDashboardTab, { title: string; detailLine: string }> = {
       main: {
         title: "Current Week",
         detailLine: `Detailed operational results across each CID focus area from ${selectedWeekRange}.`
@@ -2470,21 +2726,11 @@ export default function DashboardClient({ initialData, enableImageExport = false
     }
   }
 
-  async function handlePrintScreenshot() {
+  async function handleExportSummaryImage() {
     if (typeof window === "undefined") {
       return;
     }
-    if (window.matchMedia("(max-width: 767px)").matches) {
-      return;
-    }
-
-    const exportRefByTab: Record<DashboardTab, RefObject<HTMLDivElement | null>> = {
-      main: mainPrintableRef,
-      summary: summaryPrintableRef,
-      trends: trendsPrintableRef,
-      c3: c3PrintableRef
-    };
-    const exportNode = exportRefByTab[activeTab].current;
+    const exportNode = summaryImagePrintableRef.current;
     if (!exportNode) {
       return;
     }
@@ -2495,10 +2741,11 @@ export default function DashboardClient({ initialData, enableImageExport = false
         ? `${currentWeek.week_start}_to_${currentWeek.week_end}`
         : selectedWeekStart;
 
-      await exportDashboardPng({
+      await exportNodePng({
         exportNode,
-        tab: activeTab,
-        weekToken
+        downloadName: `lgcid-summary-image-${weekToken}.png`,
+        width: SUMMARY_IMAGE_EXPORT_WIDTH,
+        height: SUMMARY_IMAGE_EXPORT_HEIGHT
       });
     } finally {
       setIsExportingImage(false);
@@ -2547,24 +2794,15 @@ export default function DashboardClient({ initialData, enableImageExport = false
               </p>
             </div>
             <div className="hidden flex-wrap justify-start gap-3 md:flex lg:justify-end">
-              <button
-                type="button"
-                onClick={handlePrintPdf}
-                disabled={isExportingPdf}
-                className="inline-flex items-center gap-3 rounded-[14px] border-1 border-white px-6 py-2 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Printer className="h-5 w-5" strokeWidth={2.2} aria-hidden />
-                <span>{isExportingPdf ? "Preparing..." : "Print"}</span>
-              </button>
-              {enableImageExport ? (
+              {activeTab !== "summary-image" ? (
                 <button
                   type="button"
-                  onClick={handlePrintScreenshot}
-                  disabled={isExportingImage}
-                  className="inline-flex items-center gap-3 rounded-[14px] border-1 border-white/55 px-6 py-2 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:border-white hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={handlePrintPdf}
+                  disabled={isExportingPdf}
+                  className="inline-flex items-center gap-3 rounded-[14px] border-1 border-white px-6 py-2 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <File className="h-5 w-5" strokeWidth={2.2} aria-hidden />
-                  <span>{isExportingImage ? "Preparing..." : "Export Image"}</span>
+                  <Printer className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+                  <span>{isExportingPdf ? "Preparing..." : "Print"}</span>
                 </button>
               ) : null}
             </div>
@@ -2598,16 +2836,23 @@ export default function DashboardClient({ initialData, enableImageExport = false
 
       <section className="md:sticky md:top-0 md:z-30" style={{ backgroundColor: BRAND.colors.pageBackground }}>
         <div className="dashboard-container py-1 md:py-2">
-          {activeTab === "main" || activeTab === "summary" ? (
+          {activeTab === "main" || activeTab === "summary" || activeTab === "summary-image" ? (
             <DashboardTopPanel
               title={activeTabLabel}
-              icon={FileText}
+              icon={activeTab === "summary-image" ? File : FileText}
               description={
-                <p>{activeTab === "summary" ? "Activity report showing the key metrics from " : "Detailed operational results across each CID focus area from "}
-                <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}>{selectedWeekRange}.</span></p>
+                activeTab === "summary-image" ? (
+                  <p>
+                    Generate the stakeholder-ready PNG for
+                    <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}> {summaryImageWeekRange}</span>
+                  </p>
+                ) : (
+                  <p>{activeTab === "summary" ? "Activity report showing the key metrics from " : "Detailed operational results across each CID focus area from "}
+                  <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}>{selectedWeekRange}.</span></p>
+                )
               }
               controls={
-                <div className="grid gap-4 md:grid-cols-[160px_minmax(0,1fr)]">
+                <div className={clsx("grid gap-4", activeTab === "summary-image" ? "md:grid-cols-[160px_minmax(0,1fr)_auto]" : "md:grid-cols-[160px_minmax(0,1fr)]")}>
                   <SelectField
                     id="dashboard-year"
                     label="Year"
@@ -2645,6 +2890,19 @@ export default function DashboardClient({ initialData, enableImageExport = false
                       </option>
                     ))}
                   </SelectField>
+                  {activeTab === "summary-image" ? (
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={handleExportSummaryImage}
+                        disabled={isExportingImage}
+                        className="inline-flex min-h-12 items-center justify-center gap-3 rounded-[14px] border border-black bg-black px-6 py-3 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <File className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+                        <span>{isExportingImage ? "Preparing..." : "Export PNG"}</span>
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               }
             />
@@ -2782,7 +3040,6 @@ export default function DashboardClient({ initialData, enableImageExport = false
 
         {activeTab === "main" ? (
         <div ref={mainPrintableRef} className="space-y-6">
-          <ExportImageHeader />
           <section id="current-week" className="card-frame bg-transparent p-0">
           {currentWeek?.record_status === "NO_DATA_REPORTED" ? (
             <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
@@ -2939,13 +3196,11 @@ export default function DashboardClient({ initialData, enableImageExport = false
             </div>
           </div>
           </section>
-          <ExportImageFooter />
         </div>
         ) : null}
 
         {activeTab === "summary" ? (
           <div ref={summaryPrintableRef}>
-            <ExportImageHeader />
             <section id="summary-infographic">
               {currentWeek?.record_status === "NO_DATA_REPORTED" ? (
                 <div className="border border-dashed border-black p-5 text-center font-semibold">{NO_DATA_LABEL}</div>
@@ -2966,13 +3221,21 @@ export default function DashboardClient({ initialData, enableImageExport = false
                 </div>
               )}
             </section>
-            <ExportImageFooter />
           </div>
+        ) : null}
+
+        {activeTab === "summary-image" ? (
+          <section className="summary-image-preview">
+            <div className="summary-image-preview__viewport">
+              <div ref={summaryImagePrintableRef}>
+                <SummaryImageCanvas selectedWeekRange={summaryImageWeekRange} cards={summaryImageCards} />
+              </div>
+            </div>
+          </section>
         ) : null}
 
         {activeTab === "trends" ? (
           <div ref={trendsPrintableRef}>
-            <ExportImageHeader />
             <section id="trends" className="py-1">
             {trendSeries.length ? (
               <div className="grid gap-5 lg:grid-cols-2">
@@ -3070,13 +3333,11 @@ export default function DashboardClient({ initialData, enableImageExport = false
               </div>
             )}
             </section>
-            <ExportImageFooter />
           </div>
         ) : null}
 
         {activeTab === "c3" ? (
           <div ref={c3PrintableRef}>
-            <ExportImageHeader />
             <section id="c3" className="space-y-6 rounded-[24px] border-0 bg-transparent p-0 shadow-none">
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             <article className="rounded-[24px] border border-black/10 bg-white px-8 py-5" style={{ boxShadow: `0 2px 10px ${BRAND.colors.shadowMediumCool}` }}>
@@ -3286,8 +3547,7 @@ export default function DashboardClient({ initialData, enableImageExport = false
               </div>
             </div>
           </div>
-            </section>
-            <ExportImageFooter />
+          </section>
           </div>
         ) : null}
 

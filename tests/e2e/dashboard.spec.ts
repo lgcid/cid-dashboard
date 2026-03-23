@@ -141,7 +141,7 @@ test("c3 tracker reflects a fixed date range and expected totals", async ({ page
   await expect(page.locator("article", { hasText: "Resolution Rate" })).toContainText("22%");
 });
 
-test("pdf export downloads by default and image export remains available via query parameter", async ({ page }) => {
+test("pdf export downloads by default and summary image export is available on the hidden route", async ({ page }) => {
   await page.goto("/");
 
   let downloadPromise = page.waitForEvent("download");
@@ -150,31 +150,16 @@ test("pdf export downloads by default and image export remains available via que
 
   expect(download.suggestedFilename()).toMatch(/^lgcid-summary-.*\.pdf$/);
 
-  await page.goto("/?export=image");
+  await page.goto("/?tab=summary-image");
+
+  await expect(page.getByRole("heading", { name: "Summary Image", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Weekly Operational Performance", level: 1 })).toBeVisible();
 
   downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export Image" }).click();
+  await page.getByRole("button", { name: "Export PNG" }).click();
   download = await downloadPromise;
 
-  expect(download.suggestedFilename()).toMatch(/^lgcid-summary-.*\.png$/);
-
-  await page.getByRole("button", { name: "Trends" }).click();
-  await page.locator("#trends-from-date").fill("2026-02-23");
-  await page.locator("#trends-to-date").fill("2026-03-02");
-
-  const trendSvgs = page.locator("#trends .recharts-responsive-container svg");
-  const trendCurves = page.locator("#trends .recharts-line-curve");
-
-  await expect(trendSvgs.first()).toBeVisible();
-  expect(await trendCurves.count()).toBeGreaterThan(0);
-
-  await page.getByRole("button", { name: "C3 Tracker" }).click();
-
-  const c3Svgs = page.locator("#c3 .recharts-responsive-container svg");
-  const c3Bars = page.locator("#c3 .recharts-bar-rectangle");
-
-  await expect(c3Svgs.first()).toBeVisible();
-  expect(await c3Bars.count()).toBeGreaterThan(0);
+  expect(download.suggestedFilename()).toMatch(/^lgcid-summary-image-.*\.png$/);
 });
 
 test("interactive dashboard buttons expose the pointer cursor", async ({ page }) => {

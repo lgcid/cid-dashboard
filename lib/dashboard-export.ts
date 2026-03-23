@@ -5,9 +5,10 @@ import { BRAND } from "@/lib/config";
 export type DashboardExportTab = "main" | "summary" | "trends" | "c3";
 
 export const SCREENSHOT_EXPORT_SCALE = 2;
-export const DASHBOARD_EXPORT_MODE_CLASS = "dashboard-export-mode";
 export const SUMMARY_EXPORT_MODE_CLASS = "summary-export-mode";
 export const PDF_EXPORT_MODE_CLASS = "dashboard-pdf-export-mode";
+export const SUMMARY_IMAGE_EXPORT_WIDTH = 1414;
+export const SUMMARY_IMAGE_EXPORT_HEIGHT = 2000;
 
 const A4_WIDTH_PT = 595.28;
 const A4_HEIGHT_PT = 841.89;
@@ -58,10 +59,16 @@ function buildDashboardPdfFilename(tab: DashboardExportTab, weekToken: string): 
 
 async function renderDashboardNodeToPng({
   exportNode,
+  exportWidth,
+  exportHeight,
+  canvasScale = SCREENSHOT_EXPORT_SCALE,
   modeClass,
   filter
 }: {
   exportNode: HTMLElement;
+  exportWidth?: number;
+  exportHeight?: number;
+  canvasScale?: number;
   modeClass?: string;
   filter?: (node: HTMLElement) => boolean;
 }): Promise<{ pngDataUrl: string; width: number; height: number }> {
@@ -80,29 +87,29 @@ async function renderDashboardNodeToPng({
       await fonts.ready;
     }
 
-    const exportWidth = Math.ceil(exportNode.scrollWidth);
-    const exportHeight = Math.ceil(exportNode.scrollHeight);
+    const measuredWidth = exportWidth ?? Math.ceil(exportNode.scrollWidth);
+    const measuredHeight = exportHeight ?? Math.ceil(exportNode.scrollHeight);
     const fontEmbedCSS = await getFontEmbedCSS(exportNode);
     const pngDataUrl = await toPng(exportNode, {
       backgroundColor: BRAND.colors.white,
       cacheBust: true,
-      width: exportWidth,
-      height: exportHeight,
-      canvasWidth: exportWidth * SCREENSHOT_EXPORT_SCALE,
-      canvasHeight: exportHeight * SCREENSHOT_EXPORT_SCALE,
+      width: measuredWidth,
+      height: measuredHeight,
+      canvasWidth: measuredWidth * canvasScale,
+      canvasHeight: measuredHeight * canvasScale,
       pixelRatio: 1,
       fontEmbedCSS,
       filter: filter ? (node) => !(node instanceof HTMLElement) || filter(node) : undefined,
       style: {
-        width: `${exportWidth}px`,
-        height: `${exportHeight}px`
+        width: `${measuredWidth}px`,
+        height: `${measuredHeight}px`
       }
     });
 
     return {
       pngDataUrl,
-      width: exportWidth,
-      height: exportHeight
+      width: measuredWidth,
+      height: measuredHeight
     };
   } finally {
     if (modeClass) {
@@ -455,20 +462,25 @@ function addBlockImageWithPagination({
   return pageCursorY;
 }
 
-export async function exportDashboardPng({
+export async function exportNodePng({
   exportNode,
-  tab,
-  weekToken
+  downloadName,
+  width,
+  height,
+  canvasScale = 1
 }: {
   exportNode: HTMLElement;
-  tab: DashboardExportTab;
-  weekToken: string;
+  downloadName: string;
+  width?: number;
+  height?: number;
+  canvasScale?: number;
 }): Promise<{ downloadName: string; pngDataUrl: string }> {
-  const downloadName = buildDashboardExportFilename(tab, weekToken);
   const targetDocument = exportNode.ownerDocument;
   const { pngDataUrl } = await renderDashboardNodeToPng({
     exportNode,
-    modeClass: DASHBOARD_EXPORT_MODE_CLASS
+    exportWidth: width,
+    exportHeight: height,
+    canvasScale
   });
 
   const link = targetDocument.createElement("a");
