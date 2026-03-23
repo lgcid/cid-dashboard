@@ -33,5 +33,6 @@ pnpm-debug.log*
 # AI tools
 .playwright-cli
 .claude
+.worktrees
 .env*.local
-/output/playwright
+/output*

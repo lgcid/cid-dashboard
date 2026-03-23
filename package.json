@@ -19,8 +19,8 @@
     "googleapis": "^171.4.0",
     "html-to-image": "^1.11.13",
     "jspdf": "^4.2.1",
-    "lucide-react": "^0.577.0",
-    "next": "^16.1.6",
+    "lucide-react": "^1.0.1",
+    "next": "^16.2.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "recharts": "^3.8.0",
@@ -29,18 +29,18 @@
   "devDependencies": {
     "@eslint/compat": "^2.0.3",
     "@playwright/test": "^1.58.2",
-    "@tailwindcss/postcss": "^4.2.1",
+    "@tailwindcss/postcss": "^4.2.2",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "eslint": "^10.0.3",
-    "eslint-config-next": "^16.1.6",
-    "jsdom": "^28.1.0",
+    "eslint": "^10.1.0",
+    "eslint-config-next": "^16.2.1",
+    "jsdom": "^29.0.1",
     "postcss": "^8.4.49",
-    "tailwindcss": "^4.2.1",
+    "tailwindcss": "^4.2.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "vitest": "^4.1.0"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.1"
   }
 }
