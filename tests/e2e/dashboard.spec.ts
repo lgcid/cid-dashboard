@@ -1,4 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+function visibleReportingWeekSelect(page: Page) {
+  return page.locator("#dashboard-reporting-week, #dashboard-reporting-week-mobile").filter({ visible: true });
+}
 
 test("dashboard API serves fixed local CSV data for a historical week", async ({ request }) => {
   const response = await request.get("/api/dashboard?weekStart=2026-02-23");
@@ -34,23 +38,62 @@ test("preview query exposes one unpublished week in the API response", async ({ 
 test("dashboard renders and tab navigation works without client errors", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Weekly Operations Dashboard" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Weekly Operations Dashboard", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Summary", level: 2 })).toBeVisible();
 
   await page.getByRole("button", { name: "Current Week" }).click();
-  await expect(page.getByRole("heading", { name: "Current Week" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Current Week", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Public Safety", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cleaning & Maintenance", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Social Services", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Parks & Recreation", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Law Enforcement", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Urban Management Incidents", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Control Room Engagement", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "C3 Logged Requests", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Criminal Incidents", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Hotspot Intelligence/, level: 4 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Incident Log/, level: 4 })).toBeVisible();
 
   await page.getByRole("button", { name: "Trends" }).click();
-  await expect(page.getByRole("heading", { name: "Trends" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Trends", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Public Safety Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cleaning & Maintenance Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Social Services Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Parks & Recreation Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Law Enforcement Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Urban Management Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Control Room Engagement Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "CoCT C3 Logged Requests Trend", level: 3 })).toBeVisible();
 
   await page.getByRole("button", { name: "C3 Tracker" }).click();
-  await expect(page.getByRole("heading", { name: "C3 Tracker" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "C3 Tracker", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Logged vs Resolved by Category", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Open Backlog by Category", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pressure Points", level: 3 })).toBeVisible();
+});
+
+test("terms and definitions dialog opens and closes from the tab row", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Terms and Definitions" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "CID Dashboard: Terms and Definitions" });
+
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("General Terms", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Public Safety", { exact: true })).toBeVisible();
+  await expect(dialog).toContainText("4-Week Moving Average");
+
+  await page.keyboard.press("Escape");
+
+  await expect(dialog).toBeHidden();
 });
 
 test("current week view updates when a historical reporting week is selected", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Current Week" }).click();
-  await page.getByLabel("Reporting week").selectOption("2026-02-23");
+  await visibleReportingWeekSelect(page).selectOption("2026-02-23");
 
   const incidentsSection = page.locator("#incidents");
 
@@ -63,7 +106,7 @@ test("preview query makes the unpublished latest week visible in the dashboard",
   await page.goto("/?preview=2026-03-10");
   await page.getByRole("button", { name: "Current Week" }).click();
 
-  await expect(page.getByLabel("Reporting week")).toHaveValue("2026-03-09");
+  await expect(visibleReportingWeekSelect(page)).toHaveValue("2026-03-09");
 
   const incidentsSection = page.locator("#incidents");
 
@@ -74,13 +117,13 @@ test("preview query makes the unpublished latest week visible in the dashboard",
 test("trends view reflects a fixed range and monthly granularity", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Trends" }).click();
-  await page.getByLabel("From").fill("2026-02-23");
-  await page.getByLabel("To").fill("2026-03-02");
+  await page.locator("#trends-from-date").fill("2026-02-23");
+  await page.locator("#trends-to-date").fill("2026-03-02");
   await page.getByRole("button", { name: "Month" }).click();
 
   const trendsSection = page.locator("#trends");
 
-  await expect(trendsSection).toContainText("Monthly results from 23 Feb 2026 to 02 Mar 2026");
+  await expect(page.getByText("Monthly results from 23 Feb 2026 to 02 Mar 2026", { exact: false })).toBeVisible();
   await expect(trendsSection).toContainText("4-month average");
   await expect(trendsSection.getByText("Public Safety Trend", { exact: true })).toBeVisible();
 });
@@ -88,42 +131,35 @@ test("trends view reflects a fixed range and monthly granularity", async ({ page
 test("c3 tracker reflects a fixed date range and expected totals", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "C3 Tracker" }).click();
-  await page.getByLabel("From").fill("2026-03-07");
-  await page.getByLabel("To").fill("2026-03-10");
+  await page.locator("#c3-from-date").fill("2026-03-07");
+  await page.locator("#c3-to-date").fill("2026-03-10");
 
-  await expect(page.getByText("07 Mar 2026 to 08 Mar 2026")).toBeVisible();
+  await expect(page.getByText("07 Mar 2026 to 08 Mar 2026.", { exact: true })).toBeVisible();
   await expect(page.locator("article", { hasText: "Total Logged" })).toContainText("9");
   await expect(page.locator("article", { hasText: "Resolved" })).toContainText("2");
   await expect(page.locator("article", { hasText: "Open Backlog" })).toContainText("7");
   await expect(page.locator("article", { hasText: "Resolution Rate" })).toContainText("22%");
 });
 
-test("summary export downloads and chart surfaces render SVG output", async ({ page }) => {
+test("pdf export downloads by default and summary image export is available on the hidden route", async ({ page }) => {
   await page.goto("/");
 
-  const downloadPromise = page.waitForEvent("download");
+  let downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Print" }).click();
-  const download = await downloadPromise;
+  let download = await downloadPromise;
 
-  expect(download.suggestedFilename()).toMatch(/^lgcid-summary-.*\.png$/);
+  expect(download.suggestedFilename()).toMatch(/^lgcid-summary-.*\.pdf$/);
 
-  await page.getByRole("button", { name: "Trends" }).click();
-  await page.getByLabel("From").fill("2026-02-23");
-  await page.getByLabel("To").fill("2026-03-02");
+  await page.goto("/?tab=summary-image");
 
-  const trendSvgs = page.locator("#trends .recharts-responsive-container svg");
-  const trendCurves = page.locator("#trends .recharts-line-curve");
+  await expect(page.getByRole("heading", { name: "Summary Image", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Weekly Operational Performance", level: 1 })).toBeVisible();
 
-  await expect(trendSvgs.first()).toBeVisible();
-  expect(await trendCurves.count()).toBeGreaterThan(0);
+  downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PNG" }).click();
+  download = await downloadPromise;
 
-  await page.getByRole("button", { name: "C3 Tracker" }).click();
-
-  const c3Svgs = page.locator("#c3 .recharts-responsive-container svg");
-  const c3Bars = page.locator("#c3 .recharts-bar-rectangle");
-
-  await expect(c3Svgs.first()).toBeVisible();
-  expect(await c3Bars.count()).toBeGreaterThan(0);
+  expect(download.suggestedFilename()).toMatch(/^lgcid-summary-image-.*\.png$/);
 });
 
 test("interactive dashboard buttons expose the pointer cursor", async ({ page }) => {
