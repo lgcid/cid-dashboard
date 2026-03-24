@@ -85,14 +85,14 @@ type TrendGranularity = "week" | "month" | "year";
 type SummaryInfographicGroupId =
   | "safety_response"
   | "law_enforcement"
-  | "urban_management"
-  | "cleaning_urban"
+  | "general_incidents"
+  | "cleaning_maintenance"
   | "social_services"
   | "control_room_engagement"
   | "parks";
 type SummaryInfographicIconKind =
   | "publicSpace"
-  | "urbanManagement"
+  | "generalIncidents"
   | "crime"
   | "arrests"
   | "proactive"
@@ -213,7 +213,7 @@ type TrendChartPoint = {
   period_start: string;
   period_end: string;
   period_label: string;
-  urban_total: number | null;
+  general_incidents_total: number | null;
   fines_total: number | null;
   criminal_incidents: number | null;
   cleaning_bags_collected: number | null;
@@ -221,7 +221,7 @@ type TrendChartPoint = {
   parks_total_bags: number | null;
   contacts_total: number | null;
   c3_logged_total: number | null;
-  urban_ma4: number | null;
+  general_incidents_ma4: number | null;
   fines_total_ma4: number | null;
   criminal_ma4: number | null;
   cleaning_ma4: number | null;
@@ -262,10 +262,10 @@ const CURRENT_WEEK_THEME = {
     iconBackground: BRAND.colors.lawEnforcement,
     iconColor: BRAND.colors.white
   },
-  urban: {
-    accent: BRAND.colors.urbanManagement,
-    headerBackground: BRAND.colors.urbanManagementBackground,
-    iconBackground: BRAND.colors.urbanManagement,
+  generalIncidents: {
+    accent: BRAND.colors.generalIncidents,
+    headerBackground: BRAND.colors.generalIncidentsBackground,
+    iconBackground: BRAND.colors.generalIncidents,
     iconColor: BRAND.colors.white
   },
   neutral: {
@@ -320,10 +320,10 @@ function getTermsAccentStyles(section: DashboardTermsSection) {
         iconBackground: BRAND.colors.lawEnforcement,
         sectionBorder: BRAND.colors.lawEnforcement
       };
-    case "urbanManagement":
+    case "generalIncidents":
       return {
-        iconBackground: BRAND.colors.urbanManagement,
-        sectionBorder: BRAND.colors.urbanManagement
+        iconBackground: BRAND.colors.generalIncidents,
+        sectionBorder: BRAND.colors.generalIncidents
       };
     default:
       return {
@@ -360,17 +360,17 @@ const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
     iconColor: BRAND.colors.white
   },
   {
-    id: "urban_management",
-    title: "Urban Management",
+    id: "general_incidents",
+    title: "General Incidents",
     description: "Operational incidents and actions",
-    accent: BRAND.colors.urbanManagement,
-    headingAccent: BRAND.colors.urbanManagement,
-    background: BRAND.colors.urbanManagementBackground,
+    accent: BRAND.colors.generalIncidents,
+    headingAccent: BRAND.colors.generalIncidents,
+    background: BRAND.colors.generalIncidentsBackground,
     headerTextColor: BRAND.colors.textStrong,
     iconColor: BRAND.colors.white
   },
   {
-    id: "cleaning_urban",
+    id: "cleaning_maintenance",
     title: "Cleaning & Maintenance",
     description: "Street and public area maintenance",
     accent: BRAND.colors.cleaning,
@@ -410,17 +410,17 @@ const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
 
 const SUMMARY_INFOGRAPHIC_RENDER_ORDER: SummaryInfographicGroupId[] = [
   "safety_response",
-  "cleaning_urban",
+  "cleaning_maintenance",
   "law_enforcement",
-  "urban_management",
+  "general_incidents",
   "social_services",
   "parks",
   "control_room_engagement"
 ];
 
 const SUMMARY_INFOGRAPHIC_ROWS: SummaryInfographicGroupId[][] = [
-  ["safety_response", "cleaning_urban"],
-  ["law_enforcement", "urban_management", "social_services"],
+  ["safety_response", "cleaning_maintenance"],
+  ["law_enforcement", "general_incidents", "social_services"],
   ["parks", "control_room_engagement"]
 ];
 
@@ -436,20 +436,20 @@ const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
     key: "public_space_interventions"
   },
   { id: "fines_issued", label: "Fines issued", icon: "file", groupId: "law_enforcement", derived: "fines_issued" },
-  { id: "urban_total", label: "Total incidents", icon: "urbanManagement", groupId: "urban_management", key: "urban_total" },
+  { id: "general_incidents_total", label: "Total incidents", icon: "generalIncidents", groupId: "general_incidents", key: "general_incidents_total" },
   {
     id: "cleaning_total_bags",
     label: "Cleaning bags collected",
     icon: "cleaningBags",
-    groupId: "cleaning_urban",
+    groupId: "cleaning_maintenance",
     derived: "cleaning_total_bags"
   },
-  { id: "cleaning_servitudes_cleaned", label: "Servitudes cleaned", icon: "shelter", groupId: "cleaning_urban", key: "cleaning_servitudes_cleaned" },
+  { id: "cleaning_servitudes_cleaned", label: "Servitudes cleaned", icon: "shelter", groupId: "cleaning_maintenance", key: "cleaning_servitudes_cleaned" },
   {
     id: "cleaning_stormwater_drains_cleaned",
     label: "Stormwater drains cleaned",
     icon: "drain",
-    groupId: "cleaning_urban",
+    groupId: "cleaning_maintenance",
     key: "cleaning_stormwater_drains_cleaned"
   },
   {
@@ -496,7 +496,7 @@ const SUMMARY_IMAGE_LAYOUT: Array<
       ]
     },
     {
-      groupId: "cleaning_urban",
+      groupId: "cleaning_maintenance",
       iconPath: "/icons/cleaning.svg",
       iconScale: 1,
       description: "Street and public area cleaning and maintenance",
@@ -534,10 +534,10 @@ const SUMMARY_IMAGE_LAYOUT: Array<
       metrics: [{ id: "fines_issued", label: "Fines Issued", spanTwoColumns: true }]
     },
     {
-      groupId: "urban_management",
+      groupId: "general_incidents",
       iconComponent: Building2,
       description: "Operational incidents and actions",
-      metrics: [{ id: "urban_total", label: "Total Incidents", spanTwoColumns: true }]
+      metrics: [{ id: "general_incidents_total", label: "Total Incidents", spanTwoColumns: true }]
     }
   ],
   [
@@ -901,8 +901,8 @@ function TrendTooltip({
         parks_total_bags_ma4: { swatchStyle: "dotted" },
         fines_total: { swatchStyle: "solid" },
         fines_total_ma4: { swatchStyle: "dotted" },
-        urban_total: { swatchStyle: "solid" },
-        urban_ma4: { swatchStyle: "dotted" },
+        general_incidents_total: { swatchStyle: "solid" },
+        general_incidents_ma4: { swatchStyle: "dotted" },
         contacts_total: { swatchStyle: "solid" },
         contacts_total_ma4: { swatchStyle: "dotted" },
         c3_logged_total: { swatchStyle: "solid" },
@@ -1239,7 +1239,7 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
     period_start: string;
     period_end: string;
     period_label: string;
-    urban_total: number | null;
+    general_incidents_total: number | null;
     fines_total: number | null;
     criminal_incidents: number | null;
     cleaning_bags_collected: number | null;
@@ -1255,7 +1255,7 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
         period_start: row.week_start,
         period_end: row.week_end,
         period_label: formatIsoWithPattern(row.week_start, "dd MMM"),
-        urban_total: toMetricNumber(row.metrics.urban_total),
+        general_incidents_total: toMetricNumber(row.metrics.general_incidents_total),
         fines_total: trendFinesTotal(row),
         criminal_incidents: toMetricNumber(row.metrics.criminal_incidents),
         cleaning_bags_collected: trendCleaningTotal(row),
@@ -1272,7 +1272,7 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
         period_start: string;
         period_end: string;
         period_label: string;
-        urban: number[];
+        generalIncidents: number[];
         fines: number[];
         criminal: number[];
         cleaning: number[];
@@ -1296,7 +1296,7 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
           period_start: row.week_start,
           period_end: row.week_end,
           period_label: periodLabel,
-          urban: [],
+          generalIncidents: [],
           fines: [],
           criminal: [],
           cleaning: [],
@@ -1313,7 +1313,7 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
       }
 
       bucket.period_end = row.week_end;
-      const urban = toMetricNumber(row.metrics.urban_total);
+      const generalIncidents = toMetricNumber(row.metrics.general_incidents_total);
       const fines = trendFinesTotal(row);
       const criminal = toMetricNumber(row.metrics.criminal_incidents);
       const cleaning = trendCleaningTotal(row);
@@ -1322,8 +1322,8 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
       const contacts = trendContactsTotal(row);
       const c3Logged = trendC3LoggedTotal(row);
 
-      if (urban !== null) {
-        bucket.urban.push(urban);
+      if (generalIncidents !== null) {
+        bucket.generalIncidents.push(generalIncidents);
       }
       if (fines !== null) {
         bucket.fines.push(fines);
@@ -1353,7 +1353,7 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
         period_start: bucket.period_start,
         period_end: bucket.period_end,
         period_label: bucket.period_label,
-        urban_total: sumMetric(bucket.urban),
+        general_incidents_total: sumMetric(bucket.generalIncidents),
         fines_total: sumMetric(bucket.fines),
         criminal_incidents: sumMetric(bucket.criminal),
         cleaning_bags_collected: sumMetric(bucket.cleaning),
@@ -1365,7 +1365,7 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
     }
   }
 
-  const urbanValues = aggregated.map((point) => point.urban_total);
+  const generalIncidentsValues = aggregated.map((point) => point.general_incidents_total);
   const finesValues = aggregated.map((point) => point.fines_total);
   const crimeValues = aggregated.map((point) => point.criminal_incidents);
   const cleaningValues = aggregated.map((point) => point.cleaning_bags_collected);
@@ -1376,7 +1376,7 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
 
   return aggregated.map((point, index) => ({
     ...point,
-    urban_ma4: movingAverage(urbanValues, index, 4),
+    general_incidents_ma4: movingAverage(generalIncidentsValues, index, 4),
     fines_total_ma4: movingAverage(finesValues, index, 4),
     criminal_ma4: movingAverage(crimeValues, index, 4),
     cleaning_ma4: movingAverage(cleaningValues, index, 4),
@@ -1730,7 +1730,7 @@ function SummaryInfographicIcon({ kind, className }: { kind: SummaryInfographicI
     return <SquareUserRound className={className} strokeWidth={1.7} aria-hidden />;
   }
 
-  if (kind === "urbanManagement") {
+  if (kind === "generalIncidents") {
     return <Building2 className={className} strokeWidth={1.7} aria-hidden />;
   }
 
@@ -2668,9 +2668,9 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
   );
   const currentWeekStart = currentWeek?.week_start ?? null;
   const previousWeekStart = previousWeek?.week_start ?? null;
-  const currentWeekUrbanBreakdown = useMemo(
-    () => weekChartDataFromSection(initialData.sections.urban_management, currentWeekStart),
-    [currentWeekStart, initialData.sections.urban_management]
+  const currentWeekGeneralIncidentsBreakdown = useMemo(
+    () => weekChartDataFromSection(initialData.sections.general_incidents, currentWeekStart),
+    [currentWeekStart, initialData.sections.general_incidents]
   );
   const currentWeekLawEnforcementBreakdown = useMemo(
     () => [
@@ -2895,7 +2895,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em]">Lower Gardens City Improvement District</p>
               <h1 className="mt-3 max-w-4xl text-3xl font-bold leading-tight md:text-5xl">Weekly Operations Dashboard</h1>
               <p className="mt-3 max-w-3xl text-sm md:text-base">
-                Weekly and historical operational performance for stakeholders, covering safety, cleaning, social upliftment, and urban management.
+                Weekly and historical operational performance for stakeholders, covering safety, cleaning, social upliftment, and general incidents.
               </p>
               <p className="mt-9 font-[var(--font-heading)] text-[0.83rem] font-semibold uppercase tracking-[0.08em] text-white/92">
                 Last Update <strong>{formatDataUpdate(initialData.meta.data_updated_at)}</strong>
@@ -3189,10 +3189,10 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 />
 
                 <CurrentWeekBreakdownChart
-                  title="Urban Management Incidents"
-                  data={currentWeekUrbanBreakdown}
-                  color={BRAND.colors.urbanManagement}
-                  theme="urban"
+                  title="General Incidents"
+                  data={currentWeekGeneralIncidentsBreakdown}
+                  color={BRAND.colors.generalIncidents}
+                  theme="generalIncidents"
                   icon={Building2}
                 />
               </div>
@@ -3407,12 +3407,12 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 />
 
                 <TrendLineCard
-                  title="Urban Management Trend"
+                  title="General Incidents Trend"
                   data={trendSeries}
                   granularity={trendGranularity}
-                  dataKey="urban_total"
-                  averageKey="urban_ma4"
-                  stroke={BRAND.colors.urbanManagement}
+                  dataKey="general_incidents_total"
+                  averageKey="general_incidents_ma4"
+                  stroke={BRAND.colors.generalIncidents}
                   dataName={`${trendPeriodLabel} incidents`}
                   averageName={trendAverageLabel}
                 />

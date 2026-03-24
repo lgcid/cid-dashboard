@@ -45,7 +45,7 @@ describe("dashboard data pipeline", () => {
     expect(data.source).toBe("local_csv");
     expect(Object.keys(data.sections)).toEqual(
       expect.arrayContaining([
-        "urban_management",
+        "general_incidents",
         "public_safety",
         "law_enforcement",
         "cleaning",

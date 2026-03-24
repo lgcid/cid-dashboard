@@ -3,7 +3,7 @@ export type RecordStatus = "REPORTED" | "NO_DATA_REPORTED";
 export type NullableNumber = number | null;
 
 export const SECTION_KEYS = [
-  "urban_management",
+  "general_incidents",
   "public_safety",
   "law_enforcement",
   "cleaning",
@@ -40,7 +40,7 @@ export interface SectionData {
 export type SectionMap = Record<SectionKey, SectionData>;
 
 export interface HardcodedWeeklyMetrics {
-  urban_total: NullableNumber;
+  general_incidents_total: NullableNumber;
   criminal_incidents: NullableNumber;
   arrests_made: NullableNumber;
   section56_notices: NullableNumber;
@@ -87,11 +87,11 @@ export interface C3RequestRow {
 export interface DerivedTrendPoint {
   week_start: string;
   week_label: string;
-  urban_total: NullableNumber;
+  general_incidents_total: NullableNumber;
   criminal_incidents: NullableNumber;
   cleaning_bags_collected: NullableNumber;
   contacts_total: NullableNumber;
-  urban_ma4: NullableNumber;
+  general_incidents_ma4: NullableNumber;
   criminal_ma4: NullableNumber;
   cleaning_ma4: NullableNumber;
   contacts_total_ma4: NullableNumber;

@@ -146,7 +146,7 @@ export function buildWeeklyRows(
     return {
       ...week,
       metrics: {
-        urban_total: sumSectionForWeek(sections.urban_management, weekStart),
+        general_incidents_total: sumSectionForWeek(sections.general_incidents, weekStart),
         criminal_incidents: criminalIncidents,
         arrests_made: arrestsMade,
         section56_notices: section56Notices,
@@ -188,7 +188,9 @@ function movingAverage(values: Array<number | null>, index: number, windowSize =
 
 export function buildTrendSeries(rows: WeeklyMetricRow[]): DerivedTrendPoint[] {
   const sorted = sortWeekly(rows);
-  const urban = sorted.map((row) => (row.record_status === "REPORTED" ? toNumber(row.metrics.urban_total) : null));
+  const generalIncidents = sorted.map((row) =>
+    (row.record_status === "REPORTED" ? toNumber(row.metrics.general_incidents_total) : null)
+  );
   const crimes = sorted.map((row) => (row.record_status === "REPORTED" ? toNumber(row.metrics.criminal_incidents) : null));
   const cleaning = sorted.map((row) => {
     if (row.record_status !== "REPORTED") {
@@ -219,11 +221,11 @@ export function buildTrendSeries(rows: WeeklyMetricRow[]): DerivedTrendPoint[] {
     return {
       week_start: row.week_start,
       week_label: weekLabel,
-      urban_total: urban[index],
+      general_incidents_total: generalIncidents[index],
       criminal_incidents: crimes[index],
       cleaning_bags_collected: cleaning[index],
       contacts_total: contacts[index],
-      urban_ma4: movingAverage(urban, index, 4),
+      general_incidents_ma4: movingAverage(generalIncidents, index, 4),
       criminal_ma4: movingAverage(crimes, index, 4),
       cleaning_ma4: movingAverage(cleaning, index, 4),
       contacts_total_ma4: movingAverage(contacts, index, 4)

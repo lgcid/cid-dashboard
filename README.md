@@ -131,7 +131,7 @@ npx vercel env pull .env.local
 ## Data Flow
 
 1. Dashboard data is maintained in CSV files:
-- `data/csv/sections/urban_management.csv`
+- `data/csv/sections/general_incidents.csv`
 - `data/csv/sections/public_safety.csv`
 - `data/csv/sections/law_enforcement.csv`
 - `data/csv/sections/cleaning.csv`

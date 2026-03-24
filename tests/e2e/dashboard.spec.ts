@@ -48,7 +48,7 @@ test("dashboard renders and tab navigation works without client errors", async (
   await expect(page.getByRole("heading", { name: "Social Services", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Parks & Recreation", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Law Enforcement", level: 3 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Urban Management Incidents", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "General Incidents", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Control Room Engagement", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "C3 Logged Requests", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Criminal Incidents", level: 3 })).toBeVisible();
@@ -62,7 +62,7 @@ test("dashboard renders and tab navigation works without client errors", async (
   await expect(page.getByRole("heading", { name: "Social Services Trend", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Parks & Recreation Trend", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Law Enforcement Trend", level: 3 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Urban Management Trend", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "General Incidents Trend", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Control Room Engagement Trend", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "CoCT C3 Logged Requests Trend", level: 3 })).toBeVisible();
 
@@ -165,6 +165,8 @@ test("pdf export downloads by default and summary image export is available on t
 test("interactive dashboard buttons expose the pointer cursor", async ({ page }) => {
   await page.goto("/");
 
+  await expect(page.getByRole("link", { name: "Visit the Lower Gardens CID website" })).toHaveCSS("cursor", "pointer");
+  await expect(page.getByRole("link", { name: "Contact us" })).toHaveCSS("cursor", "pointer");
   await expect(page.getByRole("button", { name: "Current Week" })).toHaveCSS("cursor", "pointer");
   await expect(page.getByRole("button", { name: "Print" })).toHaveCSS("cursor", "pointer");
 

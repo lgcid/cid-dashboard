@@ -27,7 +27,7 @@ const PDF_FIRST_PAGE_TOP = PDF_HEADER_HEIGHT + 36;
 const PDF_LATER_PAGE_TOP = PDF_HEADER_HEIGHT + 24;
 const PDF_BOTTOM_LIMIT = A4_HEIGHT_PT - PDF_FOOTER_HEIGHT - 18;
 const PDF_BLOCK_GAP = 18;
-const PDF_BODY_COPY = "Weekly and historical operational performance for stakeholders, covering safety, cleaning, social upliftment, and urban management.";
+const PDF_BODY_COPY = "Weekly and historical operational performance for stakeholders, covering safety, cleaning, social upliftment, and general incidents.";
 const PDF_FONT_FAMILY = "Roboto";
 
 type PdfBlock = {

@@ -27,7 +27,7 @@ export type DashboardTermsSection = {
     | "social"
     | "parks"
     | "lawEnforcement"
-    | "urbanManagement";
+    | "generalIncidents";
   definitions: DashboardTermsDefinition[];
 };
 
@@ -199,11 +199,11 @@ export const DASHBOARD_TERMS_SECTIONS: DashboardTermsSection[] = [
     ]
   },
   {
-    id: "urban-management",
-    title: "Urban Management",
+    id: "general-incidents",
+    title: "General Incidents",
     description: "These metrics track public space incidents and actions:",
     icon: Building2,
-    accentToken: "urbanManagement",
+    accentToken: "generalIncidents",
     definitions: [
       {
         term: "Motor Vehicle Accidents",

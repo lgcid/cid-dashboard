@@ -4,7 +4,7 @@ This dashboard reads **one spreadsheet sheet/tab per section**.
 
 ## Required sheets
 
-1. `urban_management`
+1. `general_incidents`
 2. `public_safety`
 3. `law_enforcement`
 4. `cleaning`
@@ -22,7 +22,7 @@ This dashboard reads **one spreadsheet sheet/tab per section**.
 - Cell `A1` is ignored
 - Data cells: numbers or blank
 
-Example (`urban_management`):
+Example (`general_incidents`):
 
 | A                           | B          | C          |
 |-----------------------------|------------|------------|
@@ -122,7 +122,7 @@ Notes:
 
 The local CSV mode mirrors spreadsheet tabs. Category section CSVs use the same layout described above.
 
-- `data/csv/sections/urban_management.csv`
+- `data/csv/sections/general_incidents.csv`
 - `data/csv/sections/public_safety.csv`
 - `data/csv/sections/law_enforcement.csv`
 - `data/csv/sections/cleaning.csv`
