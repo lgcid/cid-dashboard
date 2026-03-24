@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import Image from "next/image";
 import clsx from "clsx";
 import { format, parseISO } from "date-fns";
@@ -110,13 +110,86 @@ type SummaryInfographicIconKind =
 type SummaryInfographicGroup = {
   id: SummaryInfographicGroupId;
   title: string;
-  description: string;
+  description: ReactNode;
   accent: string;
   headingAccent?: string;
   background?: string;
   headerTextColor?: string;
   iconColor?: string;
 };
+
+const SECTION_NOTICE_EXPLANATIONS = {
+  combined: [
+    "Section 56 notices are summons issued to court for by-law infringements.",
+    "Section 341 notices are fines issued with respect to vehicles."
+  ],
+  section56: "Section 56 notices are summons issued to court for by-law infringements.",
+  section341: "Section 341 notices are fines issued with respect to vehicles."
+} as const;
+
+function InlineDefinitionTooltip({
+  label,
+  details
+}: {
+  label: string;
+  details: readonly string[];
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLSpanElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <span
+      ref={containerRef}
+      className={clsx("inline-definition-tooltip", isOpen && "inline-definition-tooltip--open")}
+    >
+      <button
+        type="button"
+        className="inline-definition-tooltip__trigger"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        {label}
+      </button>
+      <div
+        className="inline-definition-tooltip__panel"
+        hidden={!isOpen}
+        role="tooltip"
+      >
+        {details.map((detail) => (
+          <p key={detail} className="inline-definition-tooltip__text">
+            {detail}
+          </p>
+        ))}
+      </div>
+    </span>
+  );
+}
 
 type SummaryInfographicMetricDefinition = {
   id: string;
@@ -273,7 +346,13 @@ const SUMMARY_INFOGRAPHIC_GROUPS: SummaryInfographicGroup[] = [
   {
     id: "law_enforcement",
     title: "Law Enforcement",
-    description: "Total fines issued (Section 56 + 341)",
+    description: (
+      <>
+        Total fines issued (
+        <InlineDefinitionTooltip label="Section 56 + 341" details={SECTION_NOTICE_EXPLANATIONS.combined} />
+        )
+      </>
+    ),
     accent: BRAND.colors.lawEnforcement,
     headingAccent: BRAND.colors.lawEnforcement,
     background: BRAND.colors.lawEnforcementBackground,
@@ -711,16 +790,22 @@ function TooltipSwatch({
 function ChartTooltipCard({
   title,
   rows,
-  showSwatch = true
+  showSwatch = true,
+  descriptions
 }: {
   title: string;
   rows: TooltipRowDefinition[];
   showSwatch?: boolean;
+  descriptions?: string[];
 }) {
   return (
     <div
       className="rounded-lg border bg-white px-5 py-4"
-      style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 12px 28px ${BRAND.colors.shadowStrong}` }}
+      style={{
+        width: "min(20rem, calc(100vw - 2rem))",
+        borderColor: BRAND.colors.borderSubtle,
+        boxShadow: `0 12px 28px ${BRAND.colors.shadowStrong}`
+      }}
     >
       <p className="text-lg font-semibold leading-none" style={{ fontFamily: "var(--font-heading)" }}>
         {title || NO_DATA_LABEL}
@@ -744,6 +829,16 @@ function ChartTooltipCard({
           </div>
         ))}
       </div>
+
+      {descriptions?.length ? (
+        <div className="mt-4 space-y-2 border-t pt-3" style={{ borderColor: BRAND.colors.borderSubtle }}>
+          {descriptions.map((description) => (
+            <p key={description} className="text-[13px] leading-5" style={{ color: BRAND.colors.textMuted }}>
+              {description}
+            </p>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -753,10 +848,12 @@ function CategoricalTooltip({
   payload,
   label,
   labelKey,
-  seriesConfig
+  seriesConfig,
+  descriptionByLabel
 }: TooltipContentProps<TooltipValueType, TooltipNameType> & {
   labelKey: string;
   seriesConfig?: Record<string, TooltipSeriesConfig>;
+  descriptionByLabel?: Record<string, string[]>;
 }) {
   if (!active || !payload?.length) {
     return null;
@@ -769,7 +866,14 @@ function CategoricalTooltip({
       ? String(chartPoint[labelKey])
       : "";
 
-  return <ChartTooltipCard title={title} rows={buildTooltipRows(payload, seriesConfig)} showSwatch={false} />;
+  return (
+    <ChartTooltipCard
+      title={title}
+      rows={buildTooltipRows(payload, seriesConfig)}
+      showSwatch={false}
+      descriptions={descriptionByLabel?.[title]}
+    />
+  );
 }
 
 function TrendTooltip({
@@ -1755,7 +1859,7 @@ function SummaryGroupCard({
         >
           {group.title}
         </h3>
-        <p className="summary-group-card__description">{group.description}</p>
+        <div className="summary-group-card__description">{group.description}</div>
       </div>
 
       <div className="summary-ribbon-list">
@@ -2068,7 +2172,8 @@ function CurrentWeekBreakdownChart({
   railClass,
   valueLabel = "Total",
   theme = "neutral",
-  icon: Icon = ClipboardList
+  icon: Icon = ClipboardList,
+  tooltipDescriptions
 }: {
   title: string;
   subtitle?: string;
@@ -2078,6 +2183,7 @@ function CurrentWeekBreakdownChart({
   valueLabel?: string;
   theme?: keyof typeof CURRENT_WEEK_THEME;
   icon?: LucideIcon;
+  tooltipDescriptions?: Record<string, string[]>;
 }) {
   const headerTheme = CURRENT_WEEK_THEME[theme];
 
@@ -2124,10 +2230,12 @@ function CurrentWeekBreakdownChart({
             />
             <Tooltip
               cursor={{ fill: BRAND.colors.overlaySubtle }}
+              wrapperStyle={{ zIndex: 60 }}
               content={(props) => (
                 <CategoricalTooltip
                   {...props}
                   labelKey="category"
+                  descriptionByLabel={tooltipDescriptions}
                   seriesConfig={{
                     value: {
                       label: valueLabel,
@@ -3074,6 +3182,10 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                   color={BRAND.colors.lawEnforcement}
                   theme="law"
                   icon={Scale}
+                  tooltipDescriptions={{
+                    "Section 56 Notices": [SECTION_NOTICE_EXPLANATIONS.section56],
+                    "Section 341 Notices": [SECTION_NOTICE_EXPLANATIONS.section341]
+                  }}
                 />
 
                 <CurrentWeekBreakdownChart
