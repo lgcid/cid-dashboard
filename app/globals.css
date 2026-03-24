@@ -22,14 +22,25 @@
   img {
     @apply inline-block;
   }
+}
 
-  button:not(:disabled) {
-    cursor: pointer;
-  }
+/* Force cursor on all interactive elements - outside of Tailwind layers */
+button {
+  cursor: pointer !important;
+}
 
-  button:disabled {
-    cursor: not-allowed;
-  }
+button:disabled {
+  cursor: not-allowed !important;
+}
+
+a[href] {
+  cursor: pointer !important;
+}
+
+/* Ensure all descendants inherit the cursor */
+button *,
+a[href] * {
+  cursor: inherit !important;
 }
 
 @font-face {
