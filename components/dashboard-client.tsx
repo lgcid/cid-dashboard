@@ -647,6 +647,8 @@ type TooltipRowDefinition = {
   valueTextColor: string;
 };
 
+const RESPONSIVE_CHART_INITIAL_DIMENSION = { width: 1, height: 1 } as const;
+
 const C3_TOOLTIP_SERIES_CONFIG: Record<string, TooltipSeriesConfig> = {
   logged: {
     label: "Logged",
@@ -984,7 +986,7 @@ function TrendLineCard({
     <div className="rounded-[28px] border bg-white px-4 pb-4 pt-5 md:px-5 md:pb-5" style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 2px 10px ${BRAND.colors.shadowSoft}` }}>
       <h3 className="dashboard-heading-3 dashboard-heading-3--compact mb-3 pb-4" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>{title}</h3>
       <div className="min-h-0 min-w-0 h-[280px] md:h-[300px]">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={RESPONSIVE_CHART_INITIAL_DIMENSION}>
           <LineChart data={data} margin={{ top: 4, right: 20, left: -6, bottom: 8 }}>
             <CartesianGrid vertical={false} stroke={BRAND.colors.gridSubtle} strokeDasharray="3 6" />
             <XAxis
@@ -2210,7 +2212,7 @@ function CurrentWeekBreakdownChart({
         </span>
       </div>
       <div className="mt-4 min-h-0 min-w-0 h-[268px] rounded-[10px] border bg-white px-2 py-2.5" style={{ borderColor: BRAND.colors.borderSubtle }}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={RESPONSIVE_CHART_INITIAL_DIMENSION}>
           <BarChart data={data} layout="vertical" margin={{ top: 10, right: 16, left: 5, bottom: 6 }} barCategoryGap="20%">
             <CartesianGrid strokeDasharray="2 3" stroke={BRAND.colors.gridSubtle} vertical horizontal={false} />
             <XAxis
@@ -3477,7 +3479,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
             <p className="mt-2 text-[15px]" style={{ color: BRAND.colors.textMuted }}>Comparison of service requests logged and resolved across all categories</p>
 
             <div className="mt-8 min-h-0 min-w-0 h-[560px]">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={RESPONSIVE_CHART_INITIAL_DIMENSION}>
                 <BarChart data={c3OverallBreakdown} margin={{ top: 34, right: 12, left: -25, bottom: 34 }} barGap={2} barCategoryGap="18%" barSize={36}>
                   <CartesianGrid strokeDasharray="4 4" stroke={BRAND.colors.gridSubtle} vertical={false} />
                   <XAxis
@@ -3544,7 +3546,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
               <p className="mt-2 text-[15px]" style={{ color: BRAND.colors.textMuted }}>Number of unresolved requests per category</p>
 
               <div className="mt-8 min-h-0 min-w-0 h-[360px]">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={RESPONSIVE_CHART_INITIAL_DIMENSION}>
                   <BarChart data={c3OverallBreakdown} layout="vertical" margin={{ top: 8, right: 32, left: isMobileViewport ? -15 : 0, bottom: 18 }}>
                     <CartesianGrid strokeDasharray="4 4" stroke={BRAND.colors.gridSubtle} horizontal={false} />
                     <XAxis
