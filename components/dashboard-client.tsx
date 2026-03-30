@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { format, parseISO } from "date-fns";
 import {
@@ -2503,9 +2502,6 @@ function TermsDefinitionsDialog({
 }
 
 export default function DashboardClient({ initialData, initialTab = "summary" }: Props) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const weekly = initialData.weekly;
   const defaultTrendBounds = trendDateBounds(weekly, initialData.meta.selected_week_start);
   const defaultC3Bounds = c3DateBounds(
@@ -2531,12 +2527,24 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
   const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   useEffect(() => {
-    const pathTab = routeTabFromPathname(pathname);
-    const nextTab = searchParams.get("tab") === "summary-image" ? "summary-image" : pathTab;
-    if (nextTab !== activeTab) {
-      setActiveTab(nextTab);
+    if (typeof window === "undefined") {
+      return undefined;
     }
-  }, [activeTab, pathname, searchParams]);
+
+    const syncTabFromLocation = () => {
+      const params = new URLSearchParams(window.location.search);
+      const nextTab = params.get("tab") === "summary-image"
+        ? "summary-image"
+        : routeTabFromPathname(window.location.pathname);
+      setActiveTab(nextTab);
+    };
+
+    window.addEventListener("popstate", syncTabFromLocation);
+
+    return () => {
+      window.removeEventListener("popstate", syncTabFromLocation);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -2895,12 +2903,18 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
   }
 
   function handleTabChange(nextTab: StandardDashboardTab) {
-    const params = new URLSearchParams(searchParams.toString());
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    setActiveTab(nextTab);
+
+    const params = new URLSearchParams(window.location.search);
     params.delete("tab");
 
     const nextPath = DASHBOARD_ROUTE_BY_TAB[nextTab];
     const query = params.toString();
-    router.push(query ? `${nextPath}?${query}` : nextPath, { scroll: false });
+    window.history.pushState(null, "", query ? `${nextPath}?${query}` : nextPath);
   }
 
   return (
