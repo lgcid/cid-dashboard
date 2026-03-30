@@ -9,6 +9,6 @@ type PageProps = {
   }>;
 };
 
-export default function HomePage({ searchParams }: PageProps) {
-  return <DashboardPage searchParams={searchParams} />;
+export default function C3TrackerPage({ searchParams }: PageProps) {
+  return <DashboardPage initialTab="c3" searchParams={searchParams} />;
 }

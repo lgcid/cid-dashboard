@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { format, parseISO } from "date-fns";
 import {
@@ -276,7 +277,7 @@ const CURRENT_WEEK_THEME = {
   }
 } as const;
 
-const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
+const DASHBOARD_TABS: Array<{ id: StandardDashboardTab; label: string }> = [
   { id: "summary", label: "Summary" },
   { id: "main", label: "Current Week" },
   { id: "trends", label: "Trends" },
@@ -292,6 +293,26 @@ const TREND_GRANULARITY_OPTIONS: Array<{ id: TrendGranularity; label: string }> 
   { id: "month", label: "Month" },
   { id: "year", label: "Year" }
 ];
+
+const DASHBOARD_ROUTE_BY_TAB: Record<StandardDashboardTab, string> = {
+  summary: "/",
+  main: "/current-week",
+  trends: "/trends",
+  c3: "/c3-tracker"
+};
+
+function routeTabFromPathname(pathname: string): StandardDashboardTab {
+  switch (pathname) {
+    case "/current-week":
+      return "main";
+    case "/trends":
+      return "trends";
+    case "/c3-tracker":
+      return "c3";
+    default:
+      return "summary";
+  }
+}
 
 function getTermsAccentStyles(section: DashboardTermsSection) {
   switch (section.accentToken) {
@@ -2482,6 +2503,9 @@ function TermsDefinitionsDialog({
 }
 
 export default function DashboardClient({ initialData, initialTab = "summary" }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const weekly = initialData.weekly;
   const defaultTrendBounds = trendDateBounds(weekly, initialData.meta.selected_week_start);
   const defaultC3Bounds = c3DateBounds(
@@ -2505,6 +2529,14 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
   const [isExportingImage, setIsExportingImage] = useState(false);
   const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+  useEffect(() => {
+    const pathTab = routeTabFromPathname(pathname);
+    const nextTab = searchParams.get("tab") === "summary-image" ? "summary-image" : pathTab;
+    if (nextTab !== activeTab) {
+      setActiveTab(nextTab);
+    }
+  }, [activeTab, pathname, searchParams]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -2862,6 +2894,15 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
     }
   }
 
+  function handleTabChange(nextTab: StandardDashboardTab) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("tab");
+
+    const nextPath = DASHBOARD_ROUTE_BY_TAB[nextTab];
+    const query = params.toString();
+    router.push(query ? `${nextPath}?${query}` : nextPath, { scroll: false });
+  }
+
   return (
     <main className="dashboard-shell min-h-screen text-black" style={{ backgroundColor: BRAND.colors.pageBackground }}>
       <header className="header">
@@ -2925,7 +2966,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex flex-wrap gap-4">
               {DASHBOARD_TABS.map((tab) => (
-                <DashboardTabButton key={tab.id} active={activeTab === tab.id} label={tab.label} onClick={() => setActiveTab(tab.id)} />
+                <DashboardTabButton key={tab.id} active={activeTab === tab.id} label={tab.label} onClick={() => handleTabChange(tab.id)} />
               ))}
             </div>
 

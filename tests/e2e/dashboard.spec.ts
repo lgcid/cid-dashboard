@@ -42,6 +42,7 @@ test("dashboard renders and tab navigation works without client errors", async (
   await expect(page.getByRole("heading", { name: "Summary", level: 2 })).toBeVisible();
 
   await page.getByRole("button", { name: "Current Week" }).click();
+  await expect(page).toHaveURL(/\/current-week$/);
   await expect(page.getByRole("heading", { name: "Current Week", level: 2 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Public Safety", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Cleaning & Maintenance", level: 3 })).toBeVisible();
@@ -56,6 +57,7 @@ test("dashboard renders and tab navigation works without client errors", async (
   await expect(page.getByRole("heading", { name: /Incident Log/, level: 4 })).toBeVisible();
 
   await page.getByRole("button", { name: "Trends" }).click();
+  await expect(page).toHaveURL(/\/trends$/);
   await expect(page.getByRole("heading", { name: "Trends", level: 2 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Public Safety Trend", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Cleaning & Maintenance Trend", level: 3 })).toBeVisible();
@@ -67,10 +69,25 @@ test("dashboard renders and tab navigation works without client errors", async (
   await expect(page.getByRole("heading", { name: "CoCT C3 Logged Requests Trend", level: 3 })).toBeVisible();
 
   await page.getByRole("button", { name: "C3 Tracker" }).click();
+  await expect(page).toHaveURL(/\/c3-tracker$/);
   await expect(page.getByRole("heading", { name: "C3 Tracker", level: 2 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Logged vs Resolved by Category", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Open Backlog by Category", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Pressure Points", level: 3 })).toBeVisible();
+});
+
+test("route urls open the correct shared view", async ({ page }) => {
+  await page.goto("/current-week");
+  await expect(page.getByRole("heading", { name: "Current Week", level: 2 })).toBeVisible();
+
+  await page.goto("/trends");
+  await expect(page.getByRole("heading", { name: "Trends", level: 2 })).toBeVisible();
+
+  await page.goto("/c3-tracker");
+  await expect(page.getByRole("heading", { name: "C3 Tracker", level: 2 })).toBeVisible();
+
+  await page.goto("/?tab=summary-image");
+  await expect(page.getByRole("heading", { name: "Summary Image", level: 2 })).toBeVisible();
 });
 
 test("terms and definitions dialog opens and closes from the tab row", async ({ page }) => {
@@ -106,6 +123,7 @@ test("preview query makes the unpublished latest week visible in the dashboard",
   await page.goto("/?preview=2026-03-10");
   await page.getByRole("button", { name: "Current Week" }).click();
 
+  await expect(page).toHaveURL(/\/current-week\?preview=2026-03-10$/);
   await expect(visibleReportingWeekSelect(page)).toHaveValue("2026-03-09");
 
   const incidentsSection = page.locator("#incidents");

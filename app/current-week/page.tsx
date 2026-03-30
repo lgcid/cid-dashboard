@@ -9,6 +9,6 @@ type PageProps = {
   }>;
 };
 
-export default function HomePage({ searchParams }: PageProps) {
-  return <DashboardPage searchParams={searchParams} />;
+export default function CurrentWeekPage({ searchParams }: PageProps) {
+  return <DashboardPage initialTab="main" searchParams={searchParams} />;
 }
