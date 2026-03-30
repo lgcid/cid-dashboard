@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const revalidateTag = vi.fn();
+const unstableCache = vi.fn(<T extends (...args: unknown[]) => unknown>(callback: T) => callback);
 const loadData = vi.fn();
+const originalNodeEnv = process.env.NODE_ENV;
+
+vi.mock("next/cache", () => ({
+  revalidateTag,
+  unstable_cache: unstableCache
+}));
 
 vi.mock("@/lib/data-source", () => ({
   loadData
@@ -38,54 +46,46 @@ const loadedDashboardData = {
 describe("dashboard data cache", () => {
   beforeEach(() => {
     vi.resetModules();
+    process.env.NODE_ENV = "production";
+    revalidateTag.mockReset();
+    unstableCache.mockClear();
     loadData.mockReset();
     loadData.mockResolvedValue(loadedDashboardData);
   });
 
   afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
     vi.clearAllMocks();
   });
 
-  it("reuses cached source data for repeated non-preview requests", async () => {
+  it("wraps source loading in the shared dashboard cache", async () => {
+    await import("@/lib/dashboard-service");
+
+    expect(unstableCache).toHaveBeenCalledWith(
+      expect.any(Function),
+      ["dashboard-source-data"],
+      expect.objectContaining({
+        revalidate: 300,
+        tags: ["dashboard-data"]
+      })
+    );
+  });
+
+  it("does not force a refresh when preview is absent", async () => {
     const { getDashboardData } = await import("@/lib/dashboard-service");
 
     await getDashboardData();
-    await getDashboardData();
 
-    expect(loadData).toHaveBeenCalledTimes(1);
+    expect(revalidateTag).not.toHaveBeenCalled();
     expect(loadData).toHaveBeenCalledWith({ preview: undefined });
   });
 
-  it("forces a refresh when preview is present", async () => {
+  it("forces a refresh before loading preview data", async () => {
     const { getDashboardData } = await import("@/lib/dashboard-service");
 
-    await getDashboardData();
     await getDashboardData({ preview: "2026-03-10" });
-    await getDashboardData();
 
-    expect(loadData).toHaveBeenNthCalledWith(1, { preview: undefined });
-    expect(loadData).toHaveBeenNthCalledWith(2, { preview: "2026-03-10" });
-    expect(loadData).toHaveBeenNthCalledWith(3, { preview: undefined });
-  });
-
-  it("deduplicates concurrent loads for the same cache key", async () => {
-    const { getDashboardData } = await import("@/lib/dashboard-service");
-    let resolveLoad: (value: typeof loadedDashboardData) => void = () => {
-      throw new Error("Pending load resolver was not initialized.");
-    };
-    const pendingLoad = new Promise<typeof loadedDashboardData>((resolve) => {
-      resolveLoad = resolve;
-    });
-
-    loadData.mockReset();
-    loadData.mockReturnValue(pendingLoad);
-
-    const first = getDashboardData();
-    const second = getDashboardData();
-
-    expect(loadData).toHaveBeenCalledTimes(1);
-
-    resolveLoad(loadedDashboardData);
-    await Promise.all([first, second]);
+    expect(revalidateTag).toHaveBeenCalledWith("dashboard-data", { expire: 0 });
+    expect(loadData).toHaveBeenCalledWith({ preview: "2026-03-10" });
   });
 });
