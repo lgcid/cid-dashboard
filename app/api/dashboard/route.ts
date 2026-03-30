@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDashboardData } from "@/lib/dashboard-service";
 
+const DEFAULT_CACHE_CONTROL = "public, max-age=60, s-maxage=60, stale-while-revalidate=120";
+const PREVIEW_CACHE_CONTROL = "no-store, max-age=0";
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -17,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(payload, {
       headers: {
-        "Cache-Control": "public, max-age=60, s-maxage=60, stale-while-revalidate=120"
+        "Cache-Control": preview ? PREVIEW_CACHE_CONTROL : DEFAULT_CACHE_CONTROL
       }
     });
   } catch (error) {
