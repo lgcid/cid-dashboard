@@ -11,6 +11,17 @@ import { loadData } from "@/lib/data-source";
 import type { DashboardQuery, DashboardResponse, IncidentRow, WeeklyMetricRow } from "@/types/dashboard";
 
 const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const DASHBOARD_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type LoadedDashboardSourceData = Awaited<ReturnType<typeof loadData>>;
+
+type DashboardSourceCacheEntry = {
+  value: LoadedDashboardSourceData;
+  expiresAt: number;
+};
+
+const dashboardSourceCache = new Map<string, DashboardSourceCacheEntry>();
+const dashboardSourceInflight = new Map<string, Promise<LoadedDashboardSourceData>>();
 
 function isIsoDay(value: string): boolean {
   return ISO_DAY_PATTERN.test(value);
@@ -63,10 +74,52 @@ function filterToPublishedWeeks<T extends { week_start: string }>(rows: T[], pub
   return rows.filter((row) => publishedWeekSet.has(row.week_start));
 }
 
-export async function getDashboardData(query: DashboardQuery = {}): Promise<DashboardResponse> {
-  const { sections, incidents, c3Insights, c3Requests, publishedWeeks, source } = await loadData({
+function dashboardCacheKey(preview: string | undefined): string {
+  return preview ? `preview:${preview}` : "default";
+}
+
+async function loadDashboardData(query: DashboardQuery): ReturnType<typeof loadData> {
+  const cacheKey = dashboardCacheKey(query.preview);
+  const now = Date.now();
+
+  if (query.preview) {
+    dashboardSourceCache.clear();
+    dashboardSourceInflight.clear();
+  }
+
+  const cached = dashboardSourceCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const inflight = dashboardSourceInflight.get(cacheKey);
+  if (inflight) {
+    return inflight;
+  }
+
+  const pendingLoad = loadData({
     preview: query.preview
+  }).then((value) => {
+    dashboardSourceCache.set(cacheKey, {
+      value,
+      expiresAt: Date.now() + DASHBOARD_DATA_CACHE_TTL_MS
+    });
+    dashboardSourceInflight.delete(cacheKey);
+    return value;
+  }).catch((error) => {
+    dashboardSourceInflight.delete(cacheKey);
+    throw error;
   });
+
+  dashboardSourceInflight.set(cacheKey, pendingLoad);
+  return pendingLoad;
+}
+
+function buildDashboardResponse(
+  sourceData: LoadedDashboardSourceData,
+  query: DashboardQuery = {}
+): DashboardResponse {
+  const { sections, incidents, c3Insights, c3Requests, publishedWeeks, source } = sourceData;
   const weeks = deriveWeeks(sections);
   const weekly = buildWeeklyRows(weeks, sections);
   const reportingWindow = deriveReportingWindow(publishedWeeks);
@@ -100,4 +153,9 @@ export async function getDashboardData(query: DashboardQuery = {}): Promise<Dash
     hotspots: deriveHotspots(incidentsWindowed, weeklyWindowed, windowWeeks),
     incidents: incidentsWindowed
   };
+}
+
+export async function getDashboardData(query: DashboardQuery = {}): Promise<DashboardResponse> {
+  const sourceData = await loadDashboardData(query);
+  return buildDashboardResponse(sourceData, query);
 }
