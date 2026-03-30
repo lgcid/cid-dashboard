@@ -1,4 +1,3 @@
-import { revalidateTag, unstable_cache } from "next/cache";
 import { weekEndFromStart } from "@/lib/date-utils";
 import {
   buildTrendSeries,
@@ -12,8 +11,17 @@ import { loadData } from "@/lib/data-source";
 import type { DashboardQuery, DashboardResponse, IncidentRow, WeeklyMetricRow } from "@/types/dashboard";
 
 const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const DASHBOARD_DATA_CACHE_TAG = "dashboard-data";
-const DASHBOARD_DATA_CACHE_REVALIDATE_SECONDS = 300;
+const DASHBOARD_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type LoadedDashboardSourceData = Awaited<ReturnType<typeof loadData>>;
+
+type DashboardSourceCacheEntry = {
+  value: LoadedDashboardSourceData;
+  expiresAt: number;
+};
+
+const dashboardSourceCache = new Map<string, DashboardSourceCacheEntry>();
+const dashboardSourceInflight = new Map<string, Promise<LoadedDashboardSourceData>>();
 
 function isIsoDay(value: string): boolean {
   return ISO_DAY_PATTERN.test(value);
@@ -66,38 +74,49 @@ function filterToPublishedWeeks<T extends { week_start: string }>(rows: T[], pub
   return rows.filter((row) => publishedWeekSet.has(row.week_start));
 }
 
-const loadDashboardSourceData = unstable_cache(
-  async (preview: string | undefined) =>
-    loadData({
-      preview
-    }),
-  ["dashboard-source-data"],
-  {
-    revalidate: DASHBOARD_DATA_CACHE_REVALIDATE_SECONDS,
-    tags: [DASHBOARD_DATA_CACHE_TAG]
-  }
-);
-
-function shouldUseDashboardCache(): boolean {
-  return process.env.NODE_ENV !== "test";
+function dashboardCacheKey(preview: string | undefined): string {
+  return preview ? `preview:${preview}` : "default";
 }
 
 async function loadDashboardData(query: DashboardQuery): ReturnType<typeof loadData> {
-  if (!shouldUseDashboardCache()) {
-    return loadData({
-      preview: query.preview
-    });
-  }
+  const cacheKey = dashboardCacheKey(query.preview);
+  const now = Date.now();
 
   if (query.preview) {
-    revalidateTag(DASHBOARD_DATA_CACHE_TAG, { expire: 0 });
+    dashboardSourceCache.clear();
+    dashboardSourceInflight.clear();
   }
 
-  return loadDashboardSourceData(query.preview);
+  const cached = dashboardSourceCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const inflight = dashboardSourceInflight.get(cacheKey);
+  if (inflight) {
+    return inflight;
+  }
+
+  const pendingLoad = loadData({
+    preview: query.preview
+  }).then((value) => {
+    dashboardSourceCache.set(cacheKey, {
+      value,
+      expiresAt: Date.now() + DASHBOARD_DATA_CACHE_TTL_MS
+    });
+    dashboardSourceInflight.delete(cacheKey);
+    return value;
+  }).catch((error) => {
+    dashboardSourceInflight.delete(cacheKey);
+    throw error;
+  });
+
+  dashboardSourceInflight.set(cacheKey, pendingLoad);
+  return pendingLoad;
 }
 
 function buildDashboardResponse(
-  sourceData: Awaited<ReturnType<typeof loadData>>,
+  sourceData: LoadedDashboardSourceData,
   query: DashboardQuery = {}
 ): DashboardResponse {
   const { sections, incidents, c3Insights, c3Requests, publishedWeeks, source } = sourceData;
