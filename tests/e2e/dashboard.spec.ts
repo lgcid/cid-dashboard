@@ -110,6 +110,8 @@ test("terms and definitions dialog opens and closes from the tab row", async ({ 
 test("current week view updates when a historical reporting week is selected", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Current Week" }).click();
+  await expect(page).toHaveURL(/\/current-week$/);
+  await expect(page.getByRole("heading", { name: "Current Week", level: 2 })).toBeVisible();
   await visibleReportingWeekSelect(page).selectOption("2026-02-23");
 
   const incidentsSection = page.locator("#incidents");
