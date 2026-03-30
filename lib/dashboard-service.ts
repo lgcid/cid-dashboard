@@ -1,4 +1,4 @@
-import { revalidateTag, unstable_cache } from "next/cache";
+import { unstable_cache } from "next/cache";
 import { weekEndFromStart } from "@/lib/date-utils";
 import {
   buildTrendSeries,
@@ -90,7 +90,9 @@ async function loadDashboardData(query: DashboardQuery): ReturnType<typeof loadD
   }
 
   if (query.preview) {
-    revalidateTag(DASHBOARD_DATA_CACHE_TAG, { expire: 0 });
+    return loadData({
+      preview: query.preview
+    });
   }
 
   return loadDashboardSourceData(query.preview);

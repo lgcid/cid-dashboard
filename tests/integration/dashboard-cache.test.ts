@@ -1,12 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const revalidateTag = vi.fn();
 const unstableCache = vi.fn(<T extends (...args: unknown[]) => unknown>(callback: T) => callback);
 const loadData = vi.fn();
 const originalNodeEnv = process.env.NODE_ENV;
 
 vi.mock("next/cache", () => ({
-  revalidateTag,
   unstable_cache: unstableCache
 }));
 
@@ -47,7 +45,6 @@ describe("dashboard data cache", () => {
   beforeEach(() => {
     vi.resetModules();
     process.env.NODE_ENV = "production";
-    revalidateTag.mockReset();
     unstableCache.mockClear();
     loadData.mockReset();
     loadData.mockResolvedValue(loadedDashboardData);
@@ -76,16 +73,14 @@ describe("dashboard data cache", () => {
 
     await getDashboardData();
 
-    expect(revalidateTag).not.toHaveBeenCalled();
     expect(loadData).toHaveBeenCalledWith({ preview: undefined });
   });
 
-  it("forces a refresh before loading preview data", async () => {
+  it("bypasses the shared cache when preview data is requested", async () => {
     const { getDashboardData } = await import("@/lib/dashboard-service");
 
     await getDashboardData({ preview: "2026-03-10" });
 
-    expect(revalidateTag).toHaveBeenCalledWith("dashboard-data", { expire: 0 });
     expect(loadData).toHaveBeenCalledWith({ preview: "2026-03-10" });
   });
 });
