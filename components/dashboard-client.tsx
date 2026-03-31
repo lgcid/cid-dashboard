@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import Image from "next/image";
 import clsx from "clsx";
 import { format, parseISO } from "date-fns";
@@ -46,7 +46,6 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { compareC3Categories, isResolvedC3Request } from "@/lib/c3-requests";
 import {
   DASHBOARD_TERMS_INTRO,
   DASHBOARD_TERMS_SECTIONS,
@@ -61,18 +60,19 @@ import {
   exportNodePng
 } from "@/lib/dashboard-export";
 import type {
-  C3RequestRow,
   C3TrackerBreakdownRow,
-  C3TrackerTotals,
-  DashboardResponse,
+  DashboardC3Data,
+  DashboardPageData,
+  DashboardTrendsData,
   HardcodedWeeklyMetricKey,
-  IncidentRow,
-  SectionData,
+  MetricComparisonRow,
+  TrendChartPoint,
+  TrendGranularity,
   WeeklyMetricRow
 } from "@/types/dashboard";
 
 type Props = {
-  initialData: DashboardResponse;
+  initialData: DashboardPageData;
   initialTab?: DashboardTab;
 };
 
@@ -81,7 +81,6 @@ type SectionIconKind = "summary" | "currentWeek" | "incidents" | "trends" | "c3"
 type ComparisonTone = "increase" | "decrease" | "flat" | "none";
 type StandardDashboardTab = "main" | "summary" | "trends" | "c3";
 type DashboardTab = StandardDashboardTab | "summary-image";
-type TrendGranularity = "week" | "month" | "year";
 type SummaryInfographicGroupId =
   | "safety_response"
   | "law_enforcement"
@@ -207,28 +206,6 @@ type SummaryInfographicMetric = SummaryInfographicMetricDefinition & {
 
 type SummaryInfographicGroupWithMetrics = SummaryInfographicGroup & {
   metrics: SummaryInfographicMetric[];
-};
-
-type TrendChartPoint = {
-  period_start: string;
-  period_end: string;
-  period_label: string;
-  general_incidents_total: number | null;
-  fines_total: number | null;
-  criminal_incidents: number | null;
-  cleaning_bags_collected: number | null;
-  social_touch_points: number | null;
-  parks_total_bags: number | null;
-  contacts_total: number | null;
-  c3_logged_total: number | null;
-  general_incidents_ma4: number | null;
-  fines_total_ma4: number | null;
-  criminal_ma4: number | null;
-  cleaning_ma4: number | null;
-  social_touch_points_ma4: number | null;
-  parks_total_bags_ma4: number | null;
-  contacts_total_ma4: number | null;
-  c3_logged_total_ma4: number | null;
 };
 
 const CURRENT_WEEK_THEME = {
@@ -1180,254 +1157,6 @@ function toMetricNumber(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function weekChartDataFromSection(section: SectionData, weekStart: string | null): Array<{ category: string; value: number }> {
-  if (!weekStart) {
-    return section.categories.map((row) => ({ category: row.category, value: 0 }));
-  }
-  return section.categories.map((row) => ({
-    category: row.category,
-    value: toMetricNumber(row.values[weekStart] ?? null) ?? 0
-  }));
-}
-
-function sumMetric(values: number[]): number | null {
-  if (!values.length) {
-    return null;
-  }
-  return values.reduce((sum, value) => sum + value, 0);
-}
-
-function movingAverage(values: Array<number | null>, index: number, windowSize = 4): number | null {
-  const start = Math.max(0, index - windowSize + 1);
-  const window = values.slice(start, index + 1).filter((value): value is number => value !== null);
-  if (!window.length) {
-    return null;
-  }
-  const total = window.reduce((sum, value) => sum + value, 0);
-  return Number((total / window.length).toFixed(2));
-}
-
-function trendContactsTotal(row: WeeklyMetricRow): number | null {
-  const calls = toMetricNumber(row.metrics.calls_received);
-  const whatsapps = toMetricNumber(row.metrics.whatsapps_received);
-  if (calls === null && whatsapps === null) {
-    return null;
-  }
-  return (calls ?? 0) + (whatsapps ?? 0);
-}
-
-function trendCleaningTotal(row: WeeklyMetricRow): number | null {
-  const cleaning = toMetricNumber(row.metrics.cleaning_bags_collected);
-  const stormwater = toMetricNumber(row.metrics.cleaning_stormwater_bags_filled);
-  if (cleaning === null && stormwater === null) {
-    return null;
-  }
-  return (cleaning ?? 0) + (stormwater ?? 0);
-}
-
-function trendFinesTotal(row: WeeklyMetricRow): number | null {
-  const section56 = toMetricNumber(row.metrics.section56_notices);
-  const section341 = toMetricNumber(row.metrics.section341_notices);
-  if (section56 === null && section341 === null) {
-    return null;
-  }
-  return (section56 ?? 0) + (section341 ?? 0);
-}
-
-function trendC3LoggedTotal(row: WeeklyMetricRow): number | null {
-  return toMetricNumber(row.metrics.c3_logged_total);
-}
-
-function trendDateBounds(rows: WeeklyMetricRow[], fallbackDate: string): { from: string; to: string } {
-  const sorted = [...rows].sort((a, b) => a.week_start.localeCompare(b.week_start));
-  const reported = sorted.filter((row) => row.record_status === "REPORTED");
-  const sourceRows = reported.length ? reported : sorted;
-  const from = sourceRows[0]?.week_start ?? fallbackDate;
-  const to = sourceRows[sourceRows.length - 1]?.week_start ?? fallbackDate;
-
-  return { from, to };
-}
-
-function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity): TrendChartPoint[] {
-  const sorted = [...rows]
-    .filter((row) => row.record_status === "REPORTED")
-    .sort((a, b) => a.week_start.localeCompare(b.week_start));
-
-  if (!sorted.length) {
-    return [];
-  }
-
-  const aggregated: Array<{
-    period_start: string;
-    period_end: string;
-    period_label: string;
-    general_incidents_total: number | null;
-    fines_total: number | null;
-    criminal_incidents: number | null;
-    cleaning_bags_collected: number | null;
-    social_touch_points: number | null;
-    parks_total_bags: number | null;
-    contacts_total: number | null;
-    c3_logged_total: number | null;
-  }> = [];
-
-  if (granularity === "week") {
-    for (const row of sorted) {
-      aggregated.push({
-        period_start: row.week_start,
-        period_end: row.week_end,
-        period_label: formatIsoWithPattern(row.week_start, "dd MMM"),
-        general_incidents_total: toMetricNumber(row.metrics.general_incidents_total),
-        fines_total: trendFinesTotal(row),
-        criminal_incidents: toMetricNumber(row.metrics.criminal_incidents),
-        cleaning_bags_collected: trendCleaningTotal(row),
-        social_touch_points: toMetricNumber(row.metrics.social_touch_points),
-        parks_total_bags: toMetricNumber(row.metrics.parks_total_bags),
-        contacts_total: trendContactsTotal(row),
-        c3_logged_total: trendC3LoggedTotal(row)
-      });
-    }
-  } else {
-    const grouped = new Map<
-      string,
-      {
-        period_start: string;
-        period_end: string;
-        period_label: string;
-        generalIncidents: number[];
-        fines: number[];
-        criminal: number[];
-        cleaning: number[];
-        social: number[];
-        parks: number[];
-        contacts: number[];
-        c3Logged: number[];
-      }
-    >();
-
-    for (const row of sorted) {
-      const keyPattern = granularity === "month" ? "yyyy-MM" : "yyyy";
-      const periodKey = formatIsoWithPattern(row.week_start, keyPattern);
-      const periodLabel = granularity === "month"
-        ? formatIsoWithPattern(row.week_start, "MMM yyyy")
-        : formatIsoWithPattern(row.week_start, "yyyy");
-
-      const existing = grouped.get(periodKey);
-      if (!existing) {
-        grouped.set(periodKey, {
-          period_start: row.week_start,
-          period_end: row.week_end,
-          period_label: periodLabel,
-          generalIncidents: [],
-          fines: [],
-          criminal: [],
-          cleaning: [],
-          social: [],
-          parks: [],
-          contacts: [],
-          c3Logged: []
-        });
-      }
-
-      const bucket = grouped.get(periodKey);
-      if (!bucket) {
-        continue;
-      }
-
-      bucket.period_end = row.week_end;
-      const generalIncidents = toMetricNumber(row.metrics.general_incidents_total);
-      const fines = trendFinesTotal(row);
-      const criminal = toMetricNumber(row.metrics.criminal_incidents);
-      const cleaning = trendCleaningTotal(row);
-      const social = toMetricNumber(row.metrics.social_touch_points);
-      const parks = toMetricNumber(row.metrics.parks_total_bags);
-      const contacts = trendContactsTotal(row);
-      const c3Logged = trendC3LoggedTotal(row);
-
-      if (generalIncidents !== null) {
-        bucket.generalIncidents.push(generalIncidents);
-      }
-      if (fines !== null) {
-        bucket.fines.push(fines);
-      }
-      if (criminal !== null) {
-        bucket.criminal.push(criminal);
-      }
-      if (cleaning !== null) {
-        bucket.cleaning.push(cleaning);
-      }
-      if (social !== null) {
-        bucket.social.push(social);
-      }
-      if (parks !== null) {
-        bucket.parks.push(parks);
-      }
-      if (contacts !== null) {
-        bucket.contacts.push(contacts);
-      }
-      if (c3Logged !== null) {
-        bucket.c3Logged.push(c3Logged);
-      }
-    }
-
-    for (const bucket of grouped.values()) {
-      aggregated.push({
-        period_start: bucket.period_start,
-        period_end: bucket.period_end,
-        period_label: bucket.period_label,
-        general_incidents_total: sumMetric(bucket.generalIncidents),
-        fines_total: sumMetric(bucket.fines),
-        criminal_incidents: sumMetric(bucket.criminal),
-        cleaning_bags_collected: sumMetric(bucket.cleaning),
-        social_touch_points: sumMetric(bucket.social),
-        parks_total_bags: sumMetric(bucket.parks),
-        contacts_total: sumMetric(bucket.contacts),
-        c3_logged_total: sumMetric(bucket.c3Logged)
-      });
-    }
-  }
-
-  const generalIncidentsValues = aggregated.map((point) => point.general_incidents_total);
-  const finesValues = aggregated.map((point) => point.fines_total);
-  const crimeValues = aggregated.map((point) => point.criminal_incidents);
-  const cleaningValues = aggregated.map((point) => point.cleaning_bags_collected);
-  const socialValues = aggregated.map((point) => point.social_touch_points);
-  const parksValues = aggregated.map((point) => point.parks_total_bags);
-  const contactsValues = aggregated.map((point) => point.contacts_total);
-  const c3LoggedValues = aggregated.map((point) => point.c3_logged_total);
-
-  return aggregated.map((point, index) => ({
-    ...point,
-    general_incidents_ma4: movingAverage(generalIncidentsValues, index, 4),
-    fines_total_ma4: movingAverage(finesValues, index, 4),
-    criminal_ma4: movingAverage(crimeValues, index, 4),
-    cleaning_ma4: movingAverage(cleaningValues, index, 4),
-    social_touch_points_ma4: movingAverage(socialValues, index, 4),
-    parks_total_bags_ma4: movingAverage(parksValues, index, 4),
-    contacts_total_ma4: movingAverage(contactsValues, index, 4),
-    c3_logged_total_ma4: movingAverage(c3LoggedValues, index, 4)
-  }));
-}
-
-function getPreviousReportedWeek(weekly: WeeklyMetricRow[], weekStart: string): WeeklyMetricRow | null {
-  const currentIndex = weekly.findIndex((row) => row.week_start === weekStart);
-  if (currentIndex <= 0) {
-    return null;
-  }
-
-  for (let i = currentIndex - 1; i >= 0; i -= 1) {
-    if (weekly[i].record_status === "REPORTED") {
-      return weekly[i];
-    }
-  }
-
-  return null;
-}
-
-function incidentsForWeek(incidents: IncidentRow[], weekStart: string): IncidentRow[] {
-  return incidents.filter((incident) => incident.week_start === weekStart);
-}
-
 function SectionIcon({ kind, className }: { kind: SectionIconKind; className?: string }) {
   if (kind === "summary") {
     return <FileText className={className} strokeWidth={1.8} aria-hidden />;
@@ -1492,7 +1221,8 @@ function SelectField({
   onChange,
   children,
   mobileChildren,
-  inlineLabelOnMobile = false
+  inlineLabelOnMobile = false,
+  disabled = false
 }: {
   id: string;
   label: string;
@@ -1501,6 +1231,7 @@ function SelectField({
   children: React.ReactNode;
   mobileChildren?: React.ReactNode;
   inlineLabelOnMobile?: boolean;
+  disabled?: boolean;
 }) {
   const labelId = `${id}-label`;
   const selectClassName = "w-full min-w-0 appearance-none rounded-[6px] border bg-white px-4 py-2 pr-10 font-[var(--font-body)] text-[1rem] text-black outline-none";
@@ -1525,6 +1256,7 @@ function SelectField({
               aria-labelledby={labelId}
               value={value}
               onChange={onChange}
+              disabled={disabled}
               className={clsx(selectClassName, "md:hidden")}
               style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
             >
@@ -1535,6 +1267,7 @@ function SelectField({
               aria-labelledby={labelId}
               value={value}
               onChange={onChange}
+              disabled={disabled}
               className={clsx(selectClassName, "hidden md:block")}
               style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
             >
@@ -1547,6 +1280,7 @@ function SelectField({
             aria-labelledby={labelId}
             value={value}
             onChange={onChange}
+            disabled={disabled}
             className={selectClassName}
             style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
           >
@@ -1566,7 +1300,8 @@ function DateField({
   min,
   max,
   onChange,
-  inlineLabelOnMobile = false
+  inlineLabelOnMobile = false,
+  disabled = false
 }: {
   id: string;
   label: string;
@@ -1575,6 +1310,7 @@ function DateField({
   max: string;
   onChange: React.ChangeEventHandler<HTMLInputElement>;
   inlineLabelOnMobile?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div className={clsx(inlineLabelOnMobile && "grid grid-cols-[6.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 md:block")}>
@@ -1594,6 +1330,7 @@ function DateField({
         min={min}
         max={max}
         onChange={onChange}
+        disabled={disabled}
         className={clsx(
           "w-full rounded-[6px] border bg-white px-0 py-2 font-[var(--font-body)] text-[1rem] text-black outline-none sm:px-4",
           inlineLabelOnMobile ? "md:mt-2" : "mt-2"
@@ -1608,12 +1345,14 @@ function DashboardTopPanel({
   title,
   description,
   icon: Icon,
-  controls
+  controls,
+  statusText
 }: {
   title: string;
   description: React.ReactNode;
   icon: LucideIcon;
   controls?: React.ReactNode;
+  statusText?: string;
 }) {
   return (
     <div
@@ -1626,9 +1365,19 @@ function DashboardTopPanel({
             <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white">
               <Icon className="h-6 w-6" strokeWidth={2.1} aria-hidden />
             </span>
-            <h2 className="dashboard-heading-2">
-              {title}
-            </h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="dashboard-heading-2">
+                {title}
+              </h2>
+              {statusText ? (
+                <span
+                  className="inline-flex items-center rounded-full px-3 py-1 text-[0.78rem] font-semibold uppercase tracking-[0.06em]"
+                  style={{ backgroundColor: BRAND.colors.neutralBackground, color: BRAND.colors.neutralStrong }}
+                >
+                  {statusText}
+                </span>
+              ) : null}
+            </div>
           </div>
           <div className="mt-2 leading-7" style={{ color: BRAND.colors.textMuted }}>{description}</div>
         </div>
@@ -2299,55 +2048,6 @@ function c3DateBounds(reportingWindowStart: string, reportingWindowEnd: string):
   };
 }
 
-function buildC3TrackerSummary(rows: C3RequestRow[]): {
-  breakdown: C3TrackerBreakdownRow[];
-  totals: C3TrackerTotals;
-} {
-  const counts = new Map<string, { logged: number; resolved: number }>();
-
-  for (const row of rows) {
-    if (!row.category) {
-      continue;
-    }
-
-    const existing = counts.get(row.category) ?? { logged: 0, resolved: 0 };
-    existing.logged += 1;
-    if (isResolvedC3Request(row)) {
-      existing.resolved += 1;
-    }
-    counts.set(row.category, existing);
-  }
-
-  const breakdown = [...counts.entries()]
-    .sort(([left], [right]) => compareC3Categories(left, right))
-    .map(([department, values]) => ({
-      department,
-      logged: values.logged,
-      resolved: values.resolved,
-      backlog: Math.max(values.logged - values.resolved, 0),
-      resolution_ratio:
-        values.logged === 0 ? null : Number((values.resolved / values.logged).toFixed(2))
-    }));
-
-  const totals = breakdown.reduce(
-    (acc, row) => ({
-      logged: acc.logged + row.logged,
-      resolved: acc.resolved + row.resolved,
-      backlog: acc.backlog + row.backlog
-    }),
-    { logged: 0, resolved: 0, backlog: 0 }
-  );
-
-  return {
-    breakdown,
-    totals: {
-      ...totals,
-      resolution_ratio:
-        totals.logged === 0 ? null : Number((totals.resolved / totals.logged).toFixed(2))
-    }
-  };
-}
-
 function TermsDefinitionsDialog({
   open,
   onClose
@@ -2501,21 +2201,50 @@ function TermsDefinitionsDialog({
   );
 }
 
-export default function DashboardClient({ initialData, initialTab = "summary" }: Props) {
-  const weekly = initialData.weekly;
-  const defaultTrendBounds = trendDateBounds(weekly, initialData.meta.selected_week_start);
-  const defaultC3Bounds = c3DateBounds(
-    initialData.meta.reporting_window_start,
-    initialData.meta.reporting_window_end
-  );
+async function fetchDashboardSlice<T>(params: URLSearchParams, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`/api/dashboard?${params.toString()}`, {
+    method: "GET",
+    cache: "no-store",
+    signal
+  });
 
+  if (!response.ok) {
+    throw new Error(`Dashboard request failed with ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+function toPillarConfig(metrics: MetricComparisonRow[], config: {
+  id: string;
+  title: string;
+  theme: MetricTheme;
+  iconPath: string;
+  summary: string;
+}) {
+  return {
+    ...config,
+    metrics
+  };
+}
+
+export default function DashboardClient({ initialData, initialTab = "summary" }: Props) {
+  const [pageData, setPageData] = useState(initialData);
+  const [trendData, setTrendData] = useState(initialData.trends);
+  const [c3Data, setC3Data] = useState(initialData.c3);
   const [selectedWeekStart, setSelectedWeekStart] = useState(initialData.meta.selected_week_start);
+  const [requestedWeekStart, setRequestedWeekStart] = useState(initialData.meta.selected_week_start);
   const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab);
-  const [trendFromDate, setTrendFromDate] = useState(defaultTrendBounds.from);
-  const [trendToDate, setTrendToDate] = useState(defaultTrendBounds.to);
-  const [c3FromDate, setC3FromDate] = useState(defaultC3Bounds.from);
-  const [c3ToDate, setC3ToDate] = useState(defaultC3Bounds.to);
-  const [trendGranularity, setTrendGranularity] = useState<TrendGranularity>("week");
+  const [trendFromDate, setTrendFromDate] = useState(initialData.trends.from);
+  const [trendToDate, setTrendToDate] = useState(initialData.trends.to);
+  const [requestedTrendFromDate, setRequestedTrendFromDate] = useState(initialData.trends.from);
+  const [requestedTrendToDate, setRequestedTrendToDate] = useState(initialData.trends.to);
+  const [c3FromDate, setC3FromDate] = useState(initialData.c3.from);
+  const [c3ToDate, setC3ToDate] = useState(initialData.c3.to);
+  const [requestedC3FromDate, setRequestedC3FromDate] = useState(initialData.c3.from);
+  const [requestedC3ToDate, setRequestedC3ToDate] = useState(initialData.c3.to);
+  const [trendGranularity, setTrendGranularity] = useState<TrendGranularity>(initialData.trends.granularity);
+  const [requestedTrendGranularity, setRequestedTrendGranularity] = useState<TrendGranularity>(initialData.trends.granularity);
   const mainPrintableRef = useRef<HTMLDivElement>(null);
   const summaryPrintableRef = useRef<HTMLDivElement>(null);
   const trendsPrintableRef = useRef<HTMLDivElement>(null);
@@ -2525,6 +2254,9 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
   const [isExportingImage, setIsExportingImage] = useState(false);
   const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(false);
+  const [isTrendsLoading, setIsTrendsLoading] = useState(false);
+  const [isC3Loading, setIsC3Loading] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -2562,14 +2294,153 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
     };
   }, []);
 
-  const weeklyByStart = useMemo(
-    () => new Map(weekly.map((row) => [row.week_start, row])),
-    [weekly]
+  useEffect(() => {
+    if (requestedWeekStart === pageData.meta.selected_week_start) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setIsPageLoading(true);
+    const params = new URLSearchParams({
+      view: "page",
+      weekStart: requestedWeekStart
+    });
+
+    void fetchDashboardSlice<DashboardPageData>(params, controller.signal)
+      .then((payload) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        startTransition(() => {
+          setPageData(payload);
+          setSelectedWeekStart(payload.meta.selected_week_start);
+          setRequestedWeekStart(payload.meta.selected_week_start);
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setRequestedWeekStart(pageData.meta.selected_week_start);
+        console.error(error);
+      })
+      .finally(() => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setIsPageLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [pageData.meta.selected_week_start, requestedWeekStart]);
+
+  useEffect(() => {
+    if (
+      requestedTrendFromDate === trendData.from &&
+      requestedTrendToDate === trendData.to &&
+      requestedTrendGranularity === trendData.granularity
+    ) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setIsTrendsLoading(true);
+    const params = new URLSearchParams({
+      view: "trends",
+      from: requestedTrendFromDate,
+      to: requestedTrendToDate,
+      granularity: requestedTrendGranularity
+    });
+
+    void fetchDashboardSlice<DashboardTrendsData>(params, controller.signal)
+      .then((payload) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        startTransition(() => {
+          setTrendData(payload);
+          setTrendFromDate(payload.from);
+          setTrendToDate(payload.to);
+          setTrendGranularity(payload.granularity);
+          setRequestedTrendFromDate(payload.from);
+          setRequestedTrendToDate(payload.to);
+          setRequestedTrendGranularity(payload.granularity);
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setRequestedTrendFromDate(trendData.from);
+        setRequestedTrendToDate(trendData.to);
+        setRequestedTrendGranularity(trendData.granularity);
+        console.error(error);
+      })
+      .finally(() => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setIsTrendsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [requestedTrendFromDate, requestedTrendGranularity, requestedTrendToDate, trendData.from, trendData.granularity, trendData.to]);
+
+  useEffect(() => {
+    if (requestedC3FromDate === c3Data.from && requestedC3ToDate === c3Data.to) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setIsC3Loading(true);
+    const params = new URLSearchParams({
+      view: "c3",
+      from: requestedC3FromDate,
+      to: requestedC3ToDate
+    });
+
+    void fetchDashboardSlice<DashboardC3Data>(params, controller.signal)
+      .then((payload) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        startTransition(() => {
+          setC3Data(payload);
+          setC3FromDate(payload.from);
+          setC3ToDate(payload.to);
+          setRequestedC3FromDate(payload.from);
+          setRequestedC3ToDate(payload.to);
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setRequestedC3FromDate(c3Data.from);
+        setRequestedC3ToDate(c3Data.to);
+        console.error(error);
+      })
+      .finally(() => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setIsC3Loading(false);
+      });
+
+    return () => controller.abort();
+  }, [c3Data.from, c3Data.to, requestedC3FromDate, requestedC3ToDate]);
+
+  const weekByStart = useMemo(
+    () => new Map(pageData.weeks.map((row) => [row.week_start, row])),
+    [pageData.weeks]
   );
   const weekOptions = useMemo(
     () =>
-      initialData.meta.available_weeks.map((weekStart) => {
-        const row = weeklyByStart.get(weekStart);
+      pageData.meta.available_weeks.map((weekStart) => {
+        const row = weekByStart.get(weekStart);
         const weekEnd = row?.week_end ?? weekStart;
         return {
           weekStart,
@@ -2578,41 +2449,29 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
           mobileLabel: formatCompactWeekRange(weekStart, weekEnd)
         };
       }),
-    [initialData.meta.available_weeks, weeklyByStart]
+    [pageData.meta.available_weeks, weekByStart]
   );
   const weekYears = useMemo(
-    () => [...new Set(weekOptions.map((option) => option.year))].sort((a, b) => b.localeCompare(a)),
+    () => [...new Set(weekOptions.map((option) => option.year))].sort((left, right) => right.localeCompare(left)),
     [weekOptions]
   );
   const selectedWeekYear = useMemo(
-    () => weekOptions.find((option) => option.weekStart === selectedWeekStart)?.year ?? weekYears[0] ?? "",
-    [weekOptions, selectedWeekStart, weekYears]
+    () => weekOptions.find((option) => option.weekStart === requestedWeekStart)?.year ?? weekYears[0] ?? "",
+    [requestedWeekStart, weekOptions, weekYears]
   );
   const visibleWeekOptions = useMemo(
     () => weekOptions.filter((option) => option.year === selectedWeekYear),
-    [weekOptions, selectedWeekYear]
+    [selectedWeekYear, weekOptions]
   );
 
-  const currentWeek = useMemo(
-    () => weekly.find((row) => row.week_start === selectedWeekStart) ?? null,
-    [weekly, selectedWeekStart]
-  );
+  const currentWeek = pageData.week_context.current_week;
+  const previousWeek = pageData.week_context.previous_week;
   const selectedWeekRange = useMemo(
     () => (currentWeek ? formatWeekRange(currentWeek.week_start, currentWeek.week_end) : formatWeekDate(selectedWeekStart)),
     [currentWeek, selectedWeekStart]
   );
-  const previousWeek = useMemo(
-    () => getPreviousReportedWeek(weekly, selectedWeekStart),
-    [weekly, selectedWeekStart]
-  );
-  const currentContactsTotal = useMemo(
-    () => callsAndWhatsappsTotal(currentWeek),
-    [currentWeek]
-  );
-  const previousContactsTotal = useMemo(
-    () => callsAndWhatsappsTotal(previousWeek),
-    [previousWeek]
-  );
+  const currentContactsTotal = useMemo(() => callsAndWhatsappsTotal(currentWeek), [currentWeek]);
+  const previousContactsTotal = useMemo(() => callsAndWhatsappsTotal(previousWeek), [previousWeek]);
   const summaryInfographicGroups = useMemo<SummaryInfographicGroupWithMetrics[]>(
     () =>
       SUMMARY_INFOGRAPHIC_GROUPS.map((group) => ({
@@ -2623,7 +2482,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
           previous: summaryMetricValue(metric, previousWeek, previousContactsTotal)
         }))
       })),
-    [currentWeek, currentContactsTotal, previousWeek, previousContactsTotal]
+    [currentContactsTotal, currentWeek, previousContactsTotal, previousWeek]
   );
   const summaryGroupsById = useMemo(() => {
     const groups: Partial<Record<SummaryInfographicGroupId, SummaryInfographicGroupWithMetrics>> = {};
@@ -2642,17 +2501,14 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
     return metrics;
   }, [summaryInfographicGroups]);
 
-  const currentIncidents = useMemo(
-    () => incidentsForWeek(initialData.incidents, selectedWeekStart),
-    [initialData.incidents, selectedWeekStart]
-  );
-  const incidentLogEmptyLabel = currentWeek?.metrics.criminal_incidents === 0
-    ? "No incidents this week"
-    : NO_DATA_LABEL;
-
+  const currentIncidents = pageData.current_week_tab.incidents;
+  const incidentLogEmptyLabel = currentWeek?.metrics.criminal_incidents === 0 ? "No incidents this week" : NO_DATA_LABEL;
   const trendDateBoundsConfig = useMemo(
-    () => trendDateBounds(weekly, initialData.meta.selected_week_start),
-    [weekly, initialData.meta.selected_week_start]
+    () => ({
+      from: trendData.available_from,
+      to: trendData.available_to
+    }),
+    [trendData.available_from, trendData.available_to]
   );
   const trendFrom = trendFromDate <= trendToDate ? trendFromDate : trendToDate;
   const trendTo = trendFromDate <= trendToDate ? trendToDate : trendFromDate;
@@ -2667,53 +2523,17 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
     : trendGranularity === "month"
       ? "Monthly"
       : "Yearly";
-  const c3DateBoundsConfig = defaultC3Bounds;
+  const c3DateBoundsConfig = c3DateBounds(c3Data.available_from, c3Data.available_to);
   const c3From = c3FromDate <= c3ToDate ? c3FromDate : c3ToDate;
   const c3To = c3FromDate <= c3ToDate ? c3ToDate : c3FromDate;
   const c3RangeLabel = `${formatWeekDate(c3From)} to ${formatWeekDate(c3To)}`;
-  const trendSeries = useMemo(
-    () => buildTrendSeries(
-      weekly.filter((row) => row.week_start >= trendFrom && row.week_start <= trendTo),
-      trendGranularity
-    ),
-    [weekly, trendFrom, trendTo, trendGranularity]
-  );
-  const c3FilteredRows = useMemo(
-    () =>
-      initialData.c3_request_rows.filter((row) => {
-        if (!row.date_logged) {
-          return false;
-        }
-        return row.date_logged >= c3From && row.date_logged <= c3To;
-      }),
-    [c3From, c3To, initialData.c3_request_rows]
-  );
-  const c3TrackerSummary = useMemo(
-    () => buildC3TrackerSummary(c3FilteredRows),
-    [c3FilteredRows]
-  );
-  const c3OverallBreakdown = c3TrackerSummary.breakdown;
-  const c3OverallTotals = c3TrackerSummary.totals;
-  const c3OverallResolutionRatio = c3TrackerSummary.totals.resolution_ratio;
+  const trendSeries = trendData.series;
+  const c3OverallBreakdown = c3Data.breakdown;
+  const c3OverallTotals = c3Data.totals;
+  const c3OverallResolutionRatio = c3Data.totals.resolution_ratio;
   const activeTabLabel = SUMMARY_IMAGE_TABS.find((tab) => tab.id === activeTab)?.label ?? "Summary";
-  const c3BacklogTop3 = useMemo(
-    () =>
-      [...c3OverallBreakdown]
-        .sort((a, b) => {
-          if (b.backlog !== a.backlog) {
-            return b.backlog - a.backlog;
-          }
-          return a.department.localeCompare(b.department);
-        })
-        .slice(0, 3),
-    [c3OverallBreakdown]
-  );
-  const currentWeekStart = currentWeek?.week_start ?? null;
-  const previousWeekStart = previousWeek?.week_start ?? null;
-  const currentWeekGeneralIncidentsBreakdown = useMemo(
-    () => weekChartDataFromSection(initialData.sections.general_incidents, currentWeekStart),
-    [currentWeekStart, initialData.sections.general_incidents]
-  );
+  const c3BacklogTop3 = c3Data.pressure_points;
+  const currentWeekGeneralIncidentsBreakdown = pageData.current_week_tab.general_incidents_breakdown;
   const currentWeekLawEnforcementBreakdown = useMemo(
     () => [
       { category: "Section 56 Notices", value: toMetricNumber(currentWeek?.metrics.section56_notices) ?? 0 },
@@ -2721,14 +2541,8 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
     ],
     [currentWeek]
   );
-  const currentWeekControlRoomBreakdown = useMemo(
-    () => weekChartDataFromSection(initialData.sections.control_room_engagement, currentWeekStart),
-    [currentWeekStart, initialData.sections.control_room_engagement]
-  );
-  const currentWeekC3LoggedBreakdown = useMemo(
-    () => weekChartDataFromSection(initialData.sections.c3_requests, currentWeekStart),
-    [currentWeekStart, initialData.sections.c3_requests]
-  );
+  const currentWeekControlRoomBreakdown = pageData.current_week_tab.control_room_breakdown;
+  const currentWeekC3LoggedBreakdown = pageData.current_week_tab.c3_logged_breakdown;
   const summaryImageWeekRange = useMemo(
     () => (currentWeek ? formatSummaryImageWeekRange(currentWeek.week_start, currentWeek.week_end) : `${formatWeekDate(selectedWeekStart)}.`),
     [currentWeek, selectedWeekStart]
@@ -2764,59 +2578,49 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
     [summaryGroupsById, summaryMetricsById]
   );
 
-  const toPillarMetrics = useCallback(
-    (section: SectionData) =>
-      section.categories.map((row) => ({
-        label: row.category,
-        current: currentWeekStart ? toMetricNumber(row.values[currentWeekStart] ?? null) : null,
-        previous: previousWeekStart ? toMetricNumber(row.values[previousWeekStart] ?? null) : null
-      })),
-    [currentWeekStart, previousWeekStart]
-  );
-
   const publicSafetyPillar = useMemo(
-    () => ({
-      id: "public-safety",
-      title: "Public Safety",
-      theme: "safety" as const,
-      iconPath: "/icons/safety.svg",
-      summary: "Security patrols and emergency response to ensure community safety.",
-      metrics: toPillarMetrics(initialData.sections.public_safety)
-    }),
-    [initialData.sections.public_safety, toPillarMetrics]
+    () =>
+      toPillarConfig(pageData.current_week_tab.public_safety_metrics, {
+        id: "public-safety",
+        title: "Public Safety",
+        theme: "safety",
+        iconPath: "/icons/safety.svg",
+        summary: "Security patrols and emergency response to ensure community safety."
+      }),
+    [pageData.current_week_tab.public_safety_metrics]
   );
   const cleaningPillar = useMemo(
-    () => ({
-      id: "cleaning",
-      title: "Cleaning & Maintenance",
-      theme: "cleaning" as const,
-      iconPath: "/icons/cleaning.svg",
-      summary: "Public cleaning and infrastructure maintenance to keep our district pristine.",
-      metrics: toPillarMetrics(initialData.sections.cleaning)
-    }),
-    [initialData.sections.cleaning, toPillarMetrics]
+    () =>
+      toPillarConfig(pageData.current_week_tab.cleaning_metrics, {
+        id: "cleaning",
+        title: "Cleaning & Maintenance",
+        theme: "cleaning",
+        iconPath: "/icons/cleaning.svg",
+        summary: "Public cleaning and infrastructure maintenance to keep our district pristine."
+      }),
+    [pageData.current_week_tab.cleaning_metrics]
   );
   const socialPillar = useMemo(
-    () => ({
-      id: "social-services",
-      title: "Social Services",
-      theme: "social" as const,
-      iconPath: "/icons/social%20services.svg",
-      summary: "Community support programs and social development initiatives",
-      metrics: toPillarMetrics(initialData.sections.social_services)
-    }),
-    [initialData.sections.social_services, toPillarMetrics]
+    () =>
+      toPillarConfig(pageData.current_week_tab.social_services_metrics, {
+        id: "social-services",
+        title: "Social Services",
+        theme: "social",
+        iconPath: "/icons/social%20services.svg",
+        summary: "Community support programs and social development initiatives"
+      }),
+    [pageData.current_week_tab.social_services_metrics]
   );
   const parksPillar = useMemo(
-    () => ({
-      id: "parks-recreation",
-      title: "Parks & Recreation",
-      theme: "parks" as const,
-      iconPath: "/icons/parks.svg",
-      summary: "Maintaining and improving green spaces and recreational facilities.",
-      metrics: toPillarMetrics(initialData.sections.parks)
-    }),
-    [initialData.sections.parks, toPillarMetrics]
+    () =>
+      toPillarConfig(pageData.current_week_tab.parks_metrics, {
+        id: "parks-recreation",
+        title: "Parks & Recreation",
+        theme: "parks",
+        iconPath: "/icons/parks.svg",
+        summary: "Maintaining and improving green spaces and recreational facilities."
+      }),
+    [pageData.current_week_tab.parks_metrics]
   );
 
   async function handlePrintPdf() {
@@ -2955,7 +2759,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 Weekly and historical operational performance for stakeholders, covering safety, cleaning, social upliftment, and general incidents.
               </p>
               <p className="mt-9 font-[var(--font-heading)] text-[0.83rem] font-semibold uppercase tracking-[0.08em] text-white/92">
-                Last Update <strong>{formatDataUpdate(initialData.meta.data_updated_at)}</strong>
+                Last Update <strong>{formatDataUpdate(pageData.meta.data_updated_at)}</strong>
               </p>
             </div>
             <div className="hidden flex-wrap justify-start gap-3 md:flex lg:justify-end">
@@ -2963,7 +2767,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <button
                   type="button"
                   onClick={handlePrintPdf}
-                  disabled={isExportingPdf}
+                  disabled={isExportingPdf || isPageLoading || isTrendsLoading || isC3Loading}
                   className="inline-flex items-center gap-3 rounded-[14px] border-1 border-white px-6 py-2 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Printer className="h-5 w-5" strokeWidth={2.2} aria-hidden />
@@ -3016,6 +2820,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                   <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}>{selectedWeekRange}.</span></p>
                 )
               }
+              statusText={isPageLoading ? "Updating..." : undefined}
               controls={
                 <div className={clsx("grid gap-4", activeTab === "summary-image" ? "md:grid-cols-[160px_minmax(0,1fr)_auto]" : "md:grid-cols-[160px_minmax(0,1fr)]")}>
                   <SelectField
@@ -3023,11 +2828,12 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                     label="Year"
                     value={selectedWeekYear}
                     inlineLabelOnMobile
+                    disabled={isPageLoading}
                     onChange={(event) => {
                       const nextYear = event.target.value;
                       const nextWeek = [...weekOptions].reverse().find((option) => option.year === nextYear);
                       if (nextWeek) {
-                        setSelectedWeekStart(nextWeek.weekStart);
+                        setRequestedWeekStart(nextWeek.weekStart);
                       }
                     }}
                   >
@@ -3040,9 +2846,10 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                   <SelectField
                     id="dashboard-reporting-week"
                     label="Reporting Week"
-                    value={selectedWeekStart}
+                    value={requestedWeekStart}
                     inlineLabelOnMobile
-                    onChange={(event) => setSelectedWeekStart(event.target.value)}
+                    disabled={isPageLoading}
+                    onChange={(event) => setRequestedWeekStart(event.target.value)}
                     mobileChildren={visibleWeekOptions.map((option) => (
                       <option key={option.weekStart} value={option.weekStart}>
                         {option.mobileLabel}
@@ -3060,7 +2867,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                       <button
                         type="button"
                         onClick={handleExportSummaryImage}
-                        disabled={isExportingImage}
+                        disabled={isExportingImage || isPageLoading}
                         className="inline-flex min-h-12 items-center justify-center gap-3 rounded-[14px] border border-black bg-black px-6 py-3 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <File className="h-5 w-5" strokeWidth={2.2} aria-hidden />
@@ -3082,43 +2889,46 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                   {trendPeriodLabel} results from <span className="font-semibold" style={{ color: BRAND.colors.textMuted }}>{trendRangeLabel}</span>, compared with a {trendAverageLabel} to show underlying direction over time.
                 </p>
               }
+              statusText={isTrendsLoading ? "Updating..." : undefined}
               controls={
                 <div className="min-w-0 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
                   <DateField
                     id="trends-from-date"
                     label="From"
-                    value={trendFromDate}
+                    value={requestedTrendFromDate}
                     inlineLabelOnMobile
                     min={trendDateBoundsConfig.from}
-                    max={trendToDate}
+                    max={requestedTrendToDate}
+                    disabled={isTrendsLoading}
                     onChange={(event) => {
                       const nextFrom = event.target.value;
                       if (!nextFrom) {
                         return;
                       }
                       const boundedFrom = nextFrom < trendDateBoundsConfig.from ? trendDateBoundsConfig.from : nextFrom;
-                      setTrendFromDate(boundedFrom);
-                      if (boundedFrom > trendToDate) {
-                        setTrendToDate(boundedFrom);
+                      setRequestedTrendFromDate(boundedFrom);
+                      if (boundedFrom > requestedTrendToDate) {
+                        setRequestedTrendToDate(boundedFrom);
                       }
                     }}
                   />
                   <DateField
                     id="trends-to-date"
                     label="To"
-                    value={trendToDate}
+                    value={requestedTrendToDate}
                     inlineLabelOnMobile
-                    min={trendFromDate}
+                    min={requestedTrendFromDate}
                     max={trendDateBoundsConfig.to}
+                    disabled={isTrendsLoading}
                     onChange={(event) => {
                       const nextTo = event.target.value;
                       if (!nextTo) {
                         return;
                       }
                       const boundedTo = nextTo > trendDateBoundsConfig.to ? trendDateBoundsConfig.to : nextTo;
-                      setTrendToDate(boundedTo);
-                      if (boundedTo < trendFromDate) {
-                        setTrendFromDate(boundedTo);
+                      setRequestedTrendToDate(boundedTo);
+                      if (boundedTo < requestedTrendFromDate) {
+                        setRequestedTrendFromDate(boundedTo);
                       }
                     }}
                   />
@@ -3129,12 +2939,13 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                         <button
                           key={option.id}
                           type="button"
-                          onClick={() => setTrendGranularity(option.id)}
+                          onClick={() => setRequestedTrendGranularity(option.id)}
+                          disabled={isTrendsLoading}
                           className={clsx(
-                            "rounded-[8px] px-6 py-3 font-[var(--font-body)] text-[.9rem] transition-colors",
-                            trendGranularity === option.id ? "bg-black text-white" : "bg-black/6 text-black hover:bg-black/10"
+                            "rounded-[8px] px-6 py-3 font-[var(--font-body)] text-[.9rem] transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                            requestedTrendGranularity === option.id ? "bg-black text-white" : "bg-black/6 text-black hover:bg-black/10"
                           )}
-                          aria-pressed={trendGranularity === option.id}
+                          aria-pressed={requestedTrendGranularity === option.id}
                         >
                           {option.label}
                         </button>
@@ -3154,43 +2965,46 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <p>City service requests logged vs resolved by category from
                 <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}> {c3RangeLabel}.</span></p>
               }
+              statusText={isC3Loading ? "Updating..." : undefined}
               controls={
                 <div className="grid gap-4 md:grid-cols-2">
                   <DateField
                     id="c3-from-date"
                     label="From"
-                    value={c3FromDate}
+                    value={requestedC3FromDate}
                     inlineLabelOnMobile
                     min={c3DateBoundsConfig.from}
-                    max={c3ToDate}
+                    max={requestedC3ToDate}
+                    disabled={isC3Loading}
                     onChange={(event) => {
                       const nextFrom = event.target.value;
                       if (!nextFrom) {
                         return;
                       }
                       const boundedFrom = nextFrom < c3DateBoundsConfig.from ? c3DateBoundsConfig.from : nextFrom;
-                      setC3FromDate(boundedFrom);
-                      if (boundedFrom > c3ToDate) {
-                        setC3ToDate(boundedFrom);
+                      setRequestedC3FromDate(boundedFrom);
+                      if (boundedFrom > requestedC3ToDate) {
+                        setRequestedC3ToDate(boundedFrom);
                       }
                     }}
                   />
                   <DateField
                     id="c3-to-date"
                     label="To"
-                    value={c3ToDate}
+                    value={requestedC3ToDate}
                     inlineLabelOnMobile
-                    min={c3FromDate}
+                    min={requestedC3FromDate}
                     max={c3DateBoundsConfig.to}
+                    disabled={isC3Loading}
                     onChange={(event) => {
                       const nextTo = event.target.value;
                       if (!nextTo) {
                         return;
                       }
                       const boundedTo = nextTo > c3DateBoundsConfig.to ? c3DateBoundsConfig.to : nextTo;
-                      setC3ToDate(boundedTo);
-                      if (boundedTo < c3FromDate) {
-                        setC3FromDate(boundedTo);
+                      setRequestedC3ToDate(boundedTo);
+                      if (boundedTo < requestedC3FromDate) {
+                        setRequestedC3FromDate(boundedTo);
                       }
                     }}
                   />
@@ -3327,8 +3141,8 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
             <div className="rounded-[12px] border p-3.5" style={{ borderColor: BRAND.colors.borderSubtle }}>
               <h4 className="dashboard-heading-4" style={{ ["--dashboard-heading-color" as string]: BRAND.colors.textStrong }}>Hotspot Intelligence <span className="font-normal">(Top {HOTSPOT_LIMIT})</span></h4>
               <ol className="mt-3 space-y-2">
-                {initialData.hotspots.length ? (
-                  initialData.hotspots.map((spot, index) => (
+                {pageData.current_week_tab.hotspots.length ? (
+                  pageData.current_week_tab.hotspots.map((spot, index) => (
                     <li key={spot.street} className="flex items-center justify-between rounded-[10px] border bg-white px-3 py-2.5" style={{ borderColor: BRAND.colors.borderSubtle }}>
                       <span className="text-sm font-medium" style={{ color: BRAND.colors.textStrong }}>{index + 1}. {spot.street}</span>
                       <span className="inline-flex min-w-9 items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium" style={{ borderColor: BRAND.colors.safety, backgroundColor: BRAND.colors.safety, color: BRAND.colors.black }}>

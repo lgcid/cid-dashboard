@@ -4,7 +4,6 @@ type PageProps = {
   searchParams: Promise<{
     tab?: string;
     weekStart?: string;
-    windowWeeks?: string;
     preview?: string;
   }>;
 };

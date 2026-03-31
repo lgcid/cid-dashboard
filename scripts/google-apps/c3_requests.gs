@@ -25,7 +25,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("C3 Requests")
     .addItem("Sync Open Requests", "syncOpenC3Requests")
-    .addItem("Sync Selected Row", "syncSelectedC3Request")
+    .addItem("Sync Selected Rows", "syncSelectedC3Request")
     .addSeparator()
     .addItem("Clear Green Highlights", "clearAllC3Highlights")
     .addToUi();
@@ -121,55 +121,149 @@ function syncSelectedC3Request() {
     return;
   }
 
-  var activeRange = activeSheet.getActiveRange();
-  if (!activeRange) {
-    context.spreadsheet.toast("Select a row first.", "C3 Requests", 5);
+  var selectedRowNumbers = getSelectedRowNumbers_(activeSheet);
+  if (selectedRowNumbers.length === 0) {
+    context.spreadsheet.toast("Select one or more rows first.", "C3 Requests", 5);
     return;
   }
 
-  var rowNumber = activeRange.getRow();
-  if (rowNumber <= C3_REQUESTS_CONFIG.headerRow) {
-    context.spreadsheet.toast("Select a data row, not the header row.", "C3 Requests", 5);
-    return;
+  var selectedRows = [];
+  var skippedHeaderRows = [];
+  var skippedInvalidRows = [];
+
+  for (var i = 0; i < selectedRowNumbers.length; i += 1) {
+    var rowNumber = selectedRowNumbers[i];
+
+    if (rowNumber <= C3_REQUESTS_CONFIG.headerRow) {
+      skippedHeaderRows.push(rowNumber);
+      continue;
+    }
+
+    var rowValues = activeSheet
+      .getRange(rowNumber, 1, 1, context.lastColumn)
+      .getValues()[0];
+    var row = buildRowStateFromValues_(rowNumber, rowValues, context.columns);
+
+    if (!row) {
+      skippedInvalidRows.push(rowNumber);
+      continue;
+    }
+
+    selectedRows.push(row);
   }
 
-  var rowValues = activeSheet
-    .getRange(rowNumber, 1, 1, context.lastColumn)
-    .getValues()[0];
-  var row = buildRowStateFromValues_(rowNumber, rowValues, context.columns);
-
-  if (!row) {
+  if (selectedRows.length === 0) {
     context.spreadsheet.toast(
-      "The selected row does not have a valid reference_number.",
+      "None of the selected rows have a valid reference_number.",
       "C3 Requests",
       5
     );
     return;
   }
 
-  clearRowHighlights_(context.sheet, context.columns, row.rowNumber);
-  context.spreadsheet.toast(
-    "Checking selected row: " + row.reference,
-    "C3 Requests",
-    C3_REQUESTS_CONFIG.progressToastSeconds
-  );
+  var updatedReferences = [];
+  var errors = [];
 
-  try {
-    var writeCounts = syncC3Row_(context.sheet, context.columns, row);
-    var summaryText =
-      "Selected row complete. Updated " +
-      writeCounts.updatedCells +
-      " cell(s). Latest request status: " +
-      (writeCounts.latestRequestStatus || "Unknown");
-    SpreadsheetApp.getUi().alert(summaryText);
-  } catch (error) {
+  for (var selectedIndex = 0; selectedIndex < selectedRows.length; selectedIndex += 1) {
+    var selectedRow = selectedRows[selectedIndex];
+    clearRowHighlights_(context.sheet, context.columns, selectedRow.rowNumber);
     context.spreadsheet.toast(
-      "Selected row failed: " +
-        (error && error.message ? error.message : String(error)),
+      "Checking " +
+        (selectedIndex + 1) +
+        "/" +
+        selectedRows.length +
+        ": " +
+        selectedRow.reference,
       "C3 Requests",
-      C3_REQUESTS_CONFIG.summaryToastSeconds
+      C3_REQUESTS_CONFIG.progressToastSeconds
     );
+
+    try {
+      var writeCounts = syncC3Row_(context.sheet, context.columns, selectedRow);
+      if (writeCounts.updatedCells > 0) {
+        updatedReferences.push(selectedRow.reference);
+      }
+    } catch (error) {
+      errors.push(
+        "Row " +
+          selectedRow.rowNumber +
+          " (" +
+          selectedRow.reference +
+          "): " +
+          (error && error.message ? error.message : String(error))
+      );
+    }
+
+    if (
+      selectedIndex < selectedRows.length - 1 &&
+      C3_REQUESTS_CONFIG.delayMs > 0
+    ) {
+      Utilities.sleep(C3_REQUESTS_CONFIG.delayMs);
+    }
   }
+
+  if (errors.length > 0) {
+    console.log(errors.join("\n"));
+  }
+
+  var summaryText =
+    "Selected rows complete. Checked " +
+    selectedRows.length +
+    " row(s); updated " +
+    updatedReferences.length +
+    " request(s): " +
+    formatUpdatedReferences_(updatedReferences);
+
+  if (skippedHeaderRows.length > 0) {
+    summaryText += "\nSkipped header row(s): " + skippedHeaderRows.join(", ");
+  }
+
+  if (skippedInvalidRows.length > 0) {
+    summaryText +=
+      "\nSkipped row(s) without a valid reference_number: " +
+      skippedInvalidRows.join(", ");
+  }
+
+  if (errors.length > 0) {
+    summaryText += "\nFailed row(s): " + errors.join("; ");
+  }
+
+  SpreadsheetApp.getUi().alert(summaryText);
+}
+
+function getSelectedRowNumbers_(sheet) {
+  var activeRangeList = sheet.getActiveRangeList();
+  var ranges = activeRangeList ? activeRangeList.getRanges() : [];
+  var rowNumbersByKey = {};
+  var rowNumbers = [];
+
+  if (ranges.length === 0) {
+    var activeRange = sheet.getActiveRange();
+    if (!activeRange) {
+      return rowNumbers;
+    }
+    ranges = [activeRange];
+  }
+
+  for (var rangeIndex = 0; rangeIndex < ranges.length; rangeIndex += 1) {
+    var range = ranges[rangeIndex];
+    var startRow = range.getRow();
+    var endRow = startRow + range.getNumRows() - 1;
+
+    for (var rowNumber = startRow; rowNumber <= endRow; rowNumber += 1) {
+      var key = String(rowNumber);
+      if (!rowNumbersByKey[key]) {
+        rowNumbersByKey[key] = true;
+        rowNumbers.push(rowNumber);
+      }
+    }
+  }
+
+  rowNumbers.sort(function(a, b) {
+    return a - b;
+  });
+
+  return rowNumbers;
 }
 
 function clearAllC3Highlights() {

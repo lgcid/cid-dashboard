@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const getDashboardData = vi.fn();
+const getDashboardPageData = vi.fn();
 
 vi.mock("@/lib/dashboard-service", () => ({
-  getDashboardData
+  getDashboardPageData,
+  getDashboardTrendsData: vi.fn(),
+  getDashboardC3Data: vi.fn()
 }));
 
 vi.mock("@/lib/google-sheets", () => ({
@@ -22,27 +24,50 @@ const dashboardPayload = {
     data_source: "local_csv"
   },
   weeks: [],
-  sections: {},
-  weekly: [],
-  current_week: null,
-  trends: [],
-  c3_tracker_totals: {
-    logged: 0,
-    resolved: 0,
-    backlog: 0,
-    resolution_ratio: null
+  week_context: {
+    current_week: null,
+    previous_week: null
   },
-  c3_tracker_breakdown: [],
-  c3_request_rows: [],
-  hotspots: [],
-  incidents: []
+  current_week_tab: {
+    general_incidents_breakdown: [],
+    control_room_breakdown: [],
+    c3_logged_breakdown: [],
+    public_safety_metrics: [],
+    cleaning_metrics: [],
+    social_services_metrics: [],
+    parks_metrics: [],
+    incidents: [],
+    hotspots: []
+  },
+  trends: {
+    available_from: "2026-02-02",
+    available_to: "2026-03-02",
+    from: "2026-02-02",
+    to: "2026-03-02",
+    granularity: "week",
+    series: []
+  },
+  c3: {
+    available_from: "2026-02-02",
+    available_to: "2026-03-08",
+    from: "2026-02-02",
+    to: "2026-03-08",
+    totals: {
+      logged: 0,
+      resolved: 0,
+      backlog: 0,
+      resolution_ratio: null
+    },
+    breakdown: [],
+    pressure_points: []
+  }
 };
 
 describe("dashboard route cache headers", () => {
   beforeEach(() => {
     vi.resetModules();
-    getDashboardData.mockReset();
-    getDashboardData.mockResolvedValue(dashboardPayload);
+    getDashboardPageData.mockReset();
+    getDashboardPageData.mockResolvedValue(dashboardPayload);
   });
 
   it("keeps CDN caching for standard requests", async () => {
@@ -51,10 +76,9 @@ describe("dashboard route cache headers", () => {
 
     const response = await GET(request);
 
-    expect(getDashboardData).toHaveBeenCalledWith({
+    expect(getDashboardPageData).toHaveBeenCalledWith({
       preview: undefined,
       weekStart: undefined,
-      windowWeeks: undefined,
       vercelOidcToken: "oidc-token"
     });
     expect(response.headers.get("Cache-Control")).toBe(
@@ -68,10 +92,9 @@ describe("dashboard route cache headers", () => {
 
     const response = await GET(request);
 
-    expect(getDashboardData).toHaveBeenCalledWith({
+    expect(getDashboardPageData).toHaveBeenCalledWith({
       preview: "2026-03-10",
       weekStart: undefined,
-      windowWeeks: undefined,
       vercelOidcToken: "oidc-token"
     });
     expect(response.headers.get("Cache-Control")).toBe("no-store, max-age=0");
