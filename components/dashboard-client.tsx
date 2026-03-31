@@ -1221,7 +1221,8 @@ function SelectField({
   onChange,
   children,
   mobileChildren,
-  inlineLabelOnMobile = false
+  inlineLabelOnMobile = false,
+  disabled = false
 }: {
   id: string;
   label: string;
@@ -1230,6 +1231,7 @@ function SelectField({
   children: React.ReactNode;
   mobileChildren?: React.ReactNode;
   inlineLabelOnMobile?: boolean;
+  disabled?: boolean;
 }) {
   const labelId = `${id}-label`;
   const selectClassName = "w-full min-w-0 appearance-none rounded-[6px] border bg-white px-4 py-2 pr-10 font-[var(--font-body)] text-[1rem] text-black outline-none";
@@ -1254,6 +1256,7 @@ function SelectField({
               aria-labelledby={labelId}
               value={value}
               onChange={onChange}
+              disabled={disabled}
               className={clsx(selectClassName, "md:hidden")}
               style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
             >
@@ -1264,6 +1267,7 @@ function SelectField({
               aria-labelledby={labelId}
               value={value}
               onChange={onChange}
+              disabled={disabled}
               className={clsx(selectClassName, "hidden md:block")}
               style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
             >
@@ -1276,6 +1280,7 @@ function SelectField({
             aria-labelledby={labelId}
             value={value}
             onChange={onChange}
+            disabled={disabled}
             className={selectClassName}
             style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 1px 2px ${BRAND.colors.overlaySubtle}` }}
           >
@@ -1295,7 +1300,8 @@ function DateField({
   min,
   max,
   onChange,
-  inlineLabelOnMobile = false
+  inlineLabelOnMobile = false,
+  disabled = false
 }: {
   id: string;
   label: string;
@@ -1304,6 +1310,7 @@ function DateField({
   max: string;
   onChange: React.ChangeEventHandler<HTMLInputElement>;
   inlineLabelOnMobile?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div className={clsx(inlineLabelOnMobile && "grid grid-cols-[6.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 md:block")}>
@@ -1323,6 +1330,7 @@ function DateField({
         min={min}
         max={max}
         onChange={onChange}
+        disabled={disabled}
         className={clsx(
           "w-full rounded-[6px] border bg-white px-0 py-2 font-[var(--font-body)] text-[1rem] text-black outline-none sm:px-4",
           inlineLabelOnMobile ? "md:mt-2" : "mt-2"
@@ -1337,12 +1345,14 @@ function DashboardTopPanel({
   title,
   description,
   icon: Icon,
-  controls
+  controls,
+  statusText
 }: {
   title: string;
   description: React.ReactNode;
   icon: LucideIcon;
   controls?: React.ReactNode;
+  statusText?: string;
 }) {
   return (
     <div
@@ -1355,9 +1365,19 @@ function DashboardTopPanel({
             <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white">
               <Icon className="h-6 w-6" strokeWidth={2.1} aria-hidden />
             </span>
-            <h2 className="dashboard-heading-2">
-              {title}
-            </h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="dashboard-heading-2">
+                {title}
+              </h2>
+              {statusText ? (
+                <span
+                  className="inline-flex items-center rounded-full px-3 py-1 text-[0.78rem] font-semibold uppercase tracking-[0.06em]"
+                  style={{ backgroundColor: BRAND.colors.neutralBackground, color: BRAND.colors.neutralStrong }}
+                >
+                  {statusText}
+                </span>
+              ) : null}
+            </div>
           </div>
           <div className="mt-2 leading-7" style={{ color: BRAND.colors.textMuted }}>{description}</div>
         </div>
@@ -2213,12 +2233,18 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
   const [trendData, setTrendData] = useState(initialData.trends);
   const [c3Data, setC3Data] = useState(initialData.c3);
   const [selectedWeekStart, setSelectedWeekStart] = useState(initialData.meta.selected_week_start);
+  const [requestedWeekStart, setRequestedWeekStart] = useState(initialData.meta.selected_week_start);
   const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab);
   const [trendFromDate, setTrendFromDate] = useState(initialData.trends.from);
   const [trendToDate, setTrendToDate] = useState(initialData.trends.to);
+  const [requestedTrendFromDate, setRequestedTrendFromDate] = useState(initialData.trends.from);
+  const [requestedTrendToDate, setRequestedTrendToDate] = useState(initialData.trends.to);
   const [c3FromDate, setC3FromDate] = useState(initialData.c3.from);
   const [c3ToDate, setC3ToDate] = useState(initialData.c3.to);
+  const [requestedC3FromDate, setRequestedC3FromDate] = useState(initialData.c3.from);
+  const [requestedC3ToDate, setRequestedC3ToDate] = useState(initialData.c3.to);
   const [trendGranularity, setTrendGranularity] = useState<TrendGranularity>(initialData.trends.granularity);
+  const [requestedTrendGranularity, setRequestedTrendGranularity] = useState<TrendGranularity>(initialData.trends.granularity);
   const mainPrintableRef = useRef<HTMLDivElement>(null);
   const summaryPrintableRef = useRef<HTMLDivElement>(null);
   const trendsPrintableRef = useRef<HTMLDivElement>(null);
@@ -2228,6 +2254,9 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
   const [isExportingImage, setIsExportingImage] = useState(false);
   const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(false);
+  const [isTrendsLoading, setIsTrendsLoading] = useState(false);
+  const [isC3Loading, setIsC3Loading] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -2266,14 +2295,15 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
   }, []);
 
   useEffect(() => {
-    if (selectedWeekStart === pageData.meta.selected_week_start) {
+    if (requestedWeekStart === pageData.meta.selected_week_start) {
       return undefined;
     }
 
     const controller = new AbortController();
+    setIsPageLoading(true);
     const params = new URLSearchParams({
       view: "page",
-      weekStart: selectedWeekStart
+      weekStart: requestedWeekStart
     });
 
     void fetchDashboardSlice<DashboardPageData>(params, controller.signal)
@@ -2285,33 +2315,42 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
         startTransition(() => {
           setPageData(payload);
           setSelectedWeekStart(payload.meta.selected_week_start);
+          setRequestedWeekStart(payload.meta.selected_week_start);
         });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
           return;
         }
+        setRequestedWeekStart(pageData.meta.selected_week_start);
         console.error(error);
+      })
+      .finally(() => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setIsPageLoading(false);
       });
 
     return () => controller.abort();
-  }, [pageData.meta.selected_week_start, selectedWeekStart]);
+  }, [pageData.meta.selected_week_start, requestedWeekStart]);
 
   useEffect(() => {
     if (
-      trendFromDate === trendData.from &&
-      trendToDate === trendData.to &&
-      trendGranularity === trendData.granularity
+      requestedTrendFromDate === trendData.from &&
+      requestedTrendToDate === trendData.to &&
+      requestedTrendGranularity === trendData.granularity
     ) {
       return undefined;
     }
 
     const controller = new AbortController();
+    setIsTrendsLoading(true);
     const params = new URLSearchParams({
       view: "trends",
-      from: trendFromDate,
-      to: trendToDate,
-      granularity: trendGranularity
+      from: requestedTrendFromDate,
+      to: requestedTrendToDate,
+      granularity: requestedTrendGranularity
     });
 
     void fetchDashboardSlice<DashboardTrendsData>(params, controller.signal)
@@ -2325,28 +2364,41 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
           setTrendFromDate(payload.from);
           setTrendToDate(payload.to);
           setTrendGranularity(payload.granularity);
+          setRequestedTrendFromDate(payload.from);
+          setRequestedTrendToDate(payload.to);
+          setRequestedTrendGranularity(payload.granularity);
         });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
           return;
         }
+        setRequestedTrendFromDate(trendData.from);
+        setRequestedTrendToDate(trendData.to);
+        setRequestedTrendGranularity(trendData.granularity);
         console.error(error);
+      })
+      .finally(() => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setIsTrendsLoading(false);
       });
 
     return () => controller.abort();
-  }, [trendData.from, trendData.granularity, trendData.to, trendFromDate, trendGranularity, trendToDate]);
+  }, [requestedTrendFromDate, requestedTrendGranularity, requestedTrendToDate, trendData.from, trendData.granularity, trendData.to]);
 
   useEffect(() => {
-    if (c3FromDate === c3Data.from && c3ToDate === c3Data.to) {
+    if (requestedC3FromDate === c3Data.from && requestedC3ToDate === c3Data.to) {
       return undefined;
     }
 
     const controller = new AbortController();
+    setIsC3Loading(true);
     const params = new URLSearchParams({
       view: "c3",
-      from: c3FromDate,
-      to: c3ToDate
+      from: requestedC3FromDate,
+      to: requestedC3ToDate
     });
 
     void fetchDashboardSlice<DashboardC3Data>(params, controller.signal)
@@ -2359,17 +2411,27 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
           setC3Data(payload);
           setC3FromDate(payload.from);
           setC3ToDate(payload.to);
+          setRequestedC3FromDate(payload.from);
+          setRequestedC3ToDate(payload.to);
         });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
           return;
         }
+        setRequestedC3FromDate(c3Data.from);
+        setRequestedC3ToDate(c3Data.to);
         console.error(error);
+      })
+      .finally(() => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setIsC3Loading(false);
       });
 
     return () => controller.abort();
-  }, [c3Data.from, c3Data.to, c3FromDate, c3ToDate]);
+  }, [c3Data.from, c3Data.to, requestedC3FromDate, requestedC3ToDate]);
 
   const weekByStart = useMemo(
     () => new Map(pageData.weeks.map((row) => [row.week_start, row])),
@@ -2394,8 +2456,8 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
     [weekOptions]
   );
   const selectedWeekYear = useMemo(
-    () => weekOptions.find((option) => option.weekStart === selectedWeekStart)?.year ?? weekYears[0] ?? "",
-    [selectedWeekStart, weekOptions, weekYears]
+    () => weekOptions.find((option) => option.weekStart === requestedWeekStart)?.year ?? weekYears[0] ?? "",
+    [requestedWeekStart, weekOptions, weekYears]
   );
   const visibleWeekOptions = useMemo(
     () => weekOptions.filter((option) => option.year === selectedWeekYear),
@@ -2705,7 +2767,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <button
                   type="button"
                   onClick={handlePrintPdf}
-                  disabled={isExportingPdf}
+                  disabled={isExportingPdf || isPageLoading || isTrendsLoading || isC3Loading}
                   className="inline-flex items-center gap-3 rounded-[14px] border-1 border-white px-6 py-2 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Printer className="h-5 w-5" strokeWidth={2.2} aria-hidden />
@@ -2758,6 +2820,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                   <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}>{selectedWeekRange}.</span></p>
                 )
               }
+              statusText={isPageLoading ? "Updating..." : undefined}
               controls={
                 <div className={clsx("grid gap-4", activeTab === "summary-image" ? "md:grid-cols-[160px_minmax(0,1fr)_auto]" : "md:grid-cols-[160px_minmax(0,1fr)]")}>
                   <SelectField
@@ -2765,11 +2828,12 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                     label="Year"
                     value={selectedWeekYear}
                     inlineLabelOnMobile
+                    disabled={isPageLoading}
                     onChange={(event) => {
                       const nextYear = event.target.value;
                       const nextWeek = [...weekOptions].reverse().find((option) => option.year === nextYear);
                       if (nextWeek) {
-                        setSelectedWeekStart(nextWeek.weekStart);
+                        setRequestedWeekStart(nextWeek.weekStart);
                       }
                     }}
                   >
@@ -2782,9 +2846,10 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                   <SelectField
                     id="dashboard-reporting-week"
                     label="Reporting Week"
-                    value={selectedWeekStart}
+                    value={requestedWeekStart}
                     inlineLabelOnMobile
-                    onChange={(event) => setSelectedWeekStart(event.target.value)}
+                    disabled={isPageLoading}
+                    onChange={(event) => setRequestedWeekStart(event.target.value)}
                     mobileChildren={visibleWeekOptions.map((option) => (
                       <option key={option.weekStart} value={option.weekStart}>
                         {option.mobileLabel}
@@ -2802,7 +2867,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                       <button
                         type="button"
                         onClick={handleExportSummaryImage}
-                        disabled={isExportingImage}
+                        disabled={isExportingImage || isPageLoading}
                         className="inline-flex min-h-12 items-center justify-center gap-3 rounded-[14px] border border-black bg-black px-6 py-3 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <File className="h-5 w-5" strokeWidth={2.2} aria-hidden />
@@ -2824,43 +2889,46 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                   {trendPeriodLabel} results from <span className="font-semibold" style={{ color: BRAND.colors.textMuted }}>{trendRangeLabel}</span>, compared with a {trendAverageLabel} to show underlying direction over time.
                 </p>
               }
+              statusText={isTrendsLoading ? "Updating..." : undefined}
               controls={
                 <div className="min-w-0 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
                   <DateField
                     id="trends-from-date"
                     label="From"
-                    value={trendFromDate}
+                    value={requestedTrendFromDate}
                     inlineLabelOnMobile
                     min={trendDateBoundsConfig.from}
-                    max={trendToDate}
+                    max={requestedTrendToDate}
+                    disabled={isTrendsLoading}
                     onChange={(event) => {
                       const nextFrom = event.target.value;
                       if (!nextFrom) {
                         return;
                       }
                       const boundedFrom = nextFrom < trendDateBoundsConfig.from ? trendDateBoundsConfig.from : nextFrom;
-                      setTrendFromDate(boundedFrom);
-                      if (boundedFrom > trendToDate) {
-                        setTrendToDate(boundedFrom);
+                      setRequestedTrendFromDate(boundedFrom);
+                      if (boundedFrom > requestedTrendToDate) {
+                        setRequestedTrendToDate(boundedFrom);
                       }
                     }}
                   />
                   <DateField
                     id="trends-to-date"
                     label="To"
-                    value={trendToDate}
+                    value={requestedTrendToDate}
                     inlineLabelOnMobile
-                    min={trendFromDate}
+                    min={requestedTrendFromDate}
                     max={trendDateBoundsConfig.to}
+                    disabled={isTrendsLoading}
                     onChange={(event) => {
                       const nextTo = event.target.value;
                       if (!nextTo) {
                         return;
                       }
                       const boundedTo = nextTo > trendDateBoundsConfig.to ? trendDateBoundsConfig.to : nextTo;
-                      setTrendToDate(boundedTo);
-                      if (boundedTo < trendFromDate) {
-                        setTrendFromDate(boundedTo);
+                      setRequestedTrendToDate(boundedTo);
+                      if (boundedTo < requestedTrendFromDate) {
+                        setRequestedTrendFromDate(boundedTo);
                       }
                     }}
                   />
@@ -2871,12 +2939,13 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                         <button
                           key={option.id}
                           type="button"
-                          onClick={() => setTrendGranularity(option.id)}
+                          onClick={() => setRequestedTrendGranularity(option.id)}
+                          disabled={isTrendsLoading}
                           className={clsx(
-                            "rounded-[8px] px-6 py-3 font-[var(--font-body)] text-[.9rem] transition-colors",
-                            trendGranularity === option.id ? "bg-black text-white" : "bg-black/6 text-black hover:bg-black/10"
+                            "rounded-[8px] px-6 py-3 font-[var(--font-body)] text-[.9rem] transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                            requestedTrendGranularity === option.id ? "bg-black text-white" : "bg-black/6 text-black hover:bg-black/10"
                           )}
-                          aria-pressed={trendGranularity === option.id}
+                          aria-pressed={requestedTrendGranularity === option.id}
                         >
                           {option.label}
                         </button>
@@ -2896,43 +2965,46 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <p>City service requests logged vs resolved by category from
                 <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}> {c3RangeLabel}.</span></p>
               }
+              statusText={isC3Loading ? "Updating..." : undefined}
               controls={
                 <div className="grid gap-4 md:grid-cols-2">
                   <DateField
                     id="c3-from-date"
                     label="From"
-                    value={c3FromDate}
+                    value={requestedC3FromDate}
                     inlineLabelOnMobile
                     min={c3DateBoundsConfig.from}
-                    max={c3ToDate}
+                    max={requestedC3ToDate}
+                    disabled={isC3Loading}
                     onChange={(event) => {
                       const nextFrom = event.target.value;
                       if (!nextFrom) {
                         return;
                       }
                       const boundedFrom = nextFrom < c3DateBoundsConfig.from ? c3DateBoundsConfig.from : nextFrom;
-                      setC3FromDate(boundedFrom);
-                      if (boundedFrom > c3ToDate) {
-                        setC3ToDate(boundedFrom);
+                      setRequestedC3FromDate(boundedFrom);
+                      if (boundedFrom > requestedC3ToDate) {
+                        setRequestedC3ToDate(boundedFrom);
                       }
                     }}
                   />
                   <DateField
                     id="c3-to-date"
                     label="To"
-                    value={c3ToDate}
+                    value={requestedC3ToDate}
                     inlineLabelOnMobile
-                    min={c3FromDate}
+                    min={requestedC3FromDate}
                     max={c3DateBoundsConfig.to}
+                    disabled={isC3Loading}
                     onChange={(event) => {
                       const nextTo = event.target.value;
                       if (!nextTo) {
                         return;
                       }
                       const boundedTo = nextTo > c3DateBoundsConfig.to ? c3DateBoundsConfig.to : nextTo;
-                      setC3ToDate(boundedTo);
-                      if (boundedTo < c3FromDate) {
-                        setC3FromDate(boundedTo);
+                      setRequestedC3ToDate(boundedTo);
+                      if (boundedTo < requestedC3FromDate) {
+                        setRequestedC3FromDate(boundedTo);
                       }
                     }}
                   />

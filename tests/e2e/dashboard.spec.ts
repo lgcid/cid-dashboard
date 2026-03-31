@@ -12,14 +12,12 @@ test("dashboard API serves fixed local CSV data for a historical week", async ({
 
   expect(payload.meta.data_source).toBe("local_csv");
   expect(payload.meta.selected_week_start).toBe("2026-02-23");
-  expect(payload.current_week.week_start).toBe("2026-02-23");
-  expect(payload.current_week.metrics.criminal_incidents).toBe(5);
-  expect(payload.current_week.metrics.section56_notices).toBe(5);
-  expect(payload.current_week.metrics.section341_notices).toBe(47);
-  expect(payload.current_week.metrics.c3_logged_total).toBe(18);
-  expect(
-    payload.incidents.filter((incident: { week_start: string }) => incident.week_start === "2026-02-23")
-  ).toHaveLength(5);
+  expect(payload.week_context.current_week.week_start).toBe("2026-02-23");
+  expect(payload.week_context.current_week.metrics.criminal_incidents).toBe(5);
+  expect(payload.week_context.current_week.metrics.section56_notices).toBe(5);
+  expect(payload.week_context.current_week.metrics.section341_notices).toBe(47);
+  expect(payload.week_context.current_week.metrics.c3_logged_total).toBe(18);
+  expect(payload.current_week_tab.incidents).toHaveLength(5);
 });
 
 test("preview query exposes one unpublished week in the API response", async ({ request }) => {
@@ -30,9 +28,9 @@ test("preview query exposes one unpublished week in the API response", async ({ 
 
   expect(payload.meta.available_weeks.at(-1)).toBe("2026-03-09");
   expect(payload.meta.reporting_window_end).toBe("2026-03-15");
-  expect(payload.current_week.week_start).toBe("2026-03-09");
-  expect(payload.current_week.metrics.criminal_incidents).toBe(6);
-  expect(payload.current_week.metrics.c3_logged_total).toBe(1);
+  expect(payload.week_context.current_week.week_start).toBe("2026-03-09");
+  expect(payload.week_context.current_week.metrics.criminal_incidents).toBe(6);
+  expect(payload.week_context.current_week.metrics.c3_logged_total).toBe(1);
 });
 
 test("dashboard renders and tab navigation works without client errors", async ({ page }) => {
