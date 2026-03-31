@@ -117,6 +117,41 @@ export interface C3TrackerBreakdownRow {
   resolution_ratio: NullableNumber;
 }
 
+export type TrendGranularity = "week" | "month" | "year";
+
+export interface TrendChartPoint {
+  period_start: string;
+  period_end: string;
+  period_label: string;
+  general_incidents_total: NullableNumber;
+  fines_total: NullableNumber;
+  criminal_incidents: NullableNumber;
+  cleaning_bags_collected: NullableNumber;
+  social_touch_points: NullableNumber;
+  parks_total_bags: NullableNumber;
+  contacts_total: NullableNumber;
+  c3_logged_total: NullableNumber;
+  general_incidents_ma4: NullableNumber;
+  fines_total_ma4: NullableNumber;
+  criminal_ma4: NullableNumber;
+  cleaning_ma4: NullableNumber;
+  social_touch_points_ma4: NullableNumber;
+  parks_total_bags_ma4: NullableNumber;
+  contacts_total_ma4: NullableNumber;
+  c3_logged_total_ma4: NullableNumber;
+}
+
+export interface MetricComparisonRow {
+  label: string;
+  current: NullableNumber;
+  previous: NullableNumber;
+}
+
+export interface CategoryBreakdownRow {
+  category: string;
+  value: number;
+}
+
 export interface DashboardMeta {
   generated_at: string;
   reporting_window_start: string;
@@ -127,22 +162,63 @@ export interface DashboardMeta {
   data_source: "google_sheets" | "local_csv";
 }
 
-export interface DashboardResponse {
+export interface DashboardWeekContext {
+  current_week: WeeklyMetricRow | null;
+  previous_week: WeeklyMetricRow | null;
+}
+
+export interface DashboardCurrentWeekData {
+  general_incidents_breakdown: CategoryBreakdownRow[];
+  control_room_breakdown: CategoryBreakdownRow[];
+  c3_logged_breakdown: CategoryBreakdownRow[];
+  public_safety_metrics: MetricComparisonRow[];
+  cleaning_metrics: MetricComparisonRow[];
+  social_services_metrics: MetricComparisonRow[];
+  parks_metrics: MetricComparisonRow[];
+  incidents: IncidentRow[];
+  hotspots: HotspotRow[];
+}
+
+export interface DashboardTrendsData {
+  available_from: string;
+  available_to: string;
+  from: string;
+  to: string;
+  granularity: TrendGranularity;
+  series: TrendChartPoint[];
+}
+
+export interface DashboardC3Data {
+  available_from: string;
+  available_to: string;
+  from: string;
+  to: string;
+  totals: C3TrackerTotals;
+  breakdown: C3TrackerBreakdownRow[];
+  pressure_points: C3TrackerBreakdownRow[];
+}
+
+export interface DashboardPageData {
   meta: DashboardMeta;
   weeks: WeekRecord[];
-  sections: SectionMap;
-  weekly: WeeklyMetricRow[];
-  current_week: WeeklyMetricRow | null;
-  trends: DerivedTrendPoint[];
-  c3_tracker_totals: C3TrackerTotals;
-  c3_tracker_breakdown: C3TrackerBreakdownRow[];
-  c3_request_rows: C3RequestRow[];
-  hotspots: HotspotRow[];
-  incidents: IncidentRow[];
+  week_context: DashboardWeekContext;
+  current_week_tab: DashboardCurrentWeekData;
+  trends: DashboardTrendsData;
+  c3: DashboardC3Data;
 }
 
 export interface DashboardQuery {
   weekStart?: string;
-  windowWeeks?: number;
   preview?: string;
+}
+
+export interface DashboardTrendsQuery extends DashboardQuery {
+  from?: string;
+  to?: string;
+  granularity?: TrendGranularity;
+}
+
+export interface DashboardC3Query extends DashboardQuery {
+  from?: string;
+  to?: string;
 }
