@@ -25,6 +25,7 @@ const CSV_ROOT = path.join(process.cwd(), "data", "csv");
 type DataSourceMode = "local_csv" | "google_sheets";
 interface LoadDataOptions {
   preview?: string;
+  vercelOidcToken?: string;
 }
 
 function getDataSourceMode(): DataSourceMode {
@@ -83,8 +84,8 @@ function attachC3Section(
   };
 }
 
-async function readC3RequestsFromSheets(): Promise<C3RequestRow[]> {
-  const rows = await fetchSheetRows("c3_requests!A1:AZ5000");
+async function readC3RequestsFromSheets(fetchRows: (range: string) => Promise<string[][]>): Promise<C3RequestRow[]> {
+  const rows = await fetchRows("c3_requests!A1:AZ5000");
   return c3RequestRowsSchema.parse(rowsToObjects(rows));
 }
 
@@ -145,8 +146,8 @@ function buildVisibleWeeks(publishedWeeks: string[], previewWeek: string | null)
   return [...visibleWeeks].sort((a, b) => a.localeCompare(b));
 }
 
-async function readPublishedWeeksFromSheets(): Promise<string[]> {
-  const rows = await fetchSheetRows("published_weeks!A1:A5000");
+async function readPublishedWeeksFromSheets(fetchRows: (range: string) => Promise<string[][]>): Promise<string[]> {
+  const rows = await fetchRows("published_weeks!A1:A5000");
   return normalizePublishedWeeks(publishedWeekRowsSchema.parse(rowsToObjects(rows)));
 }
 
@@ -185,10 +186,12 @@ function filterC3RequestsByPublishedWindow(
   );
 }
 
-async function readMatrixSectionsFromSheets(): Promise<Record<MatrixSectionKey, SectionData>> {
+async function readMatrixSectionsFromSheets(
+  fetchRows: (range: string) => Promise<string[][]>
+): Promise<Record<MatrixSectionKey, SectionData>> {
   const sectionEntries = await Promise.all(
     MATRIX_SECTION_KEYS.map(async (sectionKey) => {
-      const rows = await fetchSheetRows(`${sectionKey}!A1:ZZ5000`);
+      const rows = await fetchRows(`${sectionKey}!A1:ZZ5000`);
       return [sectionKey, parseSectionMatrix(rows, sectionKey)] as const;
     })
   );
@@ -216,11 +219,12 @@ async function readFromSheets(options: LoadDataOptions = {}): Promise<{
   c3Requests: C3RequestRow[];
   publishedWeeks: string[];
 }> {
+  const fetchRows = (range: string) => fetchSheetRows(range, { vercelOidcToken: options.vercelOidcToken });
   const [baseSections, publishedWeeks, incidentRows, c3Rows] = await Promise.all([
-    readMatrixSectionsFromSheets(),
-    readPublishedWeeksFromSheets(),
-    fetchSheetRows("incidents!A1:AZ5000"),
-    readC3RequestsFromSheets()
+    readMatrixSectionsFromSheets(fetchRows),
+    readPublishedWeeksFromSheets(fetchRows),
+    fetchRows("incidents!A1:AZ5000"),
+    readC3RequestsFromSheets(fetchRows)
   ]);
   const previewWeek = resolvePreviewWeek(options.preview, collectMatrixWeekStarts(baseSections));
   const visibleWeeks = buildVisibleWeeks(publishedWeeks, previewWeek);

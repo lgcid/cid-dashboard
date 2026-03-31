@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readVercelOidcTokenFromRequestHeaders } from "@/lib/google-sheets";
 import { getDashboardData } from "@/lib/dashboard-service";
 
 export async function GET(request: NextRequest) {
@@ -8,11 +9,13 @@ export async function GET(request: NextRequest) {
     const windowWeeksParam = searchParams.get("windowWeeks");
     const windowWeeks = windowWeeksParam ? Number(windowWeeksParam) : undefined;
     const preview = searchParams.get("preview") ?? undefined;
+    const vercelOidcToken = readVercelOidcTokenFromRequestHeaders(request.headers) ?? undefined;
 
     const payload = await getDashboardData({
       weekStart,
       windowWeeks: Number.isFinite(windowWeeks) ? windowWeeks : undefined,
-      preview
+      preview,
+      vercelOidcToken
     });
 
     return NextResponse.json(payload, {

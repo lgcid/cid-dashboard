@@ -14,6 +14,10 @@ import type { DashboardQuery, DashboardResponse, IncidentRow, WeeklyMetricRow } 
 const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DASHBOARD_DATA_CACHE_REVALIDATE_SECONDS = 300;
 
+type DashboardLoadQuery = DashboardQuery & {
+  vercelOidcToken?: string;
+};
+
 function isIsoDay(value: string): boolean {
   return ISO_DAY_PATTERN.test(value);
 }
@@ -66,9 +70,10 @@ function filterToPublishedWeeks<T extends { week_start: string }>(rows: T[], pub
 }
 
 const loadDashboardSourceData = unstable_cache(
-  async (preview: string | undefined) =>
+  async (preview: string | undefined, vercelOidcToken: string | undefined) =>
     loadData({
-      preview
+      preview,
+      vercelOidcToken
     }),
   ["dashboard-source-data"],
   {
@@ -80,14 +85,15 @@ function shouldUseDashboardCache(): boolean {
   return process.env.NODE_ENV !== "test";
 }
 
-async function loadDashboardData(query: DashboardQuery): ReturnType<typeof loadData> {
+async function loadDashboardData(query: DashboardLoadQuery): ReturnType<typeof loadData> {
   if (!shouldUseDashboardCache()) {
     return loadData({
-      preview: query.preview
+      preview: query.preview,
+      vercelOidcToken: query.vercelOidcToken
     });
   }
 
-  return loadDashboardSourceData(query.preview);
+  return loadDashboardSourceData(query.preview, query.vercelOidcToken);
 }
 
 function buildDashboardResponse(
@@ -130,7 +136,7 @@ function buildDashboardResponse(
   };
 }
 
-export async function getDashboardData(query: DashboardQuery = {}): Promise<DashboardResponse> {
+export async function getDashboardData(query: DashboardLoadQuery = {}): Promise<DashboardResponse> {
   const sourceData = await loadDashboardData(query);
   return buildDashboardResponse(sourceData, query);
 }

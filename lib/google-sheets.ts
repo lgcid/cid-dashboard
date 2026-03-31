@@ -12,6 +12,10 @@ export interface GoogleSheetsEnv {
   GOOGLE_WORKLOAD_IDENTITY_AUDIENCE: string;
 }
 
+type HeaderReader = {
+  get(name: string): string | null;
+};
+
 function normalizeWorkloadIdentityAudience(audienceOrProvider: string): string {
   const normalized = audienceOrProvider.trim();
   if (!normalized) {
@@ -44,32 +48,49 @@ export function readGoogleSheetsEnv(): GoogleSheetsEnv | null {
   };
 }
 
-async function readVercelOidcToken(): Promise<string | null> {
+function readVercelOidcTokenFromEnv(): string | null {
   const envToken = process.env.VERCEL_OIDC_TOKEN?.trim();
+  if (envToken) {
+    return envToken;
+  }
+
+  return null;
+}
+
+export function readVercelOidcTokenFromRequestHeaders(requestHeaders: HeaderReader): string | null {
+  const headerToken = requestHeaders.get(VERCEL_OIDC_HEADER)?.trim();
+  if (headerToken) {
+    return headerToken;
+  }
+
+  return null;
+}
+
+async function resolveVercelOidcToken(vercelOidcToken?: string): Promise<string | null> {
+  if (vercelOidcToken?.trim()) {
+    return vercelOidcToken.trim();
+  }
+
+  const envToken = readVercelOidcTokenFromEnv();
   if (envToken) {
     return envToken;
   }
 
   try {
     const requestHeaders = await headers();
-    const headerToken = requestHeaders.get(VERCEL_OIDC_HEADER)?.trim();
-    if (headerToken) {
-      return headerToken;
-    }
+    return readVercelOidcTokenFromRequestHeaders(requestHeaders);
   } catch {
     return null;
   }
-
-  return null;
 }
 
 function buildServiceAccountImpersonationUrl(email: string): string {
   return `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(email)}:generateAccessToken`;
 }
 
-async function createSheetsAuth(env: GoogleSheetsEnv): Promise<GoogleAuth> {
-  const vercelOidcToken = await readVercelOidcToken();
-  if (!vercelOidcToken) {
+async function createSheetsAuth(env: GoogleSheetsEnv, vercelOidcToken?: string): Promise<GoogleAuth> {
+  const resolvedVercelOidcToken = await resolveVercelOidcToken(vercelOidcToken);
+  if (!resolvedVercelOidcToken) {
     throw new Error(
       "Missing Vercel OIDC token for Google Sheets access. On Vercel this should be provided in the request context. For local development, set VERCEL_OIDC_TOKEN or use DATA_SOURCE=local_csv."
     );
@@ -83,7 +104,7 @@ async function createSheetsAuth(env: GoogleSheetsEnv): Promise<GoogleAuth> {
       token_url: GOOGLE_STS_TOKEN_URL,
       service_account_impersonation_url: buildServiceAccountImpersonationUrl(env.GOOGLE_SERVICE_ACCOUNT_EMAIL),
       subject_token_supplier: {
-        getSubjectToken: async () => vercelOidcToken
+        getSubjectToken: async () => resolvedVercelOidcToken
       }
     },
     scopes: [SHEETS_READONLY_SCOPE]
@@ -92,7 +113,7 @@ async function createSheetsAuth(env: GoogleSheetsEnv): Promise<GoogleAuth> {
   return auth;
 }
 
-export async function fetchSheetRows(range: string): Promise<string[][]> {
+export async function fetchSheetRows(range: string, options: { vercelOidcToken?: string } = {}): Promise<string[][]> {
   const env = readGoogleSheetsEnv();
   if (!env) {
     throw new Error(
@@ -100,7 +121,7 @@ export async function fetchSheetRows(range: string): Promise<string[][]> {
     );
   }
 
-  const auth = await createSheetsAuth(env);
+  const auth = await createSheetsAuth(env, options.vercelOidcToken);
   const sheets = google.sheets({ version: "v4", auth });
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: env.GOOGLE_SHEET_ID,
