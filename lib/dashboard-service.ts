@@ -93,6 +93,13 @@ async function loadDashboardData(query: DashboardLoadQuery): ReturnType<typeof l
     });
   }
 
+  if (query.preview) {
+    return loadData({
+      preview: query.preview,
+      vercelOidcToken: query.vercelOidcToken
+    });
+  }
+
   return loadDashboardSourceData(query.preview, query.vercelOidcToken);
 }
 
