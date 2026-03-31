@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { weekEndFromStart } from "@/lib/date-utils";
 import {
   buildTrendSeries,
@@ -11,6 +12,11 @@ import { loadData } from "@/lib/data-source";
 import type { DashboardQuery, DashboardResponse, IncidentRow, WeeklyMetricRow } from "@/types/dashboard";
 
 const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const DASHBOARD_DATA_CACHE_REVALIDATE_SECONDS = 300;
+
+type DashboardLoadQuery = DashboardQuery & {
+  vercelOidcToken?: string;
+};
 
 function isIsoDay(value: string): boolean {
   return ISO_DAY_PATTERN.test(value);
@@ -63,10 +69,45 @@ function filterToPublishedWeeks<T extends { week_start: string }>(rows: T[], pub
   return rows.filter((row) => publishedWeekSet.has(row.week_start));
 }
 
-export async function getDashboardData(query: DashboardQuery = {}): Promise<DashboardResponse> {
-  const { sections, incidents, c3Insights, c3Requests, publishedWeeks, source } = await loadData({
-    preview: query.preview
-  });
+const loadDashboardSourceData = unstable_cache(
+  async (preview: string | undefined, vercelOidcToken: string | undefined) =>
+    loadData({
+      preview,
+      vercelOidcToken
+    }),
+  ["dashboard-source-data"],
+  {
+    revalidate: DASHBOARD_DATA_CACHE_REVALIDATE_SECONDS
+  }
+);
+
+function shouldUseDashboardCache(): boolean {
+  return process.env.NODE_ENV !== "test";
+}
+
+async function loadDashboardData(query: DashboardLoadQuery): ReturnType<typeof loadData> {
+  if (!shouldUseDashboardCache()) {
+    return loadData({
+      preview: query.preview,
+      vercelOidcToken: query.vercelOidcToken
+    });
+  }
+
+  if (query.preview) {
+    return loadData({
+      preview: query.preview,
+      vercelOidcToken: query.vercelOidcToken
+    });
+  }
+
+  return loadDashboardSourceData(query.preview, query.vercelOidcToken);
+}
+
+function buildDashboardResponse(
+  sourceData: Awaited<ReturnType<typeof loadData>>,
+  query: DashboardQuery = {}
+): DashboardResponse {
+  const { sections, incidents, c3Insights, c3Requests, publishedWeeks, source } = sourceData;
   const weeks = deriveWeeks(sections);
   const weekly = buildWeeklyRows(weeks, sections);
   const reportingWindow = deriveReportingWindow(publishedWeeks);
@@ -100,4 +141,9 @@ export async function getDashboardData(query: DashboardQuery = {}): Promise<Dash
     hotspots: deriveHotspots(incidentsWindowed, weeklyWindowed, windowWeeks),
     incidents: incidentsWindowed
   };
+}
+
+export async function getDashboardData(query: DashboardLoadQuery = {}): Promise<DashboardResponse> {
+  const sourceData = await loadDashboardData(query);
+  return buildDashboardResponse(sourceData, query);
 }
