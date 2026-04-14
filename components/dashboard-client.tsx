@@ -2219,10 +2219,29 @@ async function fetchDashboardSlice<T>(params: URLSearchParams, signal?: AbortSig
   });
 
   if (!response.ok) {
-    throw new Error(`Dashboard request failed with ${response.status}`);
+    let message = `Dashboard request failed with ${response.status}`;
+
+    try {
+      const payload = await response.json() as { message?: string };
+      if (typeof payload.message === "string" && payload.message.trim()) {
+        message = payload.message.trim();
+      }
+    } catch {
+      // Keep the default message when the error body cannot be parsed.
+    }
+
+    throw new Error(message);
   }
 
   return response.json() as Promise<T>;
+}
+
+function getLoadErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  return "The dashboard data could not be loaded.";
 }
 
 function toPillarConfig(metrics: MetricComparisonRow[], config: {
@@ -2268,6 +2287,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [isTrendsLoading, setIsTrendsLoading] = useState(false);
   const [isC3Loading, setIsC3Loading] = useState(false);
+  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -2312,6 +2332,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
 
     const controller = new AbortController();
     setIsPageLoading(true);
+    setLoadErrorMessage(null);
     const params = new URLSearchParams({
       view: "page",
       weekStart: requestedWeekStart
@@ -2327,6 +2348,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
           setPageData(payload);
           setSelectedWeekStart(payload.meta.selected_week_start);
           setRequestedWeekStart(payload.meta.selected_week_start);
+          setLoadErrorMessage(null);
         });
       })
       .catch((error: unknown) => {
@@ -2334,6 +2356,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
           return;
         }
         setRequestedWeekStart(pageData.meta.selected_week_start);
+        setLoadErrorMessage(getLoadErrorMessage(error));
         console.error(error);
       })
       .finally(() => {
@@ -2357,6 +2380,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
 
     const controller = new AbortController();
     setIsTrendsLoading(true);
+    setLoadErrorMessage(null);
     const params = new URLSearchParams({
       view: "trends",
       from: requestedTrendFromDate,
@@ -2378,6 +2402,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
           setRequestedTrendFromDate(payload.from);
           setRequestedTrendToDate(payload.to);
           setRequestedTrendGranularity(payload.granularity);
+          setLoadErrorMessage(null);
         });
       })
       .catch((error: unknown) => {
@@ -2387,6 +2412,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
         setRequestedTrendFromDate(trendData.from);
         setRequestedTrendToDate(trendData.to);
         setRequestedTrendGranularity(trendData.granularity);
+        setLoadErrorMessage(getLoadErrorMessage(error));
         console.error(error);
       })
       .finally(() => {
@@ -2406,6 +2432,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
 
     const controller = new AbortController();
     setIsC3Loading(true);
+    setLoadErrorMessage(null);
     const params = new URLSearchParams({
       view: "c3",
       from: requestedC3FromDate,
@@ -2424,6 +2451,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
           setC3ToDate(payload.to);
           setRequestedC3FromDate(payload.from);
           setRequestedC3ToDate(payload.to);
+          setLoadErrorMessage(null);
         });
       })
       .catch((error: unknown) => {
@@ -2432,6 +2460,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
         }
         setRequestedC3FromDate(c3Data.from);
         setRequestedC3ToDate(c3Data.to);
+        setLoadErrorMessage(getLoadErrorMessage(error));
         console.error(error);
       })
       .finally(() => {
@@ -2851,6 +2880,36 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
 
       <section style={{ backgroundColor: BRAND.colors.pageBackground }}>
         <div className="dashboard-container flex flex-col gap-6 py-7 md:py-8">
+          {loadErrorMessage ? (
+            <div
+              role="alert"
+              className="flex items-start gap-4 rounded-[20px] border px-5 py-4"
+              style={{
+                borderColor: BRAND.colors.alertCritical,
+                backgroundColor: BRAND.colors.alertCriticalBackground
+              }}
+            >
+              <span
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: BRAND.colors.white, color: BRAND.colors.alertCritical }}
+                aria-hidden
+              >
+                <AlertCircle className="h-5 w-5" strokeWidth={2.2} />
+              </span>
+              <div className="min-w-0">
+                <p
+                  className="font-[var(--font-heading)] text-[0.92rem] font-semibold uppercase tracking-[0.08em]"
+                  style={{ color: BRAND.colors.alertCritical }}
+                >
+                  Loading error
+                </p>
+                <p className="mt-1 text-sm leading-6" style={{ color: BRAND.colors.textBody }}>
+                  {loadErrorMessage}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex flex-wrap gap-4">
               {DASHBOARD_TABS.map((tab) => (
