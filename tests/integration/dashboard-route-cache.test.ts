@@ -28,6 +28,236 @@ const dashboardPayload = {
     current_week: null,
     previous_week: null
   },
+  summary: {
+    default_period: "week",
+    periods: {
+      week: {
+        period: "week",
+        period_label: "Weekly",
+        comparison_text: "No earlier reporting weeks are available for comparison.",
+        current: {
+          label: "02 Mar 2026 to 08 Mar 2026",
+          coverage_label: "02 Mar 2026 to 08 Mar 2026",
+          metrics: {
+            criminal_incidents: null,
+            arrests_made: null,
+            proactive_actions: null,
+            public_space_interventions: null,
+            fines_issued: null,
+            general_incidents_total: null,
+            cleaning_total_bags: null,
+            cleaning_servitudes_cleaned: null,
+            cleaning_stormwater_drains_cleaned: null,
+            social_touch_points: null,
+            c3_logged_total: null,
+            contacts_total: null,
+            parks_total_bags: null,
+            parks_pruned_trees: null
+          }
+        },
+        previous: {
+          label: "Previous reporting week",
+          coverage_label: null,
+          metrics: {
+            criminal_incidents: null,
+            arrests_made: null,
+            proactive_actions: null,
+            public_space_interventions: null,
+            fines_issued: null,
+            general_incidents_total: null,
+            cleaning_total_bags: null,
+            cleaning_servitudes_cleaned: null,
+            cleaning_stormwater_drains_cleaned: null,
+            social_touch_points: null,
+            c3_logged_total: null,
+            contacts_total: null,
+            parks_total_bags: null,
+            parks_pruned_trees: null
+          }
+        }
+      },
+      month: {
+        period: "month",
+        period_label: "Monthly",
+        comparison_text: "No earlier reporting weeks are available for comparison.",
+        current: {
+          label: "March 2026",
+          coverage_label: null,
+          metrics: {
+            criminal_incidents: null,
+            arrests_made: null,
+            proactive_actions: null,
+            public_space_interventions: null,
+            fines_issued: null,
+            general_incidents_total: null,
+            cleaning_total_bags: null,
+            cleaning_servitudes_cleaned: null,
+            cleaning_stormwater_drains_cleaned: null,
+            social_touch_points: null,
+            c3_logged_total: null,
+            contacts_total: null,
+            parks_total_bags: null,
+            parks_pruned_trees: null
+          }
+        },
+        previous: {
+          label: "February 2026",
+          coverage_label: null,
+          metrics: {
+            criminal_incidents: null,
+            arrests_made: null,
+            proactive_actions: null,
+            public_space_interventions: null,
+            fines_issued: null,
+            general_incidents_total: null,
+            cleaning_total_bags: null,
+            cleaning_servitudes_cleaned: null,
+            cleaning_stormwater_drains_cleaned: null,
+            social_touch_points: null,
+            c3_logged_total: null,
+            contacts_total: null,
+            parks_total_bags: null,
+            parks_pruned_trees: null
+          }
+        }
+      },
+      quarter: {
+        period: "quarter",
+        period_label: "Quarterly",
+        comparison_text: "No earlier reporting weeks are available for comparison.",
+        current: {
+          label: "Jan to Mar 2026",
+          coverage_label: null,
+          metrics: {
+            criminal_incidents: null,
+            arrests_made: null,
+            proactive_actions: null,
+            public_space_interventions: null,
+            fines_issued: null,
+            general_incidents_total: null,
+            cleaning_total_bags: null,
+            cleaning_servitudes_cleaned: null,
+            cleaning_stormwater_drains_cleaned: null,
+            social_touch_points: null,
+            c3_logged_total: null,
+            contacts_total: null,
+            parks_total_bags: null,
+            parks_pruned_trees: null
+          }
+        },
+        previous: {
+          label: "Oct to Dec 2025",
+          coverage_label: null,
+          metrics: {
+            criminal_incidents: null,
+            arrests_made: null,
+            proactive_actions: null,
+            public_space_interventions: null,
+            fines_issued: null,
+            general_incidents_total: null,
+            cleaning_total_bags: null,
+            cleaning_servitudes_cleaned: null,
+            cleaning_stormwater_drains_cleaned: null,
+            social_touch_points: null,
+            c3_logged_total: null,
+            contacts_total: null,
+            parks_total_bags: null,
+            parks_pruned_trees: null
+          }
+        }
+      },
+      calendar_year: {
+        period: "calendar_year",
+        period_label: "Calendar Year",
+        comparison_text: "No earlier reporting weeks are available for comparison.",
+        current: {
+          label: "Calendar Year 2026",
+          coverage_label: null,
+          metrics: {
+            criminal_incidents: null,
+            arrests_made: null,
+            proactive_actions: null,
+            public_space_interventions: null,
+            fines_issued: null,
+            general_incidents_total: null,
+            cleaning_total_bags: null,
+            cleaning_servitudes_cleaned: null,
+            cleaning_stormwater_drains_cleaned: null,
+            social_touch_points: null,
+            c3_logged_total: null,
+            contacts_total: null,
+            parks_total_bags: null,
+            parks_pruned_trees: null
+          }
+        },
+        previous: {
+          label: "Calendar Year 2025",
+          coverage_label: null,
+          metrics: {
+            criminal_incidents: null,
+            arrests_made: null,
+            proactive_actions: null,
+            public_space_interventions: null,
+            fines_issued: null,
+            general_incidents_total: null,
+            cleaning_total_bags: null,
+            cleaning_servitudes_cleaned: null,
+            cleaning_stormwater_drains_cleaned: null,
+            social_touch_points: null,
+            c3_logged_total: null,
+            contacts_total: null,
+            parks_total_bags: null,
+            parks_pruned_trees: null
+          }
+        }
+      },
+      financial_year: {
+        period: "financial_year",
+        period_label: "Financial Year",
+        comparison_text: "No earlier reporting weeks are available for comparison.",
+        current: {
+          label: "Financial Year 2025/26",
+          coverage_label: null,
+          metrics: {
+            criminal_incidents: null,
+            arrests_made: null,
+            proactive_actions: null,
+            public_space_interventions: null,
+            fines_issued: null,
+            general_incidents_total: null,
+            cleaning_total_bags: null,
+            cleaning_servitudes_cleaned: null,
+            cleaning_stormwater_drains_cleaned: null,
+            social_touch_points: null,
+            c3_logged_total: null,
+            contacts_total: null,
+            parks_total_bags: null,
+            parks_pruned_trees: null
+          }
+        },
+        previous: {
+          label: "Financial Year 2024/25",
+          coverage_label: null,
+          metrics: {
+            criminal_incidents: null,
+            arrests_made: null,
+            proactive_actions: null,
+            public_space_interventions: null,
+            fines_issued: null,
+            general_incidents_total: null,
+            cleaning_total_bags: null,
+            cleaning_servitudes_cleaned: null,
+            cleaning_stormwater_drains_cleaned: null,
+            social_touch_points: null,
+            c3_logged_total: null,
+            contacts_total: null,
+            parks_total_bags: null,
+            parks_pruned_trees: null
+          }
+        }
+      }
+    }
+  },
   current_week_tab: {
     general_incidents_breakdown: [],
     control_room_breakdown: [],

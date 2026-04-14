@@ -118,6 +118,7 @@ export interface C3TrackerBreakdownRow {
 }
 
 export type TrendGranularity = "week" | "month" | "year";
+export type SummaryPeriod = "week" | "month" | "quarter" | "calendar_year" | "financial_year";
 
 export interface TrendChartPoint {
   period_start: string;
@@ -145,6 +146,42 @@ export interface MetricComparisonRow {
   label: string;
   current: NullableNumber;
   previous: NullableNumber;
+}
+
+export interface DashboardSummaryMetrics {
+  criminal_incidents: NullableNumber;
+  arrests_made: NullableNumber;
+  proactive_actions: NullableNumber;
+  public_space_interventions: NullableNumber;
+  fines_issued: NullableNumber;
+  general_incidents_total: NullableNumber;
+  cleaning_total_bags: NullableNumber;
+  cleaning_servitudes_cleaned: NullableNumber;
+  cleaning_stormwater_drains_cleaned: NullableNumber;
+  social_touch_points: NullableNumber;
+  c3_logged_total: NullableNumber;
+  contacts_total: NullableNumber;
+  parks_total_bags: NullableNumber;
+  parks_pruned_trees: NullableNumber;
+}
+
+export interface DashboardSummaryPeriodSnapshot {
+  label: string;
+  coverage_label: string | null;
+  metrics: DashboardSummaryMetrics;
+}
+
+export interface DashboardSummaryPeriodData {
+  period: SummaryPeriod;
+  period_label: string;
+  comparison_text: string;
+  current: DashboardSummaryPeriodSnapshot;
+  previous: DashboardSummaryPeriodSnapshot;
+}
+
+export interface DashboardSummaryData {
+  default_period: SummaryPeriod;
+  periods: Record<SummaryPeriod, DashboardSummaryPeriodData>;
 }
 
 export interface CategoryBreakdownRow {
@@ -202,6 +239,7 @@ export interface DashboardPageData {
   meta: DashboardMeta;
   weeks: WeekRecord[];
   week_context: DashboardWeekContext;
+  summary: DashboardSummaryData;
   current_week_tab: DashboardCurrentWeekData;
   trends: DashboardTrendsData;
   c3: DashboardC3Data;

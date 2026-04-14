@@ -580,6 +580,10 @@ h6 {
   border-radius: 0.9rem;
 }
 
+.dashboard-pdf-export-mode .summary-group-card__header {
+  margin-top: 0.7rem;
+}
+
 .summary-group-card__header::before {
   content: "";
   position: absolute;
@@ -670,6 +674,10 @@ h6 {
   display: grid;
   gap: 0.95rem;
   padding: 1.15rem;
+}
+
+.dashboard-pdf-export-mode .summary-ribbon-list {
+  padding-top: 0.8rem;
 }
 
 .summary-ribbon {

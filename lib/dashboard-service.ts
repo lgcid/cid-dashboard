@@ -4,6 +4,7 @@ import { compareC3Categories, isResolvedC3Request } from "@/lib/c3-requests";
 import { weekEndFromStart } from "@/lib/date-utils";
 import { buildWeeklyRows, deriveHotspots, deriveWeeks, pickCurrentWeek, sortWeekly } from "@/lib/derive";
 import { loadData } from "@/lib/data-source";
+import { buildSummaryData } from "@/lib/summary-periods";
 import type {
   C3RequestRow,
   C3TrackerBreakdownRow,
@@ -552,6 +553,7 @@ export async function getDashboardPageData(query: DashboardLoadQuery = {}): Prom
       current_week: base.currentWeek,
       previous_week: base.previousWeek
     },
+    summary: buildSummaryData(base.weekly, base.selectedWeekStart),
     current_week_tab: buildCurrentWeekData(base),
     trends: buildTrendsData(base),
     c3: buildC3Data(base)

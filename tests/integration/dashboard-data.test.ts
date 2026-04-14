@@ -80,6 +80,36 @@ describe("dashboard data pipeline", () => {
     );
   });
 
+  it("builds summary totals for weekly, monthly, quarterly, and yearly periods", async () => {
+    const data = await getDashboardPageData({ weekStart: "2026-02-23" });
+    const { summary } = data;
+
+    expect(summary.default_period).toBe("week");
+    expect(summary.periods.week.current.label).toBe("23 Feb 2026 to 01 Mar 2026");
+    expect(summary.periods.week.current.metrics.fines_issued).toBe(52);
+    expect(summary.periods.week.previous.metrics.contacts_total).toBe(41);
+
+    expect(summary.periods.month.current.label).toBe("February 2026");
+    expect(summary.periods.month.current.coverage_label).toBe("02 Feb 2026 to 01 Mar 2026");
+    expect(summary.periods.month.current.metrics.fines_issued).toBe(274);
+    expect(summary.periods.month.previous.metrics.contacts_total).toBe(101);
+
+    expect(summary.periods.quarter.current.label).toBe("Jan to Mar 2026");
+    expect(summary.periods.quarter.current.metrics.cleaning_total_bags).toBe(3032);
+    expect(summary.periods.quarter.previous.label).toBe("Jan to Mar 2025");
+    expect(summary.periods.quarter.comparison_text).toBe("No earlier reporting weeks are available for comparison.");
+
+    expect(summary.periods.calendar_year.current.label).toBe("Calendar Year 2026");
+    expect(summary.periods.calendar_year.previous.label).toBe("Calendar Year 2025");
+    expect(summary.periods.calendar_year.comparison_text).toBe("No earlier reporting weeks are available for comparison.");
+
+    expect(summary.periods.financial_year.current.label).toBe("Financial Year 2025/26");
+    expect(summary.periods.financial_year.current.coverage_label).toBe("01 Aug 2025 to 08 Mar 2026");
+    expect(summary.periods.financial_year.previous.label).toBe("Financial Year 2024/25");
+    expect(summary.periods.financial_year.current.metrics.c3_logged_total).toBe(358);
+    expect(summary.periods.financial_year.comparison_text).toBe("No earlier reporting weeks are available for comparison.");
+  });
+
   it("falls back to the default selected week when the requested week is not available", async () => {
     const defaultData = await getDashboardPageData();
     const invalidWeekData = await getDashboardPageData({ weekStart: "1900-01-01" });

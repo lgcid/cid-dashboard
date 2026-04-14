@@ -54,21 +54,29 @@ import {
 } from "@/lib/dashboard-terms";
 import { BRAND, HOTSPOT_LIMIT, NO_DATA_LABEL } from "@/lib/config";
 import {
+  type DashboardPdfDetail,
+  type DashboardPdfDetailLine,
   SUMMARY_IMAGE_EXPORT_HEIGHT,
   SUMMARY_IMAGE_EXPORT_WIDTH,
   exportDashboardPdf,
   exportNodePng
 } from "@/lib/dashboard-export";
+import {
+  SUMMARY_PERIOD_OPTIONS,
+  buildSummaryReportingOptions,
+  findSummaryReportingOption
+} from "@/lib/summary-periods";
 import type {
   C3TrackerBreakdownRow,
   DashboardC3Data,
   DashboardPageData,
+  DashboardSummaryMetrics,
+  DashboardSummaryPeriodData,
   DashboardTrendsData,
-  HardcodedWeeklyMetricKey,
   MetricComparisonRow,
+  SummaryPeriod,
   TrendChartPoint,
   TrendGranularity,
-  WeeklyMetricRow
 } from "@/types/dashboard";
 
 type Props = {
@@ -191,12 +199,10 @@ function InlineDefinitionTooltip({
 }
 
 type SummaryInfographicMetricDefinition = {
-  id: string;
+  id: keyof DashboardSummaryMetrics;
   label: string;
   icon: SummaryInfographicIconKind;
   groupId: SummaryInfographicGroupId;
-  key?: HardcodedWeeklyMetricKey;
-  derived?: "contacts_total" | "cleaning_total_bags" | "fines_issued";
 };
 
 type SummaryInfographicMetric = SummaryInfographicMetricDefinition & {
@@ -422,50 +428,45 @@ const SUMMARY_INFOGRAPHIC_ROWS: SummaryInfographicGroupId[][] = [
 ];
 
 const SUMMARY_INFOGRAPHIC_METRICS: SummaryInfographicMetricDefinition[] = [
-  { id: "criminal_incidents", label: "Criminal incidents", icon: "crime", groupId: "safety_response", key: "criminal_incidents" },
-  { id: "arrests_made", label: "Arrests", icon: "arrests", groupId: "safety_response", key: "arrests_made" },
-  { id: "proactive_actions", label: "Stop and Search", icon: "proactive", groupId: "safety_response", key: "proactive_actions" },
+  { id: "criminal_incidents", label: "Criminal incidents", icon: "crime", groupId: "safety_response" },
+  { id: "arrests_made", label: "Arrests", icon: "arrests", groupId: "safety_response" },
+  { id: "proactive_actions", label: "Stop and Search", icon: "proactive", groupId: "safety_response" },
   {
     id: "public_space_interventions",
     label: "Public space interventions",
     icon: "publicSpace",
-    groupId: "safety_response",
-    key: "public_space_interventions"
+    groupId: "safety_response"
   },
-  { id: "fines_issued", label: "Fines issued", icon: "file", groupId: "law_enforcement", derived: "fines_issued" },
-  { id: "general_incidents_total", label: "Total incidents", icon: "generalIncidents", groupId: "general_incidents", key: "general_incidents_total" },
+  { id: "fines_issued", label: "Fines issued", icon: "file", groupId: "law_enforcement" },
+  { id: "general_incidents_total", label: "Total incidents", icon: "generalIncidents", groupId: "general_incidents" },
   {
     id: "cleaning_total_bags",
     label: "Cleaning bags collected",
     icon: "cleaningBags",
-    groupId: "cleaning_maintenance",
-    derived: "cleaning_total_bags"
+    groupId: "cleaning_maintenance"
   },
-  { id: "cleaning_servitudes_cleaned", label: "Servitudes cleaned", icon: "shelter", groupId: "cleaning_maintenance", key: "cleaning_servitudes_cleaned" },
+  { id: "cleaning_servitudes_cleaned", label: "Servitudes cleaned", icon: "shelter", groupId: "cleaning_maintenance" },
   {
     id: "cleaning_stormwater_drains_cleaned",
     label: "Stormwater drains cleaned",
     icon: "drain",
-    groupId: "cleaning_maintenance",
-    key: "cleaning_stormwater_drains_cleaned"
+    groupId: "cleaning_maintenance"
   },
   {
     id: "social_touch_points",
     label: "Touch points",
     icon: "touchPoints",
-    groupId: "social_services",
-    key: "social_touch_points"
+    groupId: "social_services"
   },
-  { id: "c3_logged_total", label: "C3 logged requests", icon: "logged", groupId: "control_room_engagement", key: "c3_logged_total" },
-  { id: "contacts_total", label: "Calls + WhatsApp received", icon: "calls", groupId: "control_room_engagement", derived: "contacts_total" },
+  { id: "c3_logged_total", label: "C3 logged requests", icon: "logged", groupId: "control_room_engagement" },
+  { id: "contacts_total", label: "Calls + WhatsApp received", icon: "calls", groupId: "control_room_engagement" },
   {
     id: "parks_total_bags",
     label: "Bags",
     icon: "parksBags",
-    groupId: "parks",
-    key: "parks_total_bags"
+    groupId: "parks"
   },
-  { id: "parks_pruned_trees", label: "Pruned trees", icon: "tree", groupId: "parks", key: "parks_pruned_trees" }
+  { id: "parks_pruned_trees", label: "Pruned trees", icon: "tree", groupId: "parks" }
 ];
 
 const SUMMARY_IMAGE_LAYOUT: Array<
@@ -1141,8 +1142,8 @@ function formatWeekRange(weekStart: string, weekEnd: string): string {
   return `${formatWeekDate(weekStart)} to ${formatWeekDate(weekEnd)}`;
 }
 
-function formatCompactWeekRange(weekStart: string, weekEnd: string): string {
-  return `${formatIsoWithPattern(weekStart, "dd MMM")} - ${formatIsoWithPattern(weekEnd, "dd MMM")}`;
+function buildExportDateToken(start: string, end: string): string {
+  return `${start}_to_${end}`;
 }
 
 function formatIsoWithPattern(iso: string, pattern: string): string {
@@ -1447,53 +1448,62 @@ function summaryDeltaPillClass(tone: ComparisonTone): string {
   return "border-black bg-white text-black/70";
 }
 
-function callsAndWhatsappsTotal(row: WeeklyMetricRow | null): number | null {
-  if (!row) {
-    return null;
-  }
-  const calls = row.metrics.calls_received;
-  const whatsapps = row.metrics.whatsapps_received;
-  if ((calls === null || calls === undefined) && (whatsapps === null || whatsapps === undefined)) {
-    return null;
-  }
-  return (calls ?? 0) + (whatsapps ?? 0);
+function buildSummaryInfographicGroups(summaryData: DashboardSummaryPeriodData): SummaryInfographicGroupWithMetrics[] {
+  return SUMMARY_INFOGRAPHIC_GROUPS.map((group) => ({
+    ...group,
+    metrics: SUMMARY_INFOGRAPHIC_METRICS
+      .filter((metric) => metric.groupId === group.id)
+      .map((metric) => ({
+        ...metric,
+        current: summaryData.current.metrics[metric.id],
+        previous: summaryData.previous.metrics[metric.id]
+      }))
+  }));
 }
 
-function summaryMetricValue(
-  metric: SummaryInfographicMetricDefinition,
-  row: WeeklyMetricRow | null,
-  contactsTotal: number | null
-): number | null | undefined {
-  if (metric.derived === "contacts_total") {
-    return contactsTotal;
-  }
-  if (metric.derived === "cleaning_total_bags") {
-    if (!row) {
-      return null;
+function buildSummaryDetailLines({
+  currentLabel,
+  previousLabel,
+  coverageLabel,
+  showCoverage,
+  hasComparison
+}: {
+  currentLabel: string;
+  previousLabel: string;
+  coverageLabel: string | null;
+  showCoverage: boolean;
+  hasComparison: boolean;
+}): DashboardPdfDetailLine[] {
+  const lines: DashboardPdfDetailLine[] = [
+    {
+      type: "pair",
+      label: "Detailed operational results across each CID focus area for:",
+      value: currentLabel
     }
-    const cleaning = row.metrics.cleaning_bags_collected;
-    const stormwater = row.metrics.cleaning_stormwater_bags_filled;
-    if ((cleaning === null || cleaning === undefined) && (stormwater === null || stormwater === undefined)) {
-      return null;
-    }
-    return (cleaning ?? 0) + (stormwater ?? 0);
-  }
-  if (metric.derived === "fines_issued") {
-    if (!row) {
-      return null;
-    }
-    const section56 = row.metrics.section56_notices;
-    const section341 = row.metrics.section341_notices;
-    if ((section56 === null || section56 === undefined) && (section341 === null || section341 === undefined)) {
-      return null;
-    }
-    return (section56 ?? 0) + (section341 ?? 0);
-  }
-  if (!row || !metric.key) {
-    return null;
+  ];
+
+  if (showCoverage && coverageLabel) {
+    lines.push({
+      type: "pair",
+      label: "Reporting weeks used:",
+      value: coverageLabel
+    });
   }
 
-  return row.metrics[metric.key];
+  if (hasComparison) {
+    lines.push({
+      type: "pair",
+      label: "Compared with:",
+      value: previousLabel
+    });
+  } else {
+    lines.push({
+      type: "note",
+      text: "No earlier reporting weeks are available for comparison."
+    });
+  }
+
+  return lines;
 }
 
 function SummaryInfographicIcon({ kind, className }: { kind: SummaryInfographicIconKind; className?: string }) {
@@ -2235,6 +2245,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
   const [selectedWeekStart, setSelectedWeekStart] = useState(initialData.meta.selected_week_start);
   const [requestedWeekStart, setRequestedWeekStart] = useState(initialData.meta.selected_week_start);
   const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab);
+  const [summaryPeriod, setSummaryPeriod] = useState<SummaryPeriod>(initialData.summary.default_period);
   const [trendFromDate, setTrendFromDate] = useState(initialData.trends.from);
   const [trendToDate, setTrendToDate] = useState(initialData.trends.to);
   const [requestedTrendFromDate, setRequestedTrendFromDate] = useState(initialData.trends.from);
@@ -2433,56 +2444,66 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
     return () => controller.abort();
   }, [c3Data.from, c3Data.to, requestedC3FromDate, requestedC3ToDate]);
 
-  const weekByStart = useMemo(
-    () => new Map(pageData.weeks.map((row) => [row.week_start, row])),
-    [pageData.weeks]
+  const summaryReportingOptions = useMemo(
+    () => buildSummaryReportingOptions(pageData.meta.available_weeks),
+    [pageData.meta.available_weeks]
   );
-  const weekOptions = useMemo(
-    () =>
-      pageData.meta.available_weeks.map((weekStart) => {
-        const row = weekByStart.get(weekStart);
-        const weekEnd = row?.week_end ?? weekStart;
-        return {
-          weekStart,
-          year: weekStart.slice(0, 4),
-          label: formatWeekRange(weekStart, weekEnd),
-          mobileLabel: formatCompactWeekRange(weekStart, weekEnd)
-        };
-      }),
-    [pageData.meta.available_weeks, weekByStart]
-  );
+  const weekOptions = summaryReportingOptions.week;
   const weekYears = useMemo(
     () => [...new Set(weekOptions.map((option) => option.year))].sort((left, right) => right.localeCompare(left)),
     [weekOptions]
   );
   const selectedWeekYear = useMemo(
-    () => weekOptions.find((option) => option.weekStart === requestedWeekStart)?.year ?? weekYears[0] ?? "",
+    () => findSummaryReportingOption(weekOptions, requestedWeekStart)?.year ?? weekYears[0] ?? "",
     [requestedWeekStart, weekOptions, weekYears]
   );
   const visibleWeekOptions = useMemo(
     () => weekOptions.filter((option) => option.year === selectedWeekYear),
     [selectedWeekYear, weekOptions]
   );
+  const activeSummaryReportingOptions = summaryReportingOptions[summaryPeriod];
+  const selectedSummaryReportingOption = useMemo(
+    () => findSummaryReportingOption(activeSummaryReportingOptions, requestedWeekStart),
+    [activeSummaryReportingOptions, requestedWeekStart]
+  );
+  const showSummaryYearFilter = summaryPeriod === "week" || summaryPeriod === "month" || summaryPeriod === "quarter";
+  const summaryFilterYears = useMemo(
+    () => [...new Set(activeSummaryReportingOptions.map((option) => option.year))].sort((left, right) => right.localeCompare(left)),
+    [activeSummaryReportingOptions]
+  );
+  const selectedSummaryFilterYear = selectedSummaryReportingOption?.year ?? summaryFilterYears[0] ?? "";
+  const visibleSummaryReportingOptions = useMemo(
+    () => (
+      showSummaryYearFilter
+        ? activeSummaryReportingOptions.filter((option) => option.year === selectedSummaryFilterYear)
+        : activeSummaryReportingOptions
+    ),
+    [activeSummaryReportingOptions, selectedSummaryFilterYear, showSummaryYearFilter]
+  );
+  const summaryReportingFieldLabel = summaryPeriod === "week"
+    ? "Reporting Week"
+    : summaryPeriod === "month"
+      ? "Reporting Month"
+      : summaryPeriod === "quarter"
+        ? "Reporting Quarter"
+        : summaryPeriod === "calendar_year"
+          ? "Reporting Calendar Year"
+          : "Reporting Financial Year";
 
   const currentWeek = pageData.week_context.current_week;
-  const previousWeek = pageData.week_context.previous_week;
   const selectedWeekRange = useMemo(
     () => (currentWeek ? formatWeekRange(currentWeek.week_start, currentWeek.week_end) : formatWeekDate(selectedWeekStart)),
     [currentWeek, selectedWeekStart]
   );
-  const currentContactsTotal = useMemo(() => callsAndWhatsappsTotal(currentWeek), [currentWeek]);
-  const previousContactsTotal = useMemo(() => callsAndWhatsappsTotal(previousWeek), [previousWeek]);
+  const activeSummaryData = pageData.summary.periods[summaryPeriod];
+  const weeklySummaryData = pageData.summary.periods.week;
   const summaryInfographicGroups = useMemo<SummaryInfographicGroupWithMetrics[]>(
-    () =>
-      SUMMARY_INFOGRAPHIC_GROUPS.map((group) => ({
-        ...group,
-        metrics: SUMMARY_INFOGRAPHIC_METRICS.filter((metric) => metric.groupId === group.id).map((metric) => ({
-          ...metric,
-          current: summaryMetricValue(metric, currentWeek, currentContactsTotal),
-          previous: summaryMetricValue(metric, previousWeek, previousContactsTotal)
-        }))
-      })),
-    [currentContactsTotal, currentWeek, previousContactsTotal, previousWeek]
+    () => buildSummaryInfographicGroups(activeSummaryData),
+    [activeSummaryData]
+  );
+  const weeklySummaryInfographicGroups = useMemo<SummaryInfographicGroupWithMetrics[]>(
+    () => buildSummaryInfographicGroups(weeklySummaryData),
+    [weeklySummaryData]
   );
   const summaryGroupsById = useMemo(() => {
     const groups: Partial<Record<SummaryInfographicGroupId, SummaryInfographicGroupWithMetrics>> = {};
@@ -2491,15 +2512,22 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
     }
     return groups;
   }, [summaryInfographicGroups]);
-  const summaryMetricsById = useMemo(() => {
+  const summaryImageGroupsById = useMemo(() => {
+    const groups: Partial<Record<SummaryInfographicGroupId, SummaryInfographicGroupWithMetrics>> = {};
+    for (const group of weeklySummaryInfographicGroups) {
+      groups[group.id] = group;
+    }
+    return groups;
+  }, [weeklySummaryInfographicGroups]);
+  const summaryImageMetricsById = useMemo(() => {
     const metrics = new Map<string, SummaryInfographicMetric>();
-    for (const group of summaryInfographicGroups) {
+    for (const group of weeklySummaryInfographicGroups) {
       for (const metric of group.metrics) {
         metrics.set(metric.id, metric);
       }
     }
     return metrics;
-  }, [summaryInfographicGroups]);
+  }, [weeklySummaryInfographicGroups]);
 
   const currentIncidents = pageData.current_week_tab.incidents;
   const incidentLogEmptyLabel = currentWeek?.metrics.criminal_incidents === 0 ? "No incidents this week" : NO_DATA_LABEL;
@@ -2532,6 +2560,20 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
   const c3OverallTotals = c3Data.totals;
   const c3OverallResolutionRatio = c3Data.totals.resolution_ratio;
   const activeTabLabel = SUMMARY_IMAGE_TABS.find((tab) => tab.id === activeTab)?.label ?? "Summary";
+  const summaryPeriodLabel = activeSummaryData.current.label;
+  const summaryCoverageLabel = activeSummaryData.current.coverage_label;
+  const showSummaryCoverage = summaryCoverageLabel !== null && summaryCoverageLabel !== summaryPeriodLabel;
+  const hasSummaryComparison = activeSummaryData.previous.coverage_label !== null;
+  const summaryDetailLines = useMemo(
+    () => buildSummaryDetailLines({
+      currentLabel: summaryPeriodLabel,
+      previousLabel: activeSummaryData.previous.label,
+      coverageLabel: summaryCoverageLabel,
+      showCoverage: showSummaryCoverage,
+      hasComparison: hasSummaryComparison
+    }),
+    [activeSummaryData.previous.label, hasSummaryComparison, showSummaryCoverage, summaryCoverageLabel, summaryPeriodLabel]
+  );
   const c3BacklogTop3 = c3Data.pressure_points;
   const currentWeekGeneralIncidentsBreakdown = pageData.current_week_tab.general_incidents_breakdown;
   const currentWeekLawEnforcementBreakdown = useMemo(
@@ -2552,7 +2594,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
       SUMMARY_IMAGE_LAYOUT.map((row) =>
         row
           .map((card) => {
-            const group = summaryGroupsById[card.groupId];
+            const group = summaryImageGroupsById[card.groupId];
             if (!group) {
               return null;
             }
@@ -2568,14 +2610,14 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
               description: card.description,
               metrics: card.metrics.map((metric) => ({
                 ...metric,
-                value: summaryMetricsById.get(metric.id)?.current ?? null
+                value: summaryImageMetricsById.get(metric.id)?.current ?? null
               })),
               wide: card.wide
             };
           })
           .filter((card): card is NonNullable<typeof card> => card !== null)
       ),
-    [summaryGroupsById, summaryMetricsById]
+    [summaryImageGroupsById, summaryImageMetricsById]
   );
 
   const publicSafetyPillar = useMemo(
@@ -2647,15 +2689,24 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
     const weekToken = currentWeek
       ? `${currentWeek.week_start}_to_${currentWeek.week_end}`
       : selectedWeekStart;
+    const summaryPeriodToken = selectedSummaryReportingOption
+      ? buildExportDateToken(selectedSummaryReportingOption.start, selectedSummaryReportingOption.end)
+      : weekToken;
+    const pdfFilenameTokenByTab: Record<StandardDashboardTab, string> = {
+      main: weekToken,
+      summary: summaryPeriodToken,
+      trends: weekToken,
+      c3: weekToken
+    };
 
-    const pdfMetaByTab: Record<StandardDashboardTab, { title: string; detailLine: string }> = {
+    const pdfMetaByTab: Record<StandardDashboardTab, { title: string; detailLine: DashboardPdfDetail }> = {
       main: {
         title: "Current Week",
         detailLine: `Detailed operational results across each CID focus area from ${selectedWeekRange}.`
       },
       summary: {
         title: "Summary",
-        detailLine: `Activity report showing the key metrics from ${selectedWeekRange}.`
+        detailLine: summaryDetailLines
       },
       trends: {
         title: "Trends",
@@ -2672,7 +2723,7 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
       await exportDashboardPdf({
         exportNode,
         tab: activeTab,
-        weekToken,
+        filenameToken: pdfFilenameTokenByTab[activeTab],
         ...pdfMetaByTab[activeTab]
       });
     } finally {
@@ -2703,6 +2754,25 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
       });
     } finally {
       setIsExportingImage(false);
+    }
+  }
+
+  function handleSummaryPeriodChange(nextPeriod: SummaryPeriod) {
+    setSummaryPeriod(nextPeriod);
+
+    const nextOption = findSummaryReportingOption(summaryReportingOptions[nextPeriod], requestedWeekStart);
+    if (nextOption && nextOption.value !== requestedWeekStart) {
+      setRequestedWeekStart(nextOption.value);
+    }
+  }
+
+  function handleSummaryYearChange(nextYear: string) {
+    const nextOption = [...activeSummaryReportingOptions]
+      .reverse()
+      .find((option) => option.year === nextYear);
+
+    if (nextOption) {
+      setRequestedWeekStart(nextOption.value);
     }
   }
 
@@ -2815,67 +2885,130 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                     Generate the stakeholder-ready PNG for
                     <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}> {summaryImageWeekRange}</span>
                   </p>
+                ) : activeTab === "summary" ? (
+                  <p>
+                    Activity report showing the key metrics for
+                    <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}> {summaryPeriodLabel}</span>.
+                    {showSummaryCoverage ? (
+                      <> Using reporting weeks from
+                      <span className="font-semibold" style={{ color: BRAND.colors.textMuted }}> {summaryCoverageLabel}</span>.</>
+                    ) : null}{" "}
+                    {activeSummaryData.comparison_text}
+                  </p>
                 ) : (
-                  <p>{activeTab === "summary" ? "Activity report showing the key metrics from " : "Detailed operational results across each CID focus area from "}
+                  <p>Detailed operational results across each CID focus area from
                   <span className="mt-1 font-semibold" style={{ color: BRAND.colors.textMuted }}>{selectedWeekRange}.</span></p>
                 )
               }
               statusText={isPageLoading ? "Updating..." : undefined}
               controls={
-                <div className={clsx("grid gap-4", activeTab === "summary-image" ? "md:grid-cols-[160px_minmax(0,1fr)_auto]" : "md:grid-cols-[160px_minmax(0,1fr)]")}>
-                  <SelectField
-                    id="dashboard-year"
-                    label="Year"
-                    value={selectedWeekYear}
-                    inlineLabelOnMobile
-                    disabled={isPageLoading}
-                    onChange={(event) => {
-                      const nextYear = event.target.value;
-                      const nextWeek = [...weekOptions].reverse().find((option) => option.year === nextYear);
-                      if (nextWeek) {
-                        setRequestedWeekStart(nextWeek.weekStart);
-                      }
-                    }}
+                activeTab === "summary" ? (
+                  <div
+                    className={clsx(
+                      "grid gap-4",
+                      showSummaryYearFilter
+                        ? "md:grid-cols-[200px_96px_minmax(0,1fr)]"
+                        : "md:grid-cols-[220px_minmax(0,1fr)]"
+                    )}
                   >
-                    {weekYears.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </SelectField>
-                  <SelectField
-                    id="dashboard-reporting-week"
-                    label="Reporting Week"
-                    value={requestedWeekStart}
-                    inlineLabelOnMobile
-                    disabled={isPageLoading}
-                    onChange={(event) => setRequestedWeekStart(event.target.value)}
-                    mobileChildren={visibleWeekOptions.map((option) => (
-                      <option key={option.weekStart} value={option.weekStart}>
-                        {option.mobileLabel}
-                      </option>
-                    ))}
-                  >
-                    {visibleWeekOptions.map((option) => (
-                      <option key={option.weekStart} value={option.weekStart}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </SelectField>
-                  {activeTab === "summary-image" ? (
-                    <div className="flex items-end">
-                      <button
-                        type="button"
-                        onClick={handleExportSummaryImage}
-                        disabled={isExportingImage || isPageLoading}
-                        className="inline-flex min-h-12 items-center justify-center gap-3 rounded-[14px] border border-black bg-black px-6 py-3 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
+                    <SelectField
+                      id="dashboard-summary-period"
+                      label="Summary Period"
+                      value={summaryPeriod}
+                      inlineLabelOnMobile
+                      disabled={isPageLoading}
+                      onChange={(event) => handleSummaryPeriodChange(event.target.value as SummaryPeriod)}
+                    >
+                      {SUMMARY_PERIOD_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </SelectField>
+
+                    {showSummaryYearFilter ? (
+                      <SelectField
+                        id="dashboard-summary-year"
+                        label="Year"
+                        value={selectedSummaryFilterYear}
+                        inlineLabelOnMobile
+                        disabled={isPageLoading}
+                        onChange={(event) => handleSummaryYearChange(event.target.value)}
                       >
-                        <File className="h-5 w-5" strokeWidth={2.2} aria-hidden />
-                        <span>{isExportingImage ? "Preparing..." : "Export PNG"}</span>
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
+                        {summaryFilterYears.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </SelectField>
+                    ) : null}
+
+                    <SelectField
+                      id="dashboard-summary-reporting-period"
+                      label={summaryReportingFieldLabel}
+                      value={selectedSummaryReportingOption?.value ?? requestedWeekStart}
+                      inlineLabelOnMobile
+                      disabled={isPageLoading}
+                      onChange={(event) => setRequestedWeekStart(event.target.value)}
+                    >
+                      {visibleSummaryReportingOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </SelectField>
+                  </div>
+                ) : (
+                  <div className={clsx("grid gap-4", activeTab === "summary-image" ? "md:grid-cols-[160px_minmax(0,1fr)_auto]" : "md:grid-cols-[160px_minmax(0,1fr)]")}>
+                    <SelectField
+                      id="dashboard-year"
+                      label="Year"
+                      value={selectedWeekYear}
+                      inlineLabelOnMobile
+                      disabled={isPageLoading}
+                      onChange={(event) => {
+                        const nextYear = event.target.value;
+                        const nextWeek = [...weekOptions].reverse().find((option) => option.year === nextYear);
+                        if (nextWeek) {
+                          setRequestedWeekStart(nextWeek.value);
+                        }
+                      }}
+                    >
+                      {weekYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </SelectField>
+                    <SelectField
+                      id="dashboard-reporting-week"
+                      label="Reporting Week"
+                      value={findSummaryReportingOption(weekOptions, requestedWeekStart)?.value ?? requestedWeekStart}
+                      inlineLabelOnMobile
+                      disabled={isPageLoading}
+                      onChange={(event) => setRequestedWeekStart(event.target.value)}
+                    >
+                      {visibleWeekOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </SelectField>
+                    {activeTab === "summary-image" ? (
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={handleExportSummaryImage}
+                          disabled={isExportingImage || isPageLoading}
+                          className="inline-flex min-h-12 items-center justify-center gap-3 rounded-[14px] border border-black bg-black px-6 py-3 font-[var(--font-heading)] text-[0.98rem] font-semibold uppercase tracking-[0.02em] text-white transition-colors hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <File className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+                          <span>{isExportingImage ? "Preparing..." : "Export PNG"}</span>
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                )
               }
             />
           ) : null}
