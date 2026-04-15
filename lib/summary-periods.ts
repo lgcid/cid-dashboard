@@ -66,9 +66,17 @@ function endFromStart(start: Date, months: number): string {
   return formatIsoDay(addDays(addMonths(start, months), -1));
 }
 
+function unavailableComparisonText(previousLabel: string): string {
+  if (previousLabel === "Previous reporting week") {
+    return "No comparison is available for the previous reporting week.";
+  }
+
+  return `No comparison is available for ${previousLabel}.`;
+}
+
 function previousPeriodComparisonText(previousLabel: string, hasRows: boolean): string {
   if (!hasRows) {
-    return "No earlier reporting weeks are available for comparison.";
+    return unavailableComparisonText(previousLabel);
   }
   return `Compared with ${previousLabel}.`;
 }
@@ -276,7 +284,7 @@ function buildWeeklySummaryPeriodData(rows: WeeklyMetricRow[], selectedWeekStart
     return {
       period: "week",
       period_label: "Weekly",
-      comparison_text: "No earlier reporting weeks are available for comparison.",
+      comparison_text: "No comparison is available for the previous reporting week.",
       current: {
         label: "Selected reporting week",
         coverage_label: null,

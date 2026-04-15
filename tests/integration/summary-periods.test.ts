@@ -66,6 +66,27 @@ describe("summary period comparisons", () => {
     expect(summary.periods.calendar_year.comparison_text).toBe("Compared with Calendar Year 2025.");
   });
 
+  it("names the unavailable earlier period when a comparison is unavailable", () => {
+    const quarterRows = buildWeeklyRows("2026-01-05", 9, 10);
+
+    const quarterSummary = buildSummaryData(quarterRows, "2026-02-23");
+
+    expect(quarterSummary.periods.quarter.comparison_text).toBe(
+      "No comparison is available for Jan to Mar 2025."
+    );
+    expect(quarterSummary.periods.calendar_year.comparison_text).toBe(
+      "No comparison is available for Calendar Year 2025."
+    );
+
+    const financialYearRows = buildWeeklyRows("2025-07-07", 35, 10);
+
+    const financialYearSummary = buildSummaryData(financialYearRows, "2026-02-23");
+
+    expect(financialYearSummary.periods.financial_year.comparison_text).toBe(
+      "No comparison is available for Financial Year 2024/25."
+    );
+  });
+
   it("uses the same financial-year slice from the previous year", () => {
     const rows = [
       ...buildWeeklyRows("2024-07-01", 52, 1),

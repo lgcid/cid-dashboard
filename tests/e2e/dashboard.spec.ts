@@ -123,7 +123,7 @@ test("summary view switches between weekly, monthly, quarterly, and yearly perio
   await expect(page.getByLabel("Reporting Financial Year")).toBeVisible();
   await expect(page.getByLabel("Reporting Calendar Year")).toHaveCount(0);
   await expect(page.getByText("Activity report showing the key metrics for Financial Year 2025/26.", { exact: false })).toBeVisible();
-  await expect(page.locator("main")).toContainText("No earlier reporting weeks are available for comparison.");
+  await expect(page.locator("main")).toContainText("No comparison is available for Financial Year 2024/25.");
   await expect(page.locator(".summary-ribbon", { hasText: "C3 logged requests" })).toContainText("358");
 });
 

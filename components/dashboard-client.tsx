@@ -1466,13 +1466,15 @@ function buildSummaryDetailLines({
   previousLabel,
   coverageLabel,
   showCoverage,
-  hasComparison
+  hasComparison,
+  comparisonText
 }: {
   currentLabel: string;
   previousLabel: string;
   coverageLabel: string | null;
   showCoverage: boolean;
   hasComparison: boolean;
+  comparisonText: string;
 }): DashboardPdfDetailLine[] {
   const lines: DashboardPdfDetailLine[] = [
     {
@@ -1499,7 +1501,7 @@ function buildSummaryDetailLines({
   } else {
     lines.push({
       type: "note",
-      text: "No earlier reporting weeks are available for comparison."
+      text: comparisonText
     });
   }
 
@@ -2599,9 +2601,17 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
       previousLabel: activeSummaryData.previous.label,
       coverageLabel: summaryCoverageLabel,
       showCoverage: showSummaryCoverage,
-      hasComparison: hasSummaryComparison
+      hasComparison: hasSummaryComparison,
+      comparisonText: activeSummaryData.comparison_text
     }),
-    [activeSummaryData.previous.label, hasSummaryComparison, showSummaryCoverage, summaryCoverageLabel, summaryPeriodLabel]
+    [
+      activeSummaryData.comparison_text,
+      activeSummaryData.previous.label,
+      hasSummaryComparison,
+      showSummaryCoverage,
+      summaryCoverageLabel,
+      summaryPeriodLabel
+    ]
   );
   const c3BacklogTop3 = c3Data.pressure_points;
   const currentWeekGeneralIncidentsBreakdown = pageData.current_week_tab.general_incidents_breakdown;

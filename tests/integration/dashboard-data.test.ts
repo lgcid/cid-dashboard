@@ -97,17 +97,17 @@ describe("dashboard data pipeline", () => {
     expect(summary.periods.quarter.current.label).toBe("Jan to Mar 2026");
     expect(summary.periods.quarter.current.metrics.cleaning_total_bags).toBe(3032);
     expect(summary.periods.quarter.previous.label).toBe("Jan to Mar 2025");
-    expect(summary.periods.quarter.comparison_text).toBe("No earlier reporting weeks are available for comparison.");
+    expect(summary.periods.quarter.comparison_text).toBe("No comparison is available for Jan to Mar 2025.");
 
     expect(summary.periods.calendar_year.current.label).toBe("Calendar Year 2026");
     expect(summary.periods.calendar_year.previous.label).toBe("Calendar Year 2025");
-    expect(summary.periods.calendar_year.comparison_text).toBe("No earlier reporting weeks are available for comparison.");
+    expect(summary.periods.calendar_year.comparison_text).toBe("No comparison is available for Calendar Year 2025.");
 
     expect(summary.periods.financial_year.current.label).toBe("Financial Year 2025/26");
     expect(summary.periods.financial_year.current.coverage_label).toBe("01 Aug 2025 to 08 Mar 2026");
     expect(summary.periods.financial_year.previous.label).toBe("Financial Year 2024/25");
     expect(summary.periods.financial_year.current.metrics.c3_logged_total).toBe(358);
-    expect(summary.periods.financial_year.comparison_text).toBe("No earlier reporting weeks are available for comparison.");
+    expect(summary.periods.financial_year.comparison_text).toBe("No comparison is available for Financial Year 2024/25.");
   });
 
   it("falls back to the default selected week when the requested week is not available", async () => {

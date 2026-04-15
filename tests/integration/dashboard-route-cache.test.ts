@@ -34,7 +34,7 @@ const dashboardPayload = {
       week: {
         period: "week",
         period_label: "Weekly",
-        comparison_text: "No earlier reporting weeks are available for comparison.",
+        comparison_text: "No comparison is available for the previous reporting week.",
         current: {
           label: "02 Mar 2026 to 08 Mar 2026",
           coverage_label: "02 Mar 2026 to 08 Mar 2026",
@@ -79,7 +79,7 @@ const dashboardPayload = {
       month: {
         period: "month",
         period_label: "Monthly",
-        comparison_text: "No earlier reporting weeks are available for comparison.",
+        comparison_text: "No comparison is available for February 2026.",
         current: {
           label: "March 2026",
           coverage_label: null,
@@ -124,7 +124,7 @@ const dashboardPayload = {
       quarter: {
         period: "quarter",
         period_label: "Quarterly",
-        comparison_text: "No earlier reporting weeks are available for comparison.",
+        comparison_text: "No comparison is available for Oct to Dec 2025.",
         current: {
           label: "Jan to Mar 2026",
           coverage_label: null,
@@ -169,7 +169,7 @@ const dashboardPayload = {
       calendar_year: {
         period: "calendar_year",
         period_label: "Calendar Year",
-        comparison_text: "No earlier reporting weeks are available for comparison.",
+        comparison_text: "No comparison is available for Calendar Year 2025.",
         current: {
           label: "Calendar Year 2026",
           coverage_label: null,
@@ -214,7 +214,7 @@ const dashboardPayload = {
       financial_year: {
         period: "financial_year",
         period_label: "Financial Year",
-        comparison_text: "No earlier reporting weeks are available for comparison.",
+        comparison_text: "No comparison is available for Financial Year 2024/25.",
         current: {
           label: "Financial Year 2025/26",
           coverage_label: null,

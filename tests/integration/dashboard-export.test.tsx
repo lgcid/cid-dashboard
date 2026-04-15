@@ -247,7 +247,7 @@ describe("dashboard screenshot export", () => {
         },
         {
           type: "note",
-          text: "No earlier reporting weeks are available for comparison."
+          text: "No comparison is available for Financial Year 2024/25."
         }
       ]
     });
@@ -260,8 +260,8 @@ describe("dashboard screenshot export", () => {
     const reportingLine = pdf.text.mock.calls.find(([text]) => text === "Reporting weeks used: ");
     const noteLine = pdf.text.mock.calls.find(([text]) => (
       Array.isArray(text)
-        ? text.includes("No earlier reporting weeks are available for comparison.")
-        : text === "No earlier reporting weeks are available for comparison."
+        ? text.includes("No comparison is available for Financial Year 2024/25.")
+        : text === "No comparison is available for Financial Year 2024/25."
     ));
 
     expect(textArgs).toEqual(expect.arrayContaining([
