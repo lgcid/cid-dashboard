@@ -33,6 +33,7 @@ vi.mock("jspdf", () => ({
     addFont = vi.fn();
     addImage = vi.fn();
     addPage = vi.fn();
+    getTextWidth = vi.fn((text: string) => text.length * 4.8);
     getImageProperties = vi.fn().mockReturnValue({ width: 800, height: 1600 });
     save = jsPdfSaveMock;
     setFont = vi.fn();
@@ -192,7 +193,7 @@ describe("dashboard screenshot export", () => {
     await exportDashboardPdf({
       exportNode: exportTarget,
       tab: "main",
-      weekToken: "2026-02-09_to_2026-02-15",
+      filenameToken: "2026-02-09_to_2026-02-15",
       title: "Current Week",
       detailLine: "Detailed operational results across each CID focus area from 09 Feb 2026 to 15 Feb 2026."
     });
@@ -211,5 +212,68 @@ describe("dashboard screenshot export", () => {
     expect(pdf.addImage).toHaveBeenCalled();
     expect(pdf.text).toHaveBeenCalledWith("WEEKLY OPERATIONS DASHBOARD", expect.any(Number), expect.any(Number));
     expect((pdf as { addFileToVFS: ReturnType<typeof vi.fn> }).addFileToVFS).toHaveBeenCalled();
+  });
+
+  it("formats summary pdf detail lines with labeled entries and bold values", async () => {
+    toJpegMock.mockResolvedValue("data:image/jpeg;base64,exported");
+
+    const exportTarget = document.createElement("div");
+    exportTarget.textContent = "Dashboard export target";
+    Object.defineProperty(exportTarget, "scrollWidth", {
+      value: 640,
+      configurable: true
+    });
+    Object.defineProperty(exportTarget, "scrollHeight", {
+      value: 360,
+      configurable: true
+    });
+    document.body.appendChild(exportTarget);
+
+    await exportDashboardPdf({
+      exportNode: exportTarget,
+      tab: "summary",
+      filenameToken: "2026-01-01_to_2026-03-31",
+      title: "Summary",
+      detailLine: [
+        {
+          type: "pair",
+          label: "Detailed operational results across each CID focus area for:",
+          value: "23 Feb 2026 to 01 Mar 2026"
+        },
+        {
+          type: "pair",
+          label: "Reporting weeks used:",
+          value: "01 Aug 2025 to 29 Mar 2026"
+        },
+        {
+          type: "note",
+          text: "No comparison is available for Financial Year 2024/25."
+        }
+      ]
+    });
+
+    const pdf = jsPdfInstances.at(-1) as {
+      setFontSize: ReturnType<typeof vi.fn>;
+      text: ReturnType<typeof vi.fn>;
+    };
+    const textArgs = pdf.text.mock.calls.map(([text]) => text);
+    const reportingLine = pdf.text.mock.calls.find(([text]) => text === "Reporting weeks used: ");
+    const noteLine = pdf.text.mock.calls.find(([text]) => (
+      Array.isArray(text)
+        ? text.includes("No comparison is available for Financial Year 2024/25.")
+        : text === "No comparison is available for Financial Year 2024/25."
+    ));
+
+    expect(textArgs).toEqual(expect.arrayContaining([
+      "Detailed operational results across each CID focus area for: ",
+      "23 Feb 2026 to 01 Mar 2026",
+      "Reporting weeks used: ",
+      "01 Aug 2025 to 29 Mar 2026"
+    ]));
+    expect(pdf.setFontSize).toHaveBeenCalledWith(8.75);
+    expect(reportingLine).toBeDefined();
+    expect(noteLine).toBeDefined();
+    expect((noteLine?.[2] as number) - (reportingLine?.[2] as number)).toBeCloseTo(12, 5);
+    expect(jsPdfSaveMock).toHaveBeenCalledWith("lgcid-summary-2026-01-01_to_2026-03-31.pdf");
   });
 });

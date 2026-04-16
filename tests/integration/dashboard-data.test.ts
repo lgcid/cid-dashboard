@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadData } from "@/lib/data-source";
-import { getDashboardData } from "@/lib/dashboard-service";
+import { getDashboardC3Data, getDashboardPageData, getDashboardTrendsData } from "@/lib/dashboard-service";
 
 const ENV_KEYS = [
   "DATA_SOURCE",
@@ -62,33 +62,64 @@ describe("dashboard data pipeline", () => {
   });
 
   it("returns fixed historical metrics for the 2026-02-23 reporting week", async () => {
-    const data = await getDashboardData({ weekStart: "2026-02-23" });
-    const incidents = data.incidents.filter((incident) => incident.week_start === "2026-02-23");
+    const data = await getDashboardPageData({ weekStart: "2026-02-23" });
+    const incidents = data.current_week_tab.incidents;
 
     expect(data.meta.data_source).toBe("local_csv");
     expect(data.meta.selected_week_start).toBe("2026-02-23");
-    expect(data.current_week?.week_start).toBe("2026-02-23");
-    expect(data.current_week?.metrics.criminal_incidents).toBe(5);
-    expect(data.current_week?.metrics.arrests_made).toBe(3);
-    expect(data.current_week?.metrics.section56_notices).toBe(5);
-    expect(data.current_week?.metrics.section341_notices).toBe(47);
-    expect(data.current_week?.metrics.c3_logged_total).toBe(18);
+    expect(data.week_context.current_week?.week_start).toBe("2026-02-23");
+    expect(data.week_context.current_week?.metrics.criminal_incidents).toBe(5);
+    expect(data.week_context.current_week?.metrics.arrests_made).toBe(3);
+    expect(data.week_context.current_week?.metrics.section56_notices).toBe(5);
+    expect(data.week_context.current_week?.metrics.section341_notices).toBe(47);
+    expect(data.week_context.current_week?.metrics.c3_logged_total).toBe(18);
     expect(incidents).toHaveLength(5);
+    expect(incidents.every((incident) => incident.week_start === "2026-02-23")).toBe(true);
     expect(incidents.map((incident) => incident.place)).toEqual(
       expect.arrayContaining(["Roeland Street", "Buitenkant Street", "Scott Street"])
     );
   });
 
+  it("builds summary totals for weekly, monthly, quarterly, and yearly periods", async () => {
+    const data = await getDashboardPageData({ weekStart: "2026-02-23" });
+    const { summary } = data;
+
+    expect(summary.default_period).toBe("week");
+    expect(summary.periods.week.current.label).toBe("23 Feb 2026 to 01 Mar 2026");
+    expect(summary.periods.week.current.metrics.fines_issued).toBe(52);
+    expect(summary.periods.week.previous.metrics.contacts_total).toBe(41);
+
+    expect(summary.periods.month.current.label).toBe("February 2026");
+    expect(summary.periods.month.current.coverage_label).toBe("02 Feb 2026 to 01 Mar 2026");
+    expect(summary.periods.month.current.metrics.fines_issued).toBe(274);
+    expect(summary.periods.month.previous.metrics.contacts_total).toBe(101);
+
+    expect(summary.periods.quarter.current.label).toBe("Jan to Mar 2026");
+    expect(summary.periods.quarter.current.metrics.cleaning_total_bags).toBe(3032);
+    expect(summary.periods.quarter.previous.label).toBe("Jan to Mar 2025");
+    expect(summary.periods.quarter.comparison_text).toBe("No comparison is available for Jan to Mar 2025.");
+
+    expect(summary.periods.calendar_year.current.label).toBe("Calendar Year 2026");
+    expect(summary.periods.calendar_year.previous.label).toBe("Calendar Year 2025");
+    expect(summary.periods.calendar_year.comparison_text).toBe("No comparison is available for Calendar Year 2025.");
+
+    expect(summary.periods.financial_year.current.label).toBe("Financial Year 2025/26");
+    expect(summary.periods.financial_year.current.coverage_label).toBe("01 Aug 2025 to 08 Mar 2026");
+    expect(summary.periods.financial_year.previous.label).toBe("Financial Year 2024/25");
+    expect(summary.periods.financial_year.current.metrics.c3_logged_total).toBe(358);
+    expect(summary.periods.financial_year.comparison_text).toBe("No comparison is available for Financial Year 2024/25.");
+  });
+
   it("falls back to the default selected week when the requested week is not available", async () => {
-    const defaultData = await getDashboardData();
-    const invalidWeekData = await getDashboardData({ weekStart: "1900-01-01" });
+    const defaultData = await getDashboardPageData();
+    const invalidWeekData = await getDashboardPageData({ weekStart: "1900-01-01" });
 
     expect(invalidWeekData.meta.selected_week_start).toBe(defaultData.meta.selected_week_start);
-    expect(invalidWeekData.current_week?.week_start).toBe(defaultData.current_week?.week_start);
+    expect(invalidWeekData.week_context.current_week?.week_start).toBe(defaultData.week_context.current_week?.week_start);
   });
 
   it("derives the visible reporting window from published weeks", async () => {
-    const data = await getDashboardData();
+    const data = await getDashboardPageData();
 
     expect(data.meta.reporting_window_start).toBe("2025-08-01");
     expect(data.meta.reporting_window_end).toBe("2026-03-08");
@@ -97,34 +128,47 @@ describe("dashboard data pipeline", () => {
   });
 
   it("only exposes explicitly published weeks in weekly views", async () => {
-    const [response, loaded] = await Promise.all([getDashboardData(), loadData()]);
+    const [response, loaded] = await Promise.all([getDashboardPageData(), loadData()]);
 
     expect(response.meta.available_weeks).toEqual(loaded.publishedWeeks);
-    expect(response.weekly.map((row) => row.week_start)).toEqual(loaded.publishedWeeks);
+    expect(response.weeks.map((row) => row.week_start)).toEqual(loaded.publishedWeeks);
   });
 
-  it("limits row-based incidents and c3 requests to the published date window", async () => {
-    const data = await getDashboardData();
+  it("limits page and c3 data to the smaller tab outputs", async () => {
+    const [pageData, c3Data] = await Promise.all([getDashboardPageData(), getDashboardC3Data()]);
 
-    expect(data.incidents.every((incident) => incident.week_start >= "2025-08-01" && incident.week_start <= "2026-03-08")).toBe(true);
-    expect(
-      data.c3_request_rows.every(
-        (row) => row.date_logged !== null && row.date_logged >= "2025-08-01" && row.date_logged <= "2026-03-08"
-      )
-    ).toBe(true);
+    expect(pageData.current_week_tab.incidents.every((incident) => incident.week_start === pageData.meta.selected_week_start)).toBe(true);
+    expect(pageData.current_week_tab.hotspots.length).toBeGreaterThan(0);
+    expect(c3Data.breakdown.length).toBeGreaterThan(0);
+    expect(c3Data.pressure_points.length).toBeLessThanOrEqual(3);
   });
 
   it("adds a preview week to weekly views and extends row-based data through that week", async () => {
-    const data = await getDashboardData({ preview: "2026-03-10" });
+    const [pageData, trendData, c3Data] = await Promise.all([
+      getDashboardPageData({ preview: "2026-03-10" }),
+      getDashboardTrendsData({ preview: "2026-03-10" }),
+      getDashboardC3Data({ preview: "2026-03-10" })
+    ]);
 
-    expect(data.meta.available_weeks.at(-1)).toBe("2026-03-09");
-    expect(data.meta.reporting_window_end).toBe("2026-03-15");
-    expect(data.current_week?.week_start).toBe("2026-03-09");
-    expect(data.current_week?.metrics.criminal_incidents).toBe(6);
-    expect(data.current_week?.metrics.section56_notices).toBe(12);
-    expect(data.current_week?.metrics.section341_notices).toBe(44);
-    expect(data.current_week?.metrics.c3_logged_total).toBe(1);
-    expect(data.incidents.some((incident) => incident.week_start === "2026-03-09" && incident.place === "Hope Street")).toBe(true);
-    expect(data.c3_request_rows.some((row) => row.date_logged === "2026-03-10")).toBe(true);
+    expect(pageData.meta.available_weeks.at(-1)).toBe("2026-03-09");
+    expect(pageData.meta.reporting_window_end).toBe("2026-03-15");
+    expect(pageData.week_context.current_week?.week_start).toBe("2026-03-09");
+    expect(pageData.week_context.current_week?.metrics.criminal_incidents).toBe(6);
+    expect(pageData.week_context.current_week?.metrics.section56_notices).toBe(12);
+    expect(pageData.week_context.current_week?.metrics.section341_notices).toBe(44);
+    expect(pageData.week_context.current_week?.metrics.c3_logged_total).toBe(1);
+    expect(pageData.current_week_tab.incidents.some((incident) => incident.week_start === "2026-03-09" && incident.place === "Hope Street")).toBe(true);
+    expect(trendData.available_to).toBe("2026-03-09");
+    expect(c3Data.available_to).toBe("2026-03-15");
+  });
+
+  it("formats trend x-axis labels for week and month views", async () => {
+    const [weeklyTrends, monthlyTrends] = await Promise.all([
+      getDashboardTrendsData({ granularity: "week" }),
+      getDashboardTrendsData({ granularity: "month" })
+    ]);
+
+    expect(weeklyTrends.series[0]?.period_label).toBe("01 Aug");
+    expect(monthlyTrends.series[0]?.period_label).toBe("Aug 2025");
   });
 });

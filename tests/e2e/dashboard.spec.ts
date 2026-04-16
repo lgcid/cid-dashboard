@@ -12,14 +12,12 @@ test("dashboard API serves fixed local CSV data for a historical week", async ({
 
   expect(payload.meta.data_source).toBe("local_csv");
   expect(payload.meta.selected_week_start).toBe("2026-02-23");
-  expect(payload.current_week.week_start).toBe("2026-02-23");
-  expect(payload.current_week.metrics.criminal_incidents).toBe(5);
-  expect(payload.current_week.metrics.section56_notices).toBe(5);
-  expect(payload.current_week.metrics.section341_notices).toBe(47);
-  expect(payload.current_week.metrics.c3_logged_total).toBe(18);
-  expect(
-    payload.incidents.filter((incident: { week_start: string }) => incident.week_start === "2026-02-23")
-  ).toHaveLength(5);
+  expect(payload.week_context.current_week.week_start).toBe("2026-02-23");
+  expect(payload.week_context.current_week.metrics.criminal_incidents).toBe(5);
+  expect(payload.week_context.current_week.metrics.section56_notices).toBe(5);
+  expect(payload.week_context.current_week.metrics.section341_notices).toBe(47);
+  expect(payload.week_context.current_week.metrics.c3_logged_total).toBe(18);
+  expect(payload.current_week_tab.incidents).toHaveLength(5);
 });
 
 test("preview query exposes one unpublished week in the API response", async ({ request }) => {
@@ -30,9 +28,9 @@ test("preview query exposes one unpublished week in the API response", async ({ 
 
   expect(payload.meta.available_weeks.at(-1)).toBe("2026-03-09");
   expect(payload.meta.reporting_window_end).toBe("2026-03-15");
-  expect(payload.current_week.week_start).toBe("2026-03-09");
-  expect(payload.current_week.metrics.criminal_incidents).toBe(6);
-  expect(payload.current_week.metrics.c3_logged_total).toBe(1);
+  expect(payload.week_context.current_week.week_start).toBe("2026-03-09");
+  expect(payload.week_context.current_week.metrics.criminal_incidents).toBe(6);
+  expect(payload.week_context.current_week.metrics.c3_logged_total).toBe(1);
 });
 
 test("dashboard renders and tab navigation works without client errors", async ({ page }) => {
@@ -88,6 +86,45 @@ test("route urls open the correct shared view", async ({ page }) => {
 
   await page.goto("/?tab=summary-image");
   await expect(page.getByRole("heading", { name: "Summary Image", level: 2 })).toBeVisible();
+});
+
+test("summary view switches between weekly, monthly, quarterly, and yearly periods", async ({ page }) => {
+  await page.goto("/");
+
+  await page.locator("#dashboard-summary-reporting-period").selectOption("2026-02-23");
+  await expect(page.locator("#dashboard-summary-period")).toHaveValue("week");
+  await expect(page.locator("#dashboard-summary-year")).toBeVisible();
+  await expect(page.getByLabel("Reporting Week")).toBeVisible();
+  await expect(page.getByText("Activity report showing the key metrics for 23 Feb 2026 to 01 Mar 2026.", { exact: false })).toBeVisible();
+
+  await page.locator("#dashboard-summary-period").selectOption("month");
+  await expect(page.locator("#dashboard-summary-year")).toBeVisible();
+  await expect(page.getByLabel("Reporting Month")).toBeVisible();
+  await expect(page.getByLabel("Reporting Week")).toHaveCount(0);
+  await expect(page.getByText("Activity report showing the key metrics for February 2026.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Using reporting weeks from 02 Feb 2026 to 01 Mar 2026.", { exact: false })).toBeVisible();
+  await expect(page.locator(".summary-ribbon", { hasText: "Fines issued" })).toContainText("274");
+
+  await page.locator("#dashboard-summary-period").selectOption("quarter");
+  await expect(page.locator("#dashboard-summary-year")).toBeVisible();
+  await expect(page.getByLabel("Reporting Quarter")).toBeVisible();
+  await expect(page.getByLabel("Reporting Month")).toHaveCount(0);
+  await expect(page.getByText("Activity report showing the key metrics for Jan to Mar 2026.", { exact: false })).toBeVisible();
+  await expect(page.locator(".summary-ribbon", { hasText: "Cleaning bags collected" })).toContainText("3,032");
+
+  await page.locator("#dashboard-summary-period").selectOption("calendar_year");
+  await expect(page.locator("#dashboard-summary-year")).toHaveCount(0);
+  await expect(page.getByLabel("Reporting Calendar Year")).toBeVisible();
+  await expect(page.getByLabel("Reporting Quarter")).toHaveCount(0);
+  await expect(page.getByText("Activity report showing the key metrics for Calendar Year 2026.", { exact: false })).toBeVisible();
+
+  await page.locator("#dashboard-summary-period").selectOption("financial_year");
+  await expect(page.locator("#dashboard-summary-year")).toHaveCount(0);
+  await expect(page.getByLabel("Reporting Financial Year")).toBeVisible();
+  await expect(page.getByLabel("Reporting Calendar Year")).toHaveCount(0);
+  await expect(page.getByText("Activity report showing the key metrics for Financial Year 2025/26.", { exact: false })).toBeVisible();
+  await expect(page.locator("main")).toContainText("No comparison is available for Financial Year 2024/25.");
+  await expect(page.locator(".summary-ribbon", { hasText: "C3 logged requests" })).toContainText("358");
 });
 
 test("terms and definitions dialog opens and closes from the tab row", async ({ page }) => {
@@ -163,12 +200,14 @@ test("c3 tracker reflects a fixed date range and expected totals", async ({ page
 
 test("pdf export downloads by default and summary image export is available on the hidden route", async ({ page }) => {
   await page.goto("/");
+  await page.locator("#dashboard-summary-period").selectOption("month");
+  await expect(page.getByLabel("Reporting Month")).toBeVisible();
 
   let downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Print" }).click();
   let download = await downloadPromise;
 
-  expect(download.suggestedFilename()).toMatch(/^lgcid-summary-.*\.pdf$/);
+  expect(download.suggestedFilename()).toBe("lgcid-summary-2026-03-01_to_2026-03-31.pdf");
 
   await page.goto("/?tab=summary-image");
 

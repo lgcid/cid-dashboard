@@ -30,6 +30,9 @@ interface LoadDataOptions {
 
 function getDataSourceMode(): DataSourceMode {
   const raw = process.env.DATA_SOURCE?.trim().toLowerCase();
+  if (raw === "local_csv") {
+    return "local_csv";
+  }
   if (raw === "google_sheets") {
     return "google_sheets";
   }

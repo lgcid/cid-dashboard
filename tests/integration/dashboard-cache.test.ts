@@ -68,9 +68,9 @@ describe("dashboard data cache", () => {
   });
 
   it("uses the shared cache when preview is absent", async () => {
-    const { getDashboardData } = await import("@/lib/dashboard-service");
+    const { getDashboardPageData } = await import("@/lib/dashboard-service");
 
-    await getDashboardData();
+    await getDashboardPageData();
 
     expect(loadData).toHaveBeenCalledWith({
       preview: undefined,
@@ -79,9 +79,9 @@ describe("dashboard data cache", () => {
   });
 
   it("bypasses the shared cache when preview data is requested", async () => {
-    const { getDashboardData } = await import("@/lib/dashboard-service");
+    const { getDashboardPageData } = await import("@/lib/dashboard-service");
 
-    await getDashboardData({ preview: "2026-03-10", vercelOidcToken: "oidc-token" });
+    await getDashboardPageData({ preview: "2026-03-10", vercelOidcToken: "oidc-token" });
 
     expect(loadData).toHaveBeenCalledWith({
       preview: "2026-03-10",

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import DashboardClient from "@/components/dashboard-client";
 import { readVercelOidcTokenFromRequestHeaders } from "@/lib/google-sheets";
-import { getDashboardData } from "@/lib/dashboard-service";
+import { getDashboardPageData } from "@/lib/dashboard-service";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,6 @@ type DashboardPageProps = {
   searchParams: Promise<{
     tab?: string;
     weekStart?: string;
-    windowWeeks?: string;
     preview?: string;
   }>;
 };
@@ -23,14 +22,12 @@ export default async function DashboardPage({
 }: DashboardPageProps) {
   const params = await searchParams;
   const weekStart = params?.weekStart;
-  const windowWeeks = params?.windowWeeks ? Number(params.windowWeeks) : undefined;
   const preview = params?.preview;
   const resolvedInitialTab = params?.tab === "summary-image" ? "summary-image" : initialTab;
   const requestHeaders = await headers();
   const vercelOidcToken = readVercelOidcTokenFromRequestHeaders(requestHeaders) ?? undefined;
-  const initialData = await getDashboardData({
+  const initialData = await getDashboardPageData({
     weekStart,
-    windowWeeks: Number.isFinite(windowWeeks) ? windowWeeks : undefined,
     preview,
     vercelOidcToken
   });

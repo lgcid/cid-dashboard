@@ -3,6 +3,10 @@ import { jsPDF } from "jspdf";
 import { BRAND } from "@/lib/config";
 
 export type DashboardExportTab = "main" | "summary" | "trends" | "c3";
+export type DashboardPdfDetailLine =
+  | { type: "pair"; label: string; value: string }
+  | { type: "note"; text: string };
+export type DashboardPdfDetail = string | DashboardPdfDetailLine[];
 
 export const SCREENSHOT_EXPORT_SCALE = 2;
 export const SUMMARY_EXPORT_MODE_CLASS = "summary-export-mode";
@@ -27,6 +31,10 @@ const PDF_FIRST_PAGE_TOP = PDF_HEADER_HEIGHT + 36;
 const PDF_LATER_PAGE_TOP = PDF_HEADER_HEIGHT + 24;
 const PDF_BOTTOM_LIMIT = A4_HEIGHT_PT - PDF_FOOTER_HEIGHT - 18;
 const PDF_BLOCK_GAP = 18;
+const PDF_SUMMARY_CONTENT_GAP = 8;
+const PDF_DETAIL_TOP_PADDING = 18;
+const PDF_DETAIL_TEXT_SIZE = 8.75;
+const PDF_DETAIL_LINE_HEIGHT = 12;
 const PDF_BODY_COPY = "Weekly and historical operational performance for stakeholders, covering safety, cleaning, social upliftment, and general incidents.";
 const PDF_FONT_FAMILY = "Roboto";
 
@@ -64,8 +72,8 @@ function buildDashboardExportFilename(tab: DashboardExportTab, weekToken: string
   return `lgcid-${buildTabToken(tab)}-${weekToken}.png`;
 }
 
-function buildDashboardPdfFilename(tab: DashboardExportTab, weekToken: string): string {
-  return `lgcid-${buildTabToken(tab)}-${weekToken}.pdf`;
+function buildDashboardPdfFilename(tab: DashboardExportTab, filenameToken: string): string {
+  return `lgcid-${buildTabToken(tab)}-${filenameToken}.pdf`;
 }
 
 async function renderDashboardNodeToPng({
@@ -249,6 +257,56 @@ function addPdfChrome(pdf: jsPDF, headerDataUrl: string, footerDataUrl: string) 
   pdf.addImage(footerDataUrl, "PNG", 0, A4_HEIGHT_PT - PDF_FOOTER_HEIGHT, A4_WIDTH_PT, PDF_FOOTER_HEIGHT, PDF_FOOTER_IMAGE_ALIAS);
 }
 
+function pdfTextWidth(pdf: jsPDF, text: string): number {
+  const candidate = pdf as jsPDF & { getTextWidth?: (value: string) => number };
+  if (typeof candidate.getTextWidth === "function") {
+    return candidate.getTextWidth(text);
+  }
+
+  return text.length * 4.8;
+}
+
+function addPdfDetailLines(pdf: jsPDF, detailLines: DashboardPdfDetailLine[], startY: number): number {
+  let cursorY = startY;
+
+  pdf.setFontSize(PDF_DETAIL_TEXT_SIZE);
+
+  for (const line of detailLines) {
+    if (line.type === "note") {
+      pdf.setFont(PDF_FONT_FAMILY, "normal");
+      const noteLines = pdf.splitTextToSize(line.text, PDF_BODY_TEXT_WIDTH);
+      pdf.text(noteLines, PDF_MARGIN_X, cursorY, { baseline: "top" });
+      cursorY += noteLines.length * PDF_DETAIL_LINE_HEIGHT;
+      continue;
+    }
+
+    const labelText = `${line.label} `;
+
+    pdf.setFont(PDF_FONT_FAMILY, "normal");
+    const labelWidth = pdfTextWidth(pdf, labelText);
+    pdf.setFont(PDF_FONT_FAMILY, "bold");
+    const valueWidth = pdfTextWidth(pdf, line.value);
+    const fitsOnOneLine = labelWidth + valueWidth <= PDF_BODY_TEXT_WIDTH;
+
+    pdf.setFont(PDF_FONT_FAMILY, "normal");
+    pdf.text(labelText, PDF_MARGIN_X, cursorY);
+
+    if (fitsOnOneLine) {
+      pdf.setFont(PDF_FONT_FAMILY, "bold");
+      pdf.text(line.value, PDF_MARGIN_X + labelWidth, cursorY);
+      cursorY += PDF_DETAIL_LINE_HEIGHT;
+      continue;
+    }
+
+    pdf.setFont(PDF_FONT_FAMILY, "bold");
+    const wrappedValueLines = pdf.splitTextToSize(line.value, PDF_BODY_TEXT_WIDTH);
+    pdf.text(wrappedValueLines, PDF_MARGIN_X, cursorY + 8, { baseline: "top" });
+    cursorY += wrappedValueLines.length * PDF_DETAIL_LINE_HEIGHT + 8;
+  }
+
+  return cursorY + 2;
+}
+
 function addPdfIntro({
   pdf,
   title,
@@ -256,7 +314,7 @@ function addPdfIntro({
 }: {
   pdf: jsPDF;
   title: string;
-  detailLine: string;
+  detailLine: DashboardPdfDetail;
 }): number {
   let cursorY = PDF_FIRST_PAGE_TOP;
 
@@ -275,13 +333,17 @@ function addPdfIntro({
   pdf.setFontSize(10.75);
   const descriptionLines = pdf.splitTextToSize(PDF_BODY_COPY, PDF_BODY_TEXT_WIDTH);
   pdf.text(descriptionLines, PDF_MARGIN_X, cursorY, { baseline: "top" });
-  cursorY += descriptionLines.length * 13 + 14;
+  cursorY += descriptionLines.length * 13 + PDF_DETAIL_TOP_PADDING;
 
   pdf.setFont(PDF_FONT_FAMILY, "normal");
   pdf.setFontSize(10.5);
-  const detailLines = pdf.splitTextToSize(detailLine, PDF_BODY_TEXT_WIDTH);
-  pdf.text(detailLines, PDF_MARGIN_X, cursorY, { baseline: "top" });
-  cursorY += detailLines.length * 12 + 8;
+  if (typeof detailLine === "string") {
+    const detailLines = pdf.splitTextToSize(detailLine, PDF_BODY_TEXT_WIDTH);
+    pdf.text(detailLines, PDF_MARGIN_X, cursorY, { baseline: "top" });
+    cursorY += detailLines.length * 12 + 8;
+  } else {
+    cursorY = addPdfDetailLines(pdf, detailLine, cursorY);
+  }
 
   return cursorY;
 }
@@ -575,15 +637,15 @@ export async function exportNodePng({
 export async function exportDashboardPdf({
   exportNode,
   tab,
-  weekToken,
+  filenameToken,
   title,
   detailLine
 }: {
   exportNode: HTMLElement;
   tab: DashboardExportTab;
-  weekToken: string;
+  filenameToken: string;
   title: string;
-  detailLine: string;
+  detailLine: DashboardPdfDetail;
 }): Promise<{ downloadName: string }> {
   const targetDocument = exportNode.ownerDocument;
   const stagingRoot = createStagingRoot(targetDocument);
@@ -605,7 +667,7 @@ export async function exportDashboardPdf({
       pdf,
       title,
       detailLine
-    }) + PDF_CONTENT_GAP;
+    }) + (tab === "summary" ? PDF_SUMMARY_CONTENT_GAP : PDF_CONTENT_GAP);
 
     const blocks = buildPdfBlocks(exportNode, tab);
 
@@ -639,7 +701,7 @@ export async function exportDashboardPdf({
       }
     }
 
-    const downloadName = buildDashboardPdfFilename(tab, weekToken);
+    const downloadName = buildDashboardPdfFilename(tab, filenameToken);
     pdf.save(downloadName);
 
     return { downloadName };
