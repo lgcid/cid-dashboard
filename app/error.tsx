@@ -40,8 +40,8 @@ export default function AppError({ error, reset }: AppErrorProps) {
                 The dashboard could not be loaded.
               </h1>
               <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: BRAND.colors.textMuted }}>
-                If `DATA_SOURCE=google_sheets`, the app now stops here instead of silently switching to checked-in CSV
-                data.
+                There was a problem preparing the dashboard. Try again, and if it keeps happening, check the logs for
+                the technical details.
               </p>
               {details ? (
                 <p
