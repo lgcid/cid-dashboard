@@ -41,6 +41,30 @@ describe("metric label contract", () => {
     );
   });
 
+  it("accepts social services rows when only the excluded labels are fixed", () => {
+    const section = buildSection("social_services", [
+      "Incidents",
+      "Individual Engagements",
+      "Some New Outreach Label",
+      "Successful ID Applications",
+      "Work Readiness Bags Collected"
+    ]);
+
+    expect(() => validateDerivedMetricSectionLabels(section)).not.toThrow();
+  });
+
+  it("rejects social services sheets that are missing an excluded label", () => {
+    const section = buildSection("social_services", [
+      "Incidents",
+      "Individual Engagements",
+      "Work Readiness Bags Collected"
+    ]);
+
+    expect(() => validateDerivedMetricSectionLabels(section)).toThrow(
+      'Section "social_services" has invalid metric labels: missing required labels: "Successful ID Applications".'
+    );
+  });
+
   it("rejects non-canonical parks tree labels", () => {
     const section = buildSection("parks", ["Jutland Park Bags", "Pruned Trees"]);
 

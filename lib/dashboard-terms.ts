@@ -127,7 +127,7 @@ export const DASHBOARD_TERMS_SECTIONS: DashboardTermsSection[] = [
       {
         term: "Social Services Touch Points",
         definition:
-          "The cumulative total of core outreach activities. This figure is the sum of Incidents, Client Engagements, Client Follow Ups, Support Sessions, ID Applications, and Referred Clients to Shelters."
+          "The cumulative total of social-services activity. This figure adds every row in the Social Services sheet except Successful ID Applications and Work Readiness Bags Collected."
       },
       {
         term: "Incidents",
