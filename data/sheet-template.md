@@ -32,7 +32,7 @@ Example (`general_incidents`):
 | Pro-active Actions          | 0          | 2          |
 | By-law management           | 1          | 0          |
 
-## Required row labels for hardcoded Summary/Trends
+## Row labels used by hardcoded Summary/Trends
 
 ### `public_safety`
 
@@ -56,15 +56,9 @@ Example (`general_incidents`):
 
 ### `social_services`
 
-- `Incidents`
-- `Client Follow Ups`
-- `Individual Engagements`
-- `Support Sessions`
-- `ID Applications`
-- `Successful ID Applications`
-- `Referred Clients to Shelters`
-- `Work Readiness Bags Collected` (excluded from touch-point totals)
-- `Successful ID Applications` (excluded from touch-point totals)
+- `Social Services Touch Points` is calculated by summing every social-services row except the two rows below.
+- If you track successful ID support, use `Successful ID Applications`.
+- If you track work-readiness bag collection, use `Work Readiness Bags Collected`.
 
 ### `control_room_engagement`
 

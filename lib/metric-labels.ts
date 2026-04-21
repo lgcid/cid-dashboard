@@ -24,17 +24,6 @@ export const CONTROL_ROOM_ENGAGEMENT_LABELS = {
   whatsapps_received: "WhatsApps Received"
 } as const;
 
-export const SOCIAL_SERVICES_LABELS = [
-  "Incidents",
-  "Client Follow Ups",
-  "Individual Engagements",
-  "Support Sessions",
-  "ID Applications",
-  "Successful ID Applications",
-  "Referred Clients to Shelters",
-  "Work Readiness Bags Collected"
-] as const;
-
 export const SOCIAL_TOUCH_POINT_EXCLUDED_LABELS = [
   "Work Readiness Bags Collected",
   "Successful ID Applications"
@@ -48,7 +37,7 @@ const REQUIRED_DERIVED_LABELS_BY_SECTION: Partial<Record<SectionKey, readonly st
   public_safety: Object.values(PUBLIC_SAFETY_LABELS),
   law_enforcement: Object.values(LAW_ENFORCEMENT_LABELS),
   cleaning: Object.values(CLEANING_LABELS),
-  social_services: SOCIAL_SERVICES_LABELS,
+  social_services: SOCIAL_TOUCH_POINT_EXCLUDED_LABELS,
   control_room_engagement: Object.values(CONTROL_ROOM_ENGAGEMENT_LABELS)
 };
 
