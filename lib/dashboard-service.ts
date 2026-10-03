@@ -294,7 +294,7 @@ function buildTrendSeries(rows: WeeklyMetricRow[], granularity: TrendGranularity
       aggregated.push({
         period_start: row.week_start,
         period_end: row.week_end,
-        period_label: formatIsoWithPattern(row.week_start, "dd MMM"),
+        period_label: formatIsoWithPattern(row.week_start, "dd MMM yyyy"),
         general_incidents_total: toMetricNumber(row.metrics.general_incidents_total),
         fines_total: trendFinesTotal(row),
         criminal_incidents: toMetricNumber(row.metrics.criminal_incidents),

@@ -185,6 +185,39 @@ test("trends view reflects a fixed range and monthly granularity", async ({ page
   await expect(trendsSection.getByText("Public Safety Trend", { exact: true })).toBeVisible();
 });
 
+test("monthly trend labels remain readable on a narrow screen", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/trends");
+  await page.locator("#trends-from-date").fill("2025-08-01");
+  await page.locator("#trends-to-date").fill("2026-03-09");
+  await page.getByRole("button", { name: "Month" }).click();
+
+  const publicSafetyChart = page.getByRole("heading", { name: "Public Safety Trend" }).locator("..");
+  const labels = publicSafetyChart.locator(".recharts-cartesian-axis-tick-value").filter({ hasText: /20\d\d/ });
+
+  await expect(labels.first()).toHaveText("Aug 2025");
+  await expect(labels.last()).toHaveText("Mar 2026");
+  expect(await labels.count()).toBeLessThan(8);
+});
+
+test("weekly and yearly trend axes keep their endpoints on a narrow screen", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/trends");
+  await page.locator("#trends-from-date").fill("2025-08-01");
+  await page.locator("#trends-to-date").fill("2026-03-09");
+
+  const publicSafetyChart = page.getByRole("heading", { name: "Public Safety Trend" }).locator("..");
+  const labels = publicSafetyChart.locator(".recharts-cartesian-axis-tick-value").filter({ hasText: /20\d\d/ });
+
+  await page.getByRole("button", { name: "Week", exact: true }).click();
+  await expect(labels.first()).toHaveText("01 Aug 2025");
+  await expect(labels.last()).toHaveText("02 Mar 2026");
+  expect(await labels.count()).toBeLessThan(10);
+
+  await page.getByRole("button", { name: "Year" }).click();
+  await expect(labels).toHaveText(["2025", "2026"]);
+});
+
 test("c3 tracker reflects a fixed date range and expected totals", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "C3 Tracker" }).click();
