@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const unstableCache = vi.fn(<T extends (...args: unknown[]) => unknown>(callback: T) => callback);
 const loadData = vi.fn();
-const originalNodeEnv = process.env.NODE_ENV;
 
 vi.mock("next/cache", () => ({
   unstable_cache: unstableCache
@@ -44,14 +43,14 @@ const loadedDashboardData = {
 describe("dashboard data cache", () => {
   beforeEach(() => {
     vi.resetModules();
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     unstableCache.mockClear();
     loadData.mockReset();
     loadData.mockResolvedValue(loadedDashboardData);
   });
 
   afterEach(() => {
-    process.env.NODE_ENV = originalNodeEnv;
+    vi.unstubAllEnvs();
     vi.clearAllMocks();
   });
 
