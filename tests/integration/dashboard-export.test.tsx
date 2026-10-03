@@ -207,11 +207,12 @@ describe("dashboard screenshot export", () => {
     const pdf = jsPdfInstances[0] as {
       addImage: ReturnType<typeof vi.fn>;
       text: ReturnType<typeof vi.fn>;
+      addFileToVFS: ReturnType<typeof vi.fn>;
     };
 
     expect(pdf.addImage).toHaveBeenCalled();
     expect(pdf.text).toHaveBeenCalledWith("WEEKLY OPERATIONS DASHBOARD", expect.any(Number), expect.any(Number));
-    expect((pdf as { addFileToVFS: ReturnType<typeof vi.fn> }).addFileToVFS).toHaveBeenCalled();
+    expect(pdf.addFileToVFS).toHaveBeenCalled();
   });
 
   it("formats summary pdf detail lines with labeled entries and bold values", async () => {
