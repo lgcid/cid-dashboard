@@ -951,14 +951,6 @@ function TrendLegend({
   );
 }
 
-function getTrendXAxisInterval(length: number, granularity: TrendGranularity): number {
-  if (granularity !== "week") {
-    return 0;
-  }
-
-  return Math.max(0, Math.ceil(length / 6) - 1);
-}
-
 type TrendCardProps = {
   title: string;
   dataKey: keyof TrendChartPoint;
@@ -967,7 +959,6 @@ type TrendCardProps = {
   dataName: string;
   averageName: string;
   data: TrendChartPoint[];
-  granularity: TrendGranularity;
 };
 
 function TrendLineCard({
@@ -977,8 +968,7 @@ function TrendLineCard({
   stroke,
   dataName,
   averageName,
-  data,
-  granularity
+  data
 }: TrendCardProps) {
   return (
     <div className="rounded-[28px] border bg-white px-4 pb-4 pt-5 md:px-5 md:pb-5" style={{ borderColor: BRAND.colors.borderSubtle, boxShadow: `0 2px 10px ${BRAND.colors.shadowSoft}` }}>
@@ -991,7 +981,7 @@ function TrendLineCard({
               dataKey="period_label"
               axisLine={false}
               tickLine={false}
-              interval={getTrendXAxisInterval(data.length, granularity)}
+              interval="preserveStartEnd"
               minTickGap={28}
               tick={{ fontSize: 12, fill: BRAND.colors.trendAxis }}
               tickMargin={8}
@@ -3427,7 +3417,6 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <TrendLineCard
                   title="Public Safety Trend"
                   data={trendSeries}
-                  granularity={trendGranularity}
                   dataKey="criminal_incidents"
                   averageKey="criminal_ma4"
                   stroke={BRAND.colors.safety}
@@ -3438,7 +3427,6 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <TrendLineCard
                   title="Cleaning & Maintenance Trend"
                   data={trendSeries}
-                  granularity={trendGranularity}
                   dataKey="cleaning_bags_collected"
                   averageKey="cleaning_ma4"
                   stroke={BRAND.colors.cleaning}
@@ -3449,7 +3437,6 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <TrendLineCard
                   title="Social Services Trend"
                   data={trendSeries}
-                  granularity={trendGranularity}
                   dataKey="social_touch_points"
                   averageKey="social_touch_points_ma4"
                   stroke={BRAND.colors.social}
@@ -3460,7 +3447,6 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <TrendLineCard
                   title="Parks & Recreation Trend"
                   data={trendSeries}
-                  granularity={trendGranularity}
                   dataKey="parks_total_bags"
                   averageKey="parks_total_bags_ma4"
                   stroke={BRAND.colors.parks}
@@ -3471,7 +3457,6 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <TrendLineCard
                   title="Law Enforcement Trend"
                   data={trendSeries}
-                  granularity={trendGranularity}
                   dataKey="fines_total"
                   averageKey="fines_total_ma4"
                   stroke={BRAND.colors.lawEnforcement}
@@ -3482,7 +3467,6 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <TrendLineCard
                   title="General Incidents Trend"
                   data={trendSeries}
-                  granularity={trendGranularity}
                   dataKey="general_incidents_total"
                   averageKey="general_incidents_ma4"
                   stroke={BRAND.colors.generalIncidents}
@@ -3493,7 +3477,6 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <TrendLineCard
                   title="Control Room Engagement Trend"
                   data={trendSeries}
-                  granularity={trendGranularity}
                   dataKey="contacts_total"
                   averageKey="contacts_total_ma4"
                   stroke={BRAND.colors.black}
@@ -3504,7 +3487,6 @@ export default function DashboardClient({ initialData, initialTab = "summary" }:
                 <TrendLineCard
                   title="CoCT C3 Logged Requests Trend"
                   data={trendSeries}
-                  granularity={trendGranularity}
                   dataKey="c3_logged_total"
                   averageKey="c3_logged_total_ma4"
                   stroke={BRAND.colors.black}

@@ -168,7 +168,7 @@ describe("dashboard data pipeline", () => {
       getDashboardTrendsData({ granularity: "month" })
     ]);
 
-    expect(weeklyTrends.series[0]?.period_label).toBe("01 Aug");
+    expect(weeklyTrends.series[0]?.period_label).toBe("01 Aug 2025");
     expect(monthlyTrends.series[0]?.period_label).toBe("Aug 2025");
   });
 });
