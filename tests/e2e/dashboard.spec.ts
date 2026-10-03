@@ -74,6 +74,16 @@ test("dashboard renders and tab navigation works without client errors", async (
   await expect(page.getByRole("heading", { name: "Pressure Points", level: 3 })).toBeVisible();
 });
 
+test("trend cards retain their layout, chart lines, and icon", async ({ page }) => {
+  await page.goto("/trends");
+
+  const publicSafetyCard = page.getByRole("heading", { name: "Public Safety Trend" }).locator("..");
+  await expect(publicSafetyCard).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(publicSafetyCard).toHaveCSS("border-top-left-radius", "28px");
+  await expect(publicSafetyCard.locator(".recharts-line-curve").first()).toHaveAttribute("d", /\S+/);
+  await expect(page.locator("svg.lucide-trending-up")).toBeVisible();
+});
+
 test("route urls open the correct shared view", async ({ page }) => {
   await page.goto("/current-week");
   await expect(page.getByRole("heading", { name: "Current Week", level: 2 })).toBeVisible();
